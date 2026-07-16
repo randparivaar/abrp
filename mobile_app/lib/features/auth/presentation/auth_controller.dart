@@ -214,6 +214,19 @@ class Auth extends _$Auth {
     }
   }
 
+  Future<void> updateAvatarUrl(String avatarUrl) async {
+    if (state.user == null) return;
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.patch('/users/me', data: {'avatarUrl': avatarUrl});
+      final user = UserModel.fromJson(response.data['user']);
+      await _storage.write(key: AppConstants.userKey, value: jsonEncode(user.toJson()));
+      state = state.copyWith(user: user);
+    } catch (e) {
+      state = state.copyWith(errorMessage: _getErrorMessage(e));
+    }
+  }
+
   String _getErrorMessage(dynamic e) {
     if (e is DioException) {
       final data = e.response?.data;

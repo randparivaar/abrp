@@ -28,7 +28,7 @@ export async function handleGetMyProfile(c: Context) {
 export async function handleUpdateMyProfile(c: Context) {
   try {
     const sessionUser = c.get('user') as UserSession;
-    const { fullName, preferredLanguage } = await c.req.json<UpdateUserProfileRequest>();
+    const { fullName, preferredLanguage, avatarUrl } = await c.req.json<UpdateUserProfileRequest>();
 
     if (preferredLanguage && preferredLanguage !== 'en' && preferredLanguage !== 'hi') {
       return c.json({ error: 'Invalid language preference. Supported: en, hi' }, 400);
@@ -37,6 +37,7 @@ export async function handleUpdateMyProfile(c: Context) {
     const updatedUser = await updateUserProfile(sessionUser.id, {
       fullName,
       preferredLanguage,
+      avatarUrl,
     });
 
     return c.json({ user: updatedUser });

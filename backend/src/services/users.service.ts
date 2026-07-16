@@ -22,6 +22,10 @@ export async function updateUserProfile(userId: string, data: UpdateUserProfileR
     updateFields.preferredLanguage = data.preferredLanguage;
   }
 
+  if (data.avatarUrl !== undefined) {
+    updateFields.avatarUrl = data.avatarUrl;
+  }
+
   const [updatedUser] = await db.update(users)
     .set(updateFields)
     .where(eq(users.id, userId))

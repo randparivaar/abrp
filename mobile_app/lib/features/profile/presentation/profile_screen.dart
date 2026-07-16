@@ -77,6 +77,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       );
 
       if (uploadResponse.statusCode == 200) {
+        // Save the updated avatar URL to the backend database
+        await ref.read(authProvider.notifier).updateAvatarUrl(publicUrl);
+
         setState(() {
           _uploadedImageUrl = publicUrl;
           _isUploading = false;
@@ -84,7 +87,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Image uploaded to Cloudflare R2 successfully!')),
+            const SnackBar(content: Text('Image uploaded and profile updated successfully!')),
           );
         }
       } else {
