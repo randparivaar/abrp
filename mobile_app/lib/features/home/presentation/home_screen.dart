@@ -1,0 +1,1000 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../../core/localization/app_language.dart';
+import '../../../core/localization/app_translations.dart';
+import '../../../core/network/api_client.dart';
+import '../../auth/presentation/auth_controller.dart';
+import '../../directory/presentation/app_bottom_navigation.dart';
+import '../../directory/presentation/my_family_provider.dart';
+
+class HomeScreen extends ConsumerWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+    final lang = ref.watch(languageStateProvider);
+    final user = authState.user;
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final secondaryColor = theme.colorScheme.secondary;
+
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: theme.colorScheme.surface,
+        elevation: 0,
+        leading: Builder(
+          builder: (context) {
+            return IconButton(
+              icon: Icon(Icons.menu, color: primaryColor),
+              onPressed: () {
+                Scaffold.of(context).openDrawer();
+              },
+            );
+          },
+        ),
+        title: Text(
+          'Rander Parivar Samaj',
+          style: GoogleFonts.inter(
+            color: primaryColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.notifications_outlined, color: theme.colorScheme.onSurfaceVariant),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Notifications will be available soon.')),
+              );
+            },
+          ),
+          GestureDetector(
+            onTap: () => context.push('/profile'),
+            child: Container(
+              margin: const EdgeInsets.only(right: 16, left: 8),
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.primaryContainer,
+                image: user?.avatarUrl != null
+                    ? DecorationImage(
+                        image: NetworkImage(user!.avatarUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: user?.avatarUrl == null
+                  ? Icon(Icons.person, size: 18, color: theme.colorScheme.onPrimaryContainer)
+                  : null,
+            ),
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1.0),
+          child: Container(
+            color: theme.colorScheme.secondary.withValues(alpha: 0.1),
+            height: 1.0,
+          ),
+        ),
+      ),
+      drawer: Drawer(
+        width: 280,
+        backgroundColor: theme.colorScheme.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.horizontal(right: Radius.zero),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Drawer Header
+            Container(
+              padding: const EdgeInsets.only(top: 60, left: 16, right: 16, bottom: 16),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: theme.colorScheme.secondary.withValues(alpha: 0.1),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Rander Samaj',
+                    style: GoogleFonts.inter(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w600,
+                      color: primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Connecting Our Heritage',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Navigation Links
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                children: [
+                  _buildDrawerItem(
+                    icon: Icons.person_outline,
+                    title: 'My Profile',
+                    onTap: () {
+                      context.pop();
+                      context.push('/profile');
+                    },
+                    primaryColor: primaryColor,
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.calendar_month_outlined,
+                    title: 'Events',
+                    onTap: () {
+                      context.pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Events will be available soon.')),
+                      );
+                    },
+                    primaryColor: primaryColor,
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.storefront_outlined,
+                    title: 'Business Directory',
+                    onTap: () {
+                      context.pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Business Directory will be available soon.')),
+                      );
+                    },
+                    primaryColor: primaryColor,
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.account_tree_outlined,
+                    title: 'Family Tree',
+                    onTap: () async {
+                      context.pop();
+                      final myFamilyAsync = ref.read(myFamilyProvider);
+                      final myFamilyVal = myFamilyAsync.value;
+                      if (myFamilyVal != null && myFamilyVal['family'] != null) {
+                        final familyId = myFamilyVal['family']['id'];
+                        context.push('/family/$familyId/tree');
+                      } else {
+                        context.push('/onboard-family');
+                      }
+                    },
+                    primaryColor: primaryColor,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                    child: Divider(
+                      color: theme.colorScheme.secondary.withValues(alpha: 0.1),
+                      height: 1,
+                    ),
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.groups_outlined,
+                    title: 'Committee',
+                    onTap: () {
+                      context.pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Committee details will be available soon.')),
+                      );
+                    },
+                    primaryColor: primaryColor,
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.help_outline,
+                    title: 'Help & Support',
+                    onTap: () {
+                      context.pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Help & Support will be available soon.')),
+                      );
+                    },
+                    primaryColor: primaryColor,
+                  ),
+                ],
+              ),
+            ),
+            // Logout
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Logout', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                context.pop();
+                ref.read(authProvider.notifier).logout();
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Greeting Section
+            Text(
+              'Jai Shree Krishna,',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${user?.fullName ?? 'Vinod Rander'}!',
+              style: GoogleFonts.inter(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: primaryColor,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Search Bar
+            Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                ),
+              ),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search members, businesses...',
+                  hintStyle: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Carousel Section
+            SizedBox(
+              height: 260,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  // Carousel Card 1: Upcoming Event
+                  Container(
+                    width: MediaQuery.of(context).size.width * 0.85,
+                    margin: const EdgeInsets.only(right: 16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.colorScheme.secondary.withValues(alpha: 0.05),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 3,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Stack(
+                            children: [
+                              Image.network(
+                                'https://lh3.googleusercontent.com/aida-public/AB6AXuDHhiIO5qj0bxuEqj0mQKLTPOn4qGyyp-l2VCLOtOb_4KWZgoMPpmqPYcXtcAjNV3VSAut2Cx10R3rIZxJpVzpEza7gw3yngQ3RU3-jFtyBBWIixivravA90W7Ia_qWvIeIPSGN1g0O1D7vzSN9rReY7xcfQUwWRzx4lK0k4F6QdyuaVwFpLNEF-96I0nLfSFqOiIeqFyD2z1-hz0Ac4sxOTrW-KgMMAiaXZwPgqaz_juxcM4dqZeZ5HpsvdSDCMKILcMoh4LCNr3A',
+                                height: 130,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Container(
+                                  height: 130,
+                                  color: theme.colorScheme.primaryContainer,
+                                  child: Icon(Icons.image_outlined, color: primaryColor),
+                                ),
+                              ),
+                              Positioned(
+                                top: 12,
+                                left: 12,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: primaryColor,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'UPCOMING',
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Annual Milan 2024',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Icon(Icons.calendar_today_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Dec 15, 2024',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Community Center, Ahmedabad',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Carousel Card 2: Community News
+                  Container(
+                    width: MediaQuery.of(context).size.width * 0.85,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.colorScheme.secondary.withValues(alpha: 0.05),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 3,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.campaign_outlined, color: secondaryColor, size: 20),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'COMMUNITY NEWS',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: secondaryColor,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'New Mahila Mandal Committee Announced for 2025',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                                height: 1.2,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'The Rander Parivar Samaj is proud to introduce the newly elected members of the Mahila Mandal...',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                        InkWell(
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('News details will be available soon.')),
+                            );
+                          },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Read More',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: primaryColor,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(Icons.arrow_forward, size: 14, color: primaryColor),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Quick Links Section
+            Text(
+              'Quick Links',
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 1.2,
+              children: [
+                _buildQuickLinkItem(
+                  context: context,
+                  icon: Icons.event_note_rounded,
+                  label: 'Events',
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Events will be available soon.')),
+                    );
+                  },
+                  theme: theme,
+                ),
+                _buildQuickLinkItem(
+                  context: context,
+                  icon: Icons.storefront_rounded,
+                  label: 'Businesses',
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Business Directory will be available soon.')),
+                    );
+                  },
+                  theme: theme,
+                ),
+                _buildQuickLinkItem(
+                  context: context,
+                  icon: Icons.photo_library_rounded,
+                  label: 'Sammelan Gallery',
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Sammelan Gallery will be available soon.')),
+                    );
+                  },
+                  theme: theme,
+                ),
+                _buildQuickLinkItem(
+                  context: context,
+                  icon: Icons.article_rounded,
+                  label: 'News Board',
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('News Board will be available soon.')),
+                    );
+                  },
+                  theme: theme,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // ── My Family Card ───────────────────────────────────────────
+            _MyFamilyCard(lang: lang),
+            const SizedBox(height: 24),
+
+            // Admin Panel Quick Link
+            if (user?.role == 'admin') ...[
+              Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.security, color: theme.colorScheme.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            AppTranslations.get('admin_features', lang),
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: theme.colorScheme.secondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'You have administrator access. Open the admin panel to manage members and dispatch notifications.',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => context.push('/admin'),
+                        child: Text(AppTranslations.get('admin_dashboard', lang)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ],
+        ),
+      ),
+      bottomNavigationBar: const AppBottomNavigation(currentIndex: 0),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    required Color primaryColor,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      child: ListTile(
+        leading: Icon(icon, color: primaryColor),
+        title: Text(
+          title,
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildQuickLinkItem({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required ThemeData theme,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.colorScheme.secondary.withValues(alpha: 0.05),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              ),
+              child: Icon(
+                icon,
+                color: theme.colorScheme.primary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurface,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── MY FAMILY CARD ───────────────────────────────────────────────────────────
+
+class _MyFamilyCard extends ConsumerStatefulWidget {
+  final AppLanguage lang;
+  const _MyFamilyCard({required this.lang});
+
+  @override
+  ConsumerState<_MyFamilyCard> createState() => _MyFamilyCardState();
+}
+
+class _MyFamilyCardState extends ConsumerState<_MyFamilyCard> {
+  bool _loading = true;
+  Map<String, dynamic>? _familyData;
+  int _memberCount = 0;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFamily();
+  }
+
+  Future<void> _loadFamily() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.get('/directory/my-family');
+      if (!mounted) return;
+
+      final familyMap = response.data['family'] as Map<String, dynamic>?;
+      int memberCount = 0;
+      if (familyMap != null) {
+        final familyId = familyMap['id'] as int;
+        final treeResponse = await dio.get('/directory/family/$familyId/tree');
+        final membersList = treeResponse.data['members'] as List<dynamic>?;
+        memberCount = membersList?.length ?? 0;
+      }
+
+      setState(() {
+        _familyData = familyMap;
+        _memberCount = memberCount;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Could not load family info.';
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isHindi = widget.lang == AppLanguage.hi;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    // Loading state
+    if (_loading) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 28.0),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: colorScheme.secondary.withValues(alpha: 0.05),
+          ),
+        ),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // Error state
+    if (_error != null) {
+      return Container(
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: colorScheme.error.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.family_restroom, color: Colors.grey, size: 32),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _error!,
+                style: GoogleFonts.inter(color: Colors.red, fontSize: 13),
+              ),
+            ),
+            IconButton(icon: const Icon(Icons.refresh), onPressed: _loadFamily),
+          ],
+        ),
+      );
+    }
+
+    // ── No family registered yet ─────────────────────────────────────────
+    if (_familyData == null) {
+      return Container(
+        padding: const EdgeInsets.all(20.0),
+        decoration: BoxDecoration(
+          color: colorScheme.errorContainer.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: colorScheme.error.withValues(alpha: 0.2),
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: colorScheme.error.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.family_restroom, color: colorScheme.error, size: 26),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isHindi ? 'मेरा परिवार' : 'My Family',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: colorScheme.secondary,
+                        ),
+                      ),
+                      Text(
+                        isHindi ? 'अभी तक पंजीकृत नहीं' : 'Not registered yet',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              isHindi
+                  ? 'समाज में अपनी पारिवारिक जानकारी दर्ज करें और परिवार के सदस्यों को जोड़ें।'
+                  : 'Register your family in the directory and start adding your family members to build your tree.',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  await context.push('/onboard-family');
+                  _loadFamily();
+                },
+                icon: const Icon(Icons.add_home_work_outlined),
+                label: Text(isHindi ? 'परिवार पंजीकृत करें' : 'Register Your Family'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ── Family is registered ─────────────────────────────────────────────
+    final familyId = _familyData!['id'] as int;
+    final familyCode = _familyData!['familyCode'] as String? ?? '';
+    final villageName = (_familyData!['village']?['name'] ?? '') as String;
+
+    return InkWell(
+      onTap: () => context.push('/family/$familyId/tree'),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(20.0),
+        decoration: BoxDecoration(
+          color: colorScheme.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: colorScheme.primary.withValues(alpha: 0.15),
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Your Parivar Profile',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$familyCode • $villageName',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                Icon(Icons.account_tree_outlined, color: colorScheme.primary),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'FAMILY MEMBERS',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurfaceVariant,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$_memberCount',
+                        style: GoogleFonts.inter(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 40,
+                  color: colorScheme.primary.withValues(alpha: 0.2),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'CONTRIBUTIONS',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurfaceVariant,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '4',
+                        style: GoogleFonts.inter(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
