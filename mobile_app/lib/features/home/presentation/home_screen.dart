@@ -6,8 +6,8 @@ import '../../../core/localization/app_language.dart';
 import '../../../core/localization/app_translations.dart';
 import '../../../core/network/api_client.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../directory/presentation/app_drawer.dart';
 import '../../directory/presentation/app_bottom_navigation.dart';
-import '../../directory/presentation/my_family_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -84,149 +84,7 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
       ),
-      drawer: Drawer(
-        width: 280,
-        backgroundColor: theme.colorScheme.surface,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.horizontal(right: Radius.zero),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Drawer Header
-            Container(
-              padding: const EdgeInsets.only(top: 60, left: 16, right: 16, bottom: 16),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: theme.colorScheme.secondary.withValues(alpha: 0.1),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Rander Samaj',
-                    style: GoogleFonts.inter(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w600,
-                      color: primaryColor,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Connecting Our Heritage',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: theme.colorScheme.onSurfaceVariant,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Navigation Links
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                children: [
-                  _buildDrawerItem(
-                    icon: Icons.person_outline,
-                    title: 'My Profile',
-                    onTap: () {
-                      context.pop();
-                      context.push('/profile');
-                    },
-                    primaryColor: primaryColor,
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.calendar_month_outlined,
-                    title: 'Events',
-                    onTap: () {
-                      context.pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Events will be available soon.')),
-                      );
-                    },
-                    primaryColor: primaryColor,
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.storefront_outlined,
-                    title: 'Business Directory',
-                    onTap: () {
-                      context.pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Business Directory will be available soon.')),
-                      );
-                    },
-                    primaryColor: primaryColor,
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.account_tree_outlined,
-                    title: 'Family Tree',
-                    onTap: () async {
-                      context.pop();
-                      final myFamilyAsync = ref.read(myFamilyProvider);
-                      final myFamilyVal = myFamilyAsync.value;
-                      if (myFamilyVal != null && myFamilyVal['family'] != null) {
-                        final familyId = myFamilyVal['family']['id'];
-                        context.push('/family/$familyId/tree');
-                      } else {
-                        context.push('/onboard-family');
-                      }
-                    },
-                    primaryColor: primaryColor,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-                    child: Divider(
-                      color: theme.colorScheme.secondary.withValues(alpha: 0.1),
-                      height: 1,
-                    ),
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.groups_outlined,
-                    title: 'Committee',
-                    onTap: () {
-                      context.pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Committee details will be available soon.')),
-                      );
-                    },
-                    primaryColor: primaryColor,
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.help_outline,
-                    title: 'Help & Support',
-                    onTap: () {
-                      context.pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Help & Support will be available soon.')),
-                      );
-                    },
-                    primaryColor: primaryColor,
-                  ),
-                ],
-              ),
-            ),
-            // Logout
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                context.pop();
-                ref.read(authProvider.notifier).logout();
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
+      drawer: const AppDrawer(),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
@@ -520,9 +378,7 @@ class HomeScreen extends ConsumerWidget {
                   icon: Icons.storefront_rounded,
                   label: 'Businesses',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Business Directory will be available soon.')),
-                    );
+                    context.push('/business-directory');
                   },
                   theme: theme,
                 ),
@@ -612,30 +468,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    required Color primaryColor,
-  }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 2),
-      child: ListTile(
-        leading: Icon(icon, color: primaryColor),
-        title: Text(
-          title,
-          style: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        onTap: onTap,
-      ),
-    );
-  }
+
 
   Widget _buildQuickLinkItem({
     required BuildContext context,

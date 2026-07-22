@@ -31,6 +31,24 @@ export async function getVillagesList() {
  * Onboard a new family (Atomic Transaction)
  */
 export async function onboardNewFamily(sessionUserId: string, payload: OnboardFamilyRequest) {
+  // Check if user has already created or is linked to a family
+  const existingMember = await db.query.familyMembers.findFirst({
+    where: (m: any, { or, eq }: any) => or(eq(m.userId, sessionUserId), eq(m.createdBy, sessionUserId)),
+  });
+  if (existingMember) {
+    throw new Error('User has already created a family.');
+  }
+
+  // Check mobile uniqueness for family head if mobile provided
+  if (payload.head.mobile && payload.head.mobile.trim().length > 0) {
+    const existingMobile = await db.query.familyMembers.findFirst({
+      where: eq(familyMembers.mobile, payload.head.mobile.trim()),
+    });
+    if (existingMobile) {
+      throw new Error('This mobile number is already registered with another family member.');
+    }
+  }
+
   return await db.transaction(async (tx: any) => {
     // 1. Generate unique family code
     const familyCode = await generateUniqueFamilyCode(tx);
@@ -90,6 +108,16 @@ export async function onboardNewFamily(sessionUserId: string, payload: OnboardFa
  * Add a member to a family unit
  */
 export async function addMemberToFamily(sessionUserId: string, payload: AddFamilyMemberRequest) {
+  // Check mobile uniqueness if mobile provided
+  if (payload.mobile && payload.mobile.trim().length > 0) {
+    const existingMobile = await db.query.familyMembers.findFirst({
+      where: eq(familyMembers.mobile, payload.mobile.trim()),
+    });
+    if (existingMobile) {
+      throw new Error('This mobile number is already registered with another family member.');
+    }
+  }
+
   const birthDateParsed = payload.birthDate ? new Date(payload.birthDate) : null;
   let estimatedBirthYear: number | null = null;
   if (payload.estimatedAgeOnCreation) {
@@ -124,7 +152,6 @@ export async function addMemberToFamily(sessionUserId: string, payload: AddFamil
     occupationType: payload.occupationType || 'other',
     occupationDetail: payload.occupationDetail || null,
     yearlyIncome: payload.yearlyIncome || null,
-    aadhaarNo: payload.aadhaarNo || null,
     specialRemarks: payload.specialRemarks || null,
     avatarUrl: payload.avatarUrl || null,
     fatherId: payload.fatherId || null,
@@ -255,9 +282,13 @@ export async function getFamilyTreeData(familyId: number, currentUserId: string)
     })
   );
 
+  const myMemberInFamily = members.find((m: any) => m.userId === currentUserId || m.createdBy === currentUserId);
+  const canEdit = myMemberInFamily ? (myMemberInFamily.createdBy === currentUserId || myMemberInFamily.relationshipToHead === 'self' || family.familyHeadId === myMemberInFamily.id) : false;
+
   return {
     family,
-    members: membersWithBiz
+    members: membersWithBiz,
+    canEdit,
   };
 }
 
@@ -266,9 +297,16 @@ export async function getFamilyTreeData(familyId: number, currentUserId: string)
  */
 export async function getMyFamily(sessionUserId: string) {
   // Find a member node where userId == sessionUserId
-  const myMember = await db.query.familyMembers.findFirst({
+  let myMember = await db.query.familyMembers.findFirst({
     where: (m: any, { eq }: any) => eq(m.userId, sessionUserId),
   });
+
+  // If not found by userId directly, check if sessionUserId created any member
+  if (!myMember) {
+    myMember = await db.query.familyMembers.findFirst({
+      where: (m: any, { eq }: any) => eq(m.createdBy, sessionUserId),
+    });
+  }
 
   if (!myMember) return null;
 
@@ -313,7 +351,12 @@ export async function getMyFamily(sessionUserId: string) {
     businessProfile,
   };
 
-  return family ? { family, member: memberWithBiz } : null;
+  const isHeadOrCreator = 
+    myMember.createdBy === sessionUserId || 
+    myMember.relationshipToHead === 'self' || 
+    family?.familyHeadId === myMember.id;
+
+  return family ? { family, member: memberWithBiz, canEdit: isHeadOrCreator } : null;
 }
 
 /**
@@ -332,6 +375,19 @@ export async function updateFamilyMember(sessionUserId: string, memberId: number
   const isAuthorized = familyMems.some((m: any) => m.userId === sessionUserId || m.createdBy === sessionUserId);
 
   if (!isAuthorized) throw new Error('Unauthorized');
+
+  // Check mobile uniqueness if updating mobile
+  if (payload.mobile && payload.mobile.trim().length > 0) {
+    const existingMobile = await db.query.familyMembers.findFirst({
+      where: and(
+        eq(familyMembers.mobile, payload.mobile.trim()),
+        sql`${familyMembers.id} != ${memberId}`
+      ),
+    });
+    if (existingMobile) {
+      throw new Error('This mobile number is already registered with another family member.');
+    }
+  }
 
   // 3. Update the member record
   const birthDateParsed = payload.birthDate ? new Date(payload.birthDate) : undefined;
@@ -371,7 +427,6 @@ export async function updateFamilyMember(sessionUserId: string, memberId: number
     occupationType: payload.occupationType,
     occupationDetail: payload.occupationDetail,
     yearlyIncome: payload.yearlyIncome,
-    aadhaarNo: payload.aadhaarNo,
     specialRemarks: payload.specialRemarks,
     avatarUrl: payload.avatarUrl,
     fatherId: payload.fatherId,
@@ -472,7 +527,7 @@ export async function updateFamilyMember(sessionUserId: string, memberId: number
         communityPerk: bp.communityPerk || null,
         catalog: bp.catalog || null,
         createdBy: sessionUserId,
-        isApproved: false,
+        isApproved: updatedMember.status === 'approved',
       }).returning();
 
       if (newBp && newBp.id) {
@@ -566,6 +621,20 @@ export async function approveFamilyMember(memberId: number, moderatorId: string)
     })
     .where(eq(familyMembers.id, memberId));
 
+  // Automatically approve any business profiles owned/linked by this family member
+  try {
+    const memberships = await db.query.businessMembers.findMany({
+      where: eq(businessMembers.memberId, memberId),
+    });
+    for (const m of memberships) {
+      await db.update(businessProfiles)
+        .set({ isApproved: true, updatedAt: new Date() })
+        .where(eq(businessProfiles.id, m.businessId));
+    }
+  } catch (err) {
+    console.error('Failed to auto-approve associated business profiles:', err);
+  }
+
   try {
     const devicesList = await getUserDevices(member.createdBy);
     if (devicesList.length > 0) {
@@ -615,6 +684,103 @@ export async function rejectFamilyMember(memberId: number, moderatorId: string, 
 
   return { success: true };
 }
+
+/**
+ * Get all pending business profiles for moderation
+ */
+export async function getPendingBusinessProfiles() {
+  return await db.select({
+    id: businessProfiles.id,
+    businessName: businessProfiles.businessName,
+    industryCategory: businessProfiles.industryCategory,
+    contactMobile: businessProfiles.contactMobile,
+    email: businessProfiles.email,
+    websiteUrl: businessProfiles.websiteUrl,
+    description: businessProfiles.description,
+    createdAt: businessProfiles.createdAt,
+    locationAddress: businessLocations.address,
+    locationCity: businessLocations.city,
+    locationState: businessLocations.state,
+    locationPincode: businessLocations.pincode,
+    ownerName: familyMembers.fullName,
+    ownerId: familyMembers.id,
+  })
+  .from(businessProfiles)
+  .leftJoin(businessLocations, and(
+    eq(businessLocations.businessId, businessProfiles.id),
+    eq(businessLocations.isPrimary, true)
+  ))
+  .leftJoin(businessMembers, eq(businessMembers.businessId, businessProfiles.id))
+  .leftJoin(familyMembers, eq(familyMembers.id, businessMembers.memberId))
+  .where(eq(businessProfiles.isApproved, false))
+  .orderBy(businessProfiles.createdAt);
+}
+
+/**
+ * Approve a pending business profile
+ */
+export async function approveBusinessProfile(businessId: number, moderatorId: string) {
+  const biz = await db.query.businessProfiles.findFirst({
+    where: eq(businessProfiles.id, businessId),
+  });
+  if (!biz) throw new Error('Business profile not found');
+
+  await db.update(businessProfiles)
+    .set({
+      isApproved: true,
+      updatedAt: new Date(),
+    })
+    .where(eq(businessProfiles.id, businessId));
+
+  // Try to send push notification to creator
+  try {
+    const devicesList = await getUserDevices(biz.createdBy);
+    if (devicesList.length > 0) {
+      const tokens = devicesList.map((d: any) => d.fcmToken);
+      await sendPushNotification(
+        tokens,
+        'Business Approved / व्यवसाय स्वीकृत',
+        `${biz.businessName} has been approved and is now visible in the business directory.`,
+        { businessId: businessId.toString(), status: 'approved' }
+      );
+    }
+  } catch (err) {
+    console.error('Failed to send business approval notification:', err);
+  }
+
+  return { success: true };
+}
+
+/**
+ * Reject a pending business profile
+ */
+export async function rejectBusinessProfile(businessId: number, moderatorId: string) {
+  const biz = await db.query.businessProfiles.findFirst({
+    where: eq(businessProfiles.id, businessId),
+  });
+  if (!biz) throw new Error('Business profile not found');
+
+  await db.delete(businessProfiles).where(eq(businessProfiles.id, businessId));
+
+  // Try to send push notification to creator
+  try {
+    const devicesList = await getUserDevices(biz.createdBy);
+    if (devicesList.length > 0) {
+      const tokens = devicesList.map((d: any) => d.fcmToken);
+      await sendPushNotification(
+        tokens,
+        'Business Rejected / व्यवसाय अस्वीकृत',
+        `The request for ${biz.businessName} was rejected.`,
+        { businessId: businessId.toString(), status: 'rejected' }
+      );
+    }
+  } catch (err) {
+    console.error('Failed to send business rejection notification:', err);
+  }
+
+  return { success: true };
+}
+
 
 /**
  * Search approved family members across any family by name
@@ -751,4 +917,102 @@ export async function getMembersList(search?: string, villageId?: number) {
     familyHeadName: m.family?.head?.fullName || '',
   }));
 }
+
+/**
+ * Get all approved business profiles with primary location and owner details
+ */
+export async function getBusinessProfilesList(search?: string, category?: string) {
+  const allBusinesses = await db.query.businessProfiles.findMany({
+    where: eq(businessProfiles.isApproved, true),
+    orderBy: (bp: any, { desc }: any) => [desc(bp.createdAt)],
+  });
+
+  const formattedBusinesses = await Promise.all(
+    allBusinesses.map(async (bp) => {
+      const loc = await db.query.businessLocations.findFirst({
+        where: and(
+          eq(businessLocations.businessId, bp.id),
+          eq(businessLocations.isPrimary, true)
+        ),
+      });
+
+      const bizMembers = await db.query.businessMembers.findMany({
+        where: eq(businessMembers.businessId, bp.id),
+        with: {
+          member: true,
+        },
+      });
+
+      const owners = bizMembers.map((bm: any) => ({
+        id: bm.member?.id,
+        fullName: bm.member?.fullName,
+        avatarUrl: bm.member?.avatarUrl,
+        mobile: bm.member?.mobile,
+        roleInBusiness: bm.roleInBusiness,
+      }));
+
+      return {
+        id: bp.id,
+        businessName: bp.businessName,
+        logoUrl: bp.logoUrl,
+        industryCategory: bp.industryCategory,
+        contactMobile: bp.contactMobile,
+        whatsappMobile: bp.whatsappMobile,
+        email: bp.email,
+        websiteUrl: bp.websiteUrl,
+        gstin: bp.gstin,
+        description: bp.description,
+        tags: bp.tags,
+        operatingHours: bp.operatingHours,
+        communityPerk: bp.communityPerk,
+        catalog: bp.catalog,
+        address: loc?.address || '',
+        city: loc?.city || '',
+        state: loc?.state || '',
+        pincode: loc?.pincode || '',
+        googleMapsLink: loc?.googleMapsLink || '',
+        owners,
+      };
+    })
+  );
+
+  let filtered = formattedBusinesses;
+  if (category && category.trim().length > 0 && category !== 'All') {
+    filtered = filtered.filter(b => b.industryCategory.toLowerCase() === category.toLowerCase());
+  }
+
+  if (search && search.trim().length > 0) {
+    const q = search.toLowerCase().trim();
+    filtered = filtered.filter(b => {
+      const name = b.businessName.toLowerCase();
+      const cat = b.industryCategory.toLowerCase();
+      const city = b.city.toLowerCase();
+      const desc = (b.description || '').toLowerCase();
+      const ownerNames = b.owners.map((o: any) => (o.fullName || '').toLowerCase()).join(' ');
+      return name.includes(q) || cat.includes(q) || city.includes(q) || desc.includes(q) || ownerNames.includes(q);
+    });
+  }
+
+  return filtered;
+}
+
+/**
+ * Associate user with an existing family member record by matching mobile number
+ */
+export async function associateUserWithFamilyMemberByMobile(userId: string, mobile?: string | null) {
+  if (!mobile) return;
+  const cleanMobile = mobile.trim();
+  if (!cleanMobile) return;
+
+  const matchingMember = await db.query.familyMembers.findFirst({
+    where: (m: any, { eq, and, isNull }: any) => and(eq(m.mobile, cleanMobile), isNull(m.userId)),
+  });
+
+  if (matchingMember) {
+    await db.update(familyMembers)
+      .set({ userId: userId })
+      .where(eq(familyMembers.id, matchingMember.id));
+  }
+}
+
 

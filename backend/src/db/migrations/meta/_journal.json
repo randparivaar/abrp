@@ -15,6 +15,13 @@
       "when": 1783762619108,
       "tag": "0001_gifted_the_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784691219722,
+      "tag": "0002_pink_viper",
+      "breakpoints": true
     }
   ]
 }

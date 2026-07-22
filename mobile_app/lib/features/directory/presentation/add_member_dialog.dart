@@ -57,7 +57,6 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
   final _educationController = TextEditingController();
   final _occupationDetailController = TextEditingController();
   final _incomeController = TextEditingController();
-  final _aadhaarController = TextEditingController();
   final _specialRemarksController = TextEditingController();
 
   // Address Controllers
@@ -166,7 +165,6 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
       _pincodeController.text = edit.currentPincode ?? widget.defaultPincode ?? '';
       _cityController.text = edit.currentCity ?? widget.defaultCity ?? '';
       _stateController.text = edit.currentState ?? widget.defaultState ?? '';
-      _aadhaarController.text = edit.aadhaarNo ?? '';
       _specialRemarksController.text = edit.specialRemarks ?? '';
       _fatherId = edit.fatherId;
       _motherId = edit.motherId;
@@ -333,7 +331,6 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
     _educationController.dispose();
     _occupationDetailController.dispose();
     _incomeController.dispose();
-    _aadhaarController.dispose();
     _specialRemarksController.dispose();
     _addressController.dispose();
     _pincodeController.dispose();
@@ -402,7 +399,6 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
         'motherId': _motherId,
         'spouseId': _spouseId,
         'avatarUrl': _avatarUrl,
-        'aadhaarNo': _aadhaarController.text.trim().isNotEmpty ? _aadhaarController.text.trim() : null,
         'specialRemarks': _specialRemarksController.text.trim().isNotEmpty ? _specialRemarksController.text.trim() : null,
       };
 
@@ -1454,29 +1450,7 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
             return null;
           },
         ),
-        const SizedBox(height: 16),
 
-        // Aadhaar Card Number
-        TextFormField(
-          controller: _aadhaarController,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Aadhaar Card Number / आधार नंबर',
-            prefixIcon: Icon(Icons.credit_card),
-            border: OutlineInputBorder(),
-            counterText: '',
-          ),
-          maxLength: 12,
-          validator: (val) {
-            if (val != null && val.trim().isNotEmpty) {
-              if (val.trim().length != 12 || int.tryParse(val.trim()) == null) {
-                return 'Please enter a valid 12-digit Aadhaar number';
-              }
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
 
         // Special Remarks
         TextFormField(

@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 # Install pnpm inside the container
 RUN npm install -g pnpm

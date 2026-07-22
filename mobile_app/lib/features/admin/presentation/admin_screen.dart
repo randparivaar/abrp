@@ -24,11 +24,16 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   bool _isLoadingPending = true;
   String? _pendingError;
 
+  List<dynamic> _pendingBusinessesList = [];
+  bool _isLoadingPendingBusinesses = true;
+  String? _pendingBusinessesError;
+
   @override
   void initState() {
     super.initState();
     _fetchUsers();
     _fetchPendingMembers();
+    _fetchPendingBusinesses();
   }
 
   @override
@@ -159,6 +164,94 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     }
   }
 
+  Future<void> _fetchPendingBusinesses() async {
+    setState(() {
+      _isLoadingPendingBusinesses = true;
+      _pendingBusinessesError = null;
+    });
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.get('/directory/moderation/pending-businesses');
+      setState(() {
+        _pendingBusinessesList = response.data['pendingBusinesses'] as List<dynamic>;
+        _isLoadingPendingBusinesses = false;
+      });
+    } catch (e) {
+      setState(() {
+        _pendingBusinessesError = 'Failed to load pending businesses: $e';
+        _isLoadingPendingBusinesses = false;
+      });
+    }
+  }
+
+  Future<void> _approveBusiness(int businessId, String businessName) async {
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.post('/directory/moderation/business/$businessId/approve');
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$businessName has been approved.')),
+          );
+        }
+        _fetchPendingBusinesses();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Approval failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _rejectBusiness(int businessId, String businessName) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) {
+        final theme = Theme.of(dialogCtx);
+        return AlertDialog(
+          backgroundColor: theme.colorScheme.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          title: Text('Reject $businessName?'),
+          content: const Text('Are you sure you want to reject and delete this business profile?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text('CANCEL'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogCtx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('REJECT', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.post('/directory/moderation/business/$businessId/reject');
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$businessName has been rejected.')),
+          );
+        }
+        _fetchPendingBusinesses();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Rejection failed: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _sendTestNotification() async {
     if (_selectedUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -231,7 +324,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
             items: _usersList.map<DropdownMenuItem<String>>((user) {
               return DropdownMenuItem<String>(
                 value: user['id'] as String,
-                child: Text('${user['full_name']} (${user['role']})'),
+                child: Text('${user['fullName'] ?? ''} (${user['role']})'),
               );
             }).toList(),
             onChanged: (val) {
@@ -306,10 +399,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               final item = _usersList[index];
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundImage: item['avatar_url'] != null ? NetworkImage(item['avatar_url'] as String) : null,
-                  child: item['avatar_url'] == null ? const Icon(Icons.person) : null,
+                  backgroundImage: item['avatarUrl'] != null ? NetworkImage(item['avatarUrl'] as String) : null,
+                  child: item['avatarUrl'] == null ? const Icon(Icons.person) : null,
                 ),
-                title: Text(item['full_name'] as String),
+                title: Text(item['fullName'] as String? ?? ''),
                 subtitle: Text(item['email'] as String),
                 trailing: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -480,13 +573,193 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     );
   }
 
+  Widget _buildBusinessApprovalsTab() {
+    final theme = Theme.of(context);
+    if (_isLoadingPendingBusinesses) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_pendingBusinessesError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_pendingBusinessesError!, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _fetchPendingBusinesses,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_pendingBusinessesList.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.check_circle_outline, size: 64, color: Colors.green),
+              const SizedBox(height: 16),
+              Text(
+                'All caught up!',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'There are no pending business approvals.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _pendingBusinessesList.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final item = _pendingBusinessesList[index];
+        final id = item['id'] as int;
+        final businessName = item['businessName'] as String;
+        final industryCategory = item['industryCategory'] as String;
+        final contactMobile = item['contactMobile'] as String;
+        final email = item['email'] as String?;
+        final websiteUrl = item['websiteUrl'] as String?;
+        final address = item['locationAddress'] as String?;
+        final city = item['locationCity'] as String?;
+        final state = item['locationState'] as String?;
+        final pincode = item['locationPincode'] as String?;
+        final ownerName = item['ownerName'] as String?;
+
+        final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
+
+        String fullAddress = '';
+        if (address != null && address.isNotEmpty) {
+          fullAddress = address;
+          if (city != null && city.isNotEmpty) fullAddress += ', $city';
+          if (state != null && state.isNotEmpty) fullAddress += ', $state';
+          if (pincode != null && pincode.isNotEmpty) fullAddress += ' - $pincode';
+        }
+
+        return Card(
+          color: colorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        businessName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.secondary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        industryCategory.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (ownerName != null && ownerName.isNotEmpty) ...[
+                  Text('Owner: $ownerName'),
+                  const SizedBox(height: 4),
+                ],
+                Text('Mobile: $contactMobile'),
+                if (email != null && email.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text('Email: $email'),
+                ],
+                if (websiteUrl != null && websiteUrl.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text('Website: $websiteUrl'),
+                ],
+                if (fullAddress.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text('Address: $fullAddress'),
+                ],
+                const Divider(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => _rejectBusiness(id, businessName),
+                      icon: const Icon(Icons.close, size: 16, color: Colors.red),
+                      label: const Text('Reject', style: TextStyle(color: Colors.red)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.red),
+                        minimumSize: const Size(120, 36),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => _approveBusiness(id, businessName),
+                      icon: const Icon(Icons.check, size: 16, color: Colors.white),
+                      label: const Text('Approve', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        minimumSize: const Size(120, 36),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = ref.watch(languageStateProvider);
     final theme = Theme.of(context);
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(AppTranslations.get('admin_dashboard', lang)),
@@ -496,7 +769,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
             unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
             tabs: [
               Tab(icon: Icon(Icons.notifications_outlined), text: 'Notifications'),
-              Tab(icon: Icon(Icons.fact_check_outlined), text: 'Pending Approvals'),
+              Tab(icon: Icon(Icons.fact_check_outlined), text: 'Member Approvals'),
+              Tab(icon: Icon(Icons.business_center_outlined), text: 'Business Approvals'),
             ],
           ),
         ),
@@ -504,6 +778,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           children: [
             _buildNotificationsTab(lang),
             _buildApprovalsTab(),
+            _buildBusinessApprovalsTab(),
           ],
         ),
       ),

@@ -1,4 +1,5 @@
 import { Context } from 'hono';
+import { db } from '@/db';
 import { 
   findUserByEmail, 
   createUser, 
@@ -7,6 +8,7 @@ import {
   generateSessionToken 
 } from '@/services/auth.service';
 import { registerDeviceToken } from '@/services/notifications.service';
+import { associateUserWithFamilyMemberByMobile } from '@/services/directory.service';
 import { GoogleLoginRequest, RegisterRequest, LoginRequest } from '@/types/auth.types';
 import { hashPassword, verifyPassword } from '@/utils/crypto';
 
@@ -69,6 +71,9 @@ export async function handleGoogleLogin(c: Context) {
       }
     }
 
+    // Associate family member by mobile if available
+    await associateUserWithFamilyMemberByMobile(user.id, user.mobile);
+
     const token = generateSessionToken(user);
 
     return c.json({
@@ -91,10 +96,10 @@ export async function handleGoogleLogin(c: Context) {
 
 export async function handleRegister(c: Context) {
   try {
-    const { email, fullName, password, fcmToken, deviceType } = await c.req.json<RegisterRequest>();
+    const { email, fullName, password, mobile, fcmToken, deviceType } = await c.req.json<RegisterRequest>();
 
-    if (!email || !fullName || !password) {
-      return c.json({ error: 'Missing required parameters: email, fullName, password' }, 400);
+    if (!email || !fullName || !password || !mobile) {
+      return c.json({ error: 'Missing required parameters: email, fullName, password, mobile' }, 400);
     }
 
     if (password.length < 6) {
@@ -106,13 +111,26 @@ export async function handleRegister(c: Context) {
       return c.json({ error: 'This email is already registered. Please log in.' }, 409);
     }
 
+    // Check if mobile number is already registered in users table
+    const cleanMobile = mobile.trim();
+    const existingMobile = await db.query.users.findFirst({
+      where: (u: any, { eq }: any) => eq(u.mobile, cleanMobile),
+    });
+    if (existingMobile) {
+      return c.json({ error: 'This mobile number is already registered. Please log in.' }, 409);
+    }
+
     const passwordHash = await hashPassword(password);
 
     const newUser = await createUser({
       email,
       fullName,
       passwordHash,
+      mobile: cleanMobile,
     });
+
+    // Try associating user with existing family member node by mobile
+    await associateUserWithFamilyMemberByMobile(newUser.id, cleanMobile);
 
     // Save FCM Token if provided
     if (fcmToken) {
@@ -174,6 +192,9 @@ export async function handleLogin(c: Context) {
         console.error('FCM Token registration failed in Login:', fcmError);
       }
     }
+
+    // Associate family member by mobile if available
+    await associateUserWithFamilyMemberByMobile(user.id, user.mobile);
 
     const token = generateSessionToken(user);
 

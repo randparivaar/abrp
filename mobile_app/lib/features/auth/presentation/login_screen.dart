@@ -17,6 +17,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _mobileController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isSignUp = false;
   bool _obscurePassword = true;
@@ -26,6 +27,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _fullNameController.dispose();
     _emailController.dispose();
+    _mobileController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -52,7 +54,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
       final fullName = _fullNameController.text.trim();
-      ref.read(authProvider.notifier).signUpWithEmail(email, fullName, password);
+      final mobile = _mobileController.text.trim();
+      ref.read(authProvider.notifier).signUpWithEmail(email, fullName, password, mobile);
     } else {
       ref.read(authProvider.notifier).signInWithEmail(email, password);
     }
@@ -84,6 +87,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       'email_hint': {
         AppLanguage.en: 'name@example.com',
         AppLanguage.hi: 'name@example.com',
+      },
+      'mobile_label': {
+        AppLanguage.en: 'Mobile Number',
+        AppLanguage.hi: 'मोबाइल नंबर',
+      },
+      'mobile_hint': {
+        AppLanguage.en: 'Enter 10-digit mobile number',
+        AppLanguage.hi: '10 अंकों का मोबाइल नंबर दर्ज करें',
       },
       'password_label': {
         AppLanguage.en: 'Password',
@@ -474,6 +485,71 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                                 return lang == AppLanguage.hi
                                                     ? 'कृपया अपना पूरा नाम दर्ज करें'
                                                     : 'Please enter your full name';
+                                              }
+                                              return null;
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 4.0),
+                                            child: Text(
+                                              _getString('mobile_label', lang),
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: theme.colorScheme.onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          TextFormField(
+                                            controller: _mobileController,
+                                            keyboardType: TextInputType.phone,
+                                            style: GoogleFonts.inter(
+                                              color: theme.colorScheme.onSurface,
+                                              fontSize: 14,
+                                            ),
+                                            decoration: InputDecoration(
+                                              hintText: _getString('mobile_hint', lang),
+                                              hintStyle: GoogleFonts.inter(
+                                                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                                                fontSize: 14,
+                                              ),
+                                              prefixIcon: Icon(
+                                                Icons.phone_outlined,
+                                                color: theme.colorScheme.outline,
+                                              ),
+                                              fillColor: theme.colorScheme.surfaceContainerLow,
+                                              filled: true,
+                                              border: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                                borderSide: BorderSide(color: theme.colorScheme.outlineVariant, width: 1),
+                                              ),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                                borderSide: BorderSide(color: theme.colorScheme.outlineVariant, width: 1),
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                                borderSide: BorderSide(color: primaryColor, width: 1.5),
+                                              ),
+                                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                            ),
+                                            validator: (val) {
+                                              if (val == null || val.trim().isEmpty) {
+                                                return lang == AppLanguage.hi
+                                                    ? 'कृपया अपना मोबाइल नंबर दर्ज करें'
+                                                    : 'Please enter your mobile number';
+                                              }
+                                              if (!RegExp(r'^[0-9]{10}$').hasMatch(val.trim())) {
+                                                return lang == AppLanguage.hi
+                                                    ? 'कृपया एक मान्य 10 अंकों का मोबाइल नंबर दर्ज करें'
+                                                    : 'Please enter a valid 10-digit mobile number';
                                               }
                                               return null;
                                             },

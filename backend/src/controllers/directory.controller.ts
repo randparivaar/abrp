@@ -11,11 +11,15 @@ import {
   getPendingFamilyMembers,
   approveFamilyMember,
   rejectFamilyMember,
+  getPendingBusinessProfiles,
+  approveBusinessProfile,
+  rejectBusinessProfile,
   searchFamilyMembers,
   getBusinessMembersList,
   addMemberToBusiness,
   removeMemberFromBusiness,
-  getMembersList
+  getMembersList,
+  getBusinessProfilesList
 } from '@/services/directory.service';
 import { OnboardFamilyRequest, AddFamilyMemberRequest } from '@/types/directory.types';
 
@@ -52,6 +56,9 @@ export async function handleOnboardFamily(c: Context) {
     return c.json(result, 201);
   } catch (error: any) {
     console.error('Error in handleOnboardFamily:', error);
+    if (error.message?.includes('already created') || error.message?.includes('already registered')) {
+      return c.json({ error: error.message }, 400);
+    }
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }
@@ -73,6 +80,9 @@ export async function handleAddFamilyMember(c: Context) {
     return c.json({ member: newMember }, 201);
   } catch (error: any) {
     console.error('Error in handleAddFamilyMember:', error);
+    if (error.message?.includes('already registered')) {
+      return c.json({ error: error.message }, 400);
+    }
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }
@@ -314,3 +324,69 @@ export async function handleGetMembers(c: Context) {
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }
+
+/**
+ * Handle listing all approved community business profiles with search and category filter
+ */
+export async function handleGetBusinesses(c: Context) {
+  try {
+    const q = c.req.query('q') || '';
+    const category = c.req.query('category') || '';
+
+    const businesses = await getBusinessProfilesList(q, category);
+    return c.json({ businesses });
+  } catch (error: any) {
+    console.error('Error in handleGetBusinesses:', error);
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
+}
+
+/**
+ * Handle listing all pending business profiles for approval
+ */
+export async function handleGetPendingBusinesses(c: Context) {
+  try {
+    const list = await getPendingBusinessProfiles();
+    return c.json({ pendingBusinesses: list });
+  } catch (error: any) {
+    console.error('Error in handleGetPendingBusinesses:', error);
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
+}
+
+/**
+ * Handle approving a business profile
+ */
+export async function handleApproveBusiness(c: Context) {
+  try {
+    const sessionUser = c.get('user') as UserSession;
+    const id = parseInt(c.req.param('id') || '', 10);
+    if (isNaN(id)) return c.json({ error: 'Invalid ID' }, 400);
+
+    const result = await approveBusinessProfile(id, sessionUser.id);
+    return c.json(result);
+  } catch (error: any) {
+    console.error('Error in handleApproveBusiness:', error);
+    if (error.message === 'Business profile not found') return c.json({ error: error.message }, 404);
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
+}
+
+/**
+ * Handle rejecting a business profile
+ */
+export async function handleRejectBusiness(c: Context) {
+  try {
+    const sessionUser = c.get('user') as UserSession;
+    const id = parseInt(c.req.param('id') || '', 10);
+    if (isNaN(id)) return c.json({ error: 'Invalid ID' }, 400);
+
+    const result = await rejectBusinessProfile(id, sessionUser.id);
+    return c.json(result);
+  } catch (error: any) {
+    console.error('Error in handleRejectBusiness:', error);
+    if (error.message === 'Business profile not found') return c.json({ error: error.message }, 404);
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
+}
+

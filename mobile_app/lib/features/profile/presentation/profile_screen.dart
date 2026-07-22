@@ -12,6 +12,7 @@ import '../../directory/presentation/app_bottom_navigation.dart';
 import '../../directory/presentation/my_family_provider.dart';
 import '../../directory/presentation/family_tree_screen.dart';
 import '../../directory/presentation/family_member_detail_screen.dart';
+import '../../directory/presentation/app_drawer.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -111,6 +112,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final myFamilyAsync = ref.watch(myFamilyProvider);
 
     return Scaffold(
+      drawer: const AppDrawer(),
       appBar: AppBar(
         title: Text(AppTranslations.get('profile', lang)),
       ),

@@ -148,7 +148,6 @@ export const familyMembers = pgTable('family_members', {
   occupationType: occupationEnum('occupation_type').default('other').notNull(),
   occupationDetail: varchar('occupation_detail', { length: 255 }),
   yearlyIncome: integer('yearly_income'),
-  aadhaarNo: varchar('aadhaar_no', { length: 12 }),
   specialRemarks: text('special_remarks'),
   avatarUrl: text('avatar_url'), // Profile photo for tree nodes (R2 URL)
 

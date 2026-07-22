@@ -8,6 +8,9 @@ import '../../../core/network/api_client.dart';
 import 'app_bottom_navigation.dart';
 import 'family_member_detail_screen.dart';
 import 'family_tree_screen.dart';
+import 'my_family_provider.dart';
+import 'business_directory_screen.dart';
+import 'app_drawer.dart';
 
 class DirectoryScreen extends ConsumerStatefulWidget {
   const DirectoryScreen({super.key});
@@ -143,8 +146,14 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
     final secondaryColor = const Color(0xFFB22B1D);
     final surfaceColor = const Color(0xFFFBF9F8);
 
+    final myFamilyAsync = ref.watch(myFamilyProvider);
+    final myFamilyData = myFamilyAsync.value;
+    final hasFamily = myFamilyData != null && myFamilyData['family'] != null;
+    final myFamilyId = hasFamily ? myFamilyData['family']['id'] : null;
+
     return Scaffold(
       backgroundColor: surfaceColor,
+      drawer: const AppDrawer(),
       appBar: AppBar(
         backgroundColor: surfaceColor,
         elevation: 0,
@@ -169,6 +178,67 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
           IconButton(
             icon: Icon(Icons.notifications_outlined, color: colorScheme.onSurfaceVariant),
             onPressed: () {},
+          ),
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: primaryColor),
+            onSelected: (value) {
+              if (value == 'business_directory') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const BusinessDirectoryScreen()),
+                );
+              } else if (value == 'my_family') {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(child: CircularProgressIndicator()),
+                );
+                ref.read(myFamilyProvider.future).then((myFamilyData) {
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    if (myFamilyData != null && myFamilyData['family'] != null) {
+                      final familyId = myFamilyData['family']['id'];
+                      context.push('/family/$familyId/tree');
+                    } else {
+                      context.push('/onboard-family');
+                    }
+                  }
+                }).catchError((_) {
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    context.push('/onboard-family');
+                  }
+                });
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'business_directory',
+                child: Row(
+                  children: [
+                    Icon(Icons.storefront, color: primaryColor, size: 20),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Business Directory / व्यापार निर्देशिका',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'my_family',
+                child: Row(
+                  children: [
+                    Icon(Icons.family_restroom, color: secondaryColor, size: 20),
+                    const SizedBox(width: 10),
+                    Text(
+                      'My Family / मेरा परिवार',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
         bottom: PreferredSize(
@@ -534,12 +604,16 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
           opacity: _isFabVisible ? 1.0 : 0.0,
           child: FloatingActionButton.extended(
             onPressed: () {
-              context.push('/onboard-family');
+              if (hasFamily && myFamilyId != null) {
+                context.push('/family/$myFamilyId/tree');
+              } else {
+                context.push('/onboard-family');
+              }
             },
             backgroundColor: primaryColor,
-            icon: const Icon(Icons.add, color: Colors.white),
+            icon: Icon(hasFamily ? Icons.account_tree : Icons.add, color: Colors.white),
             label: Text(
-              'Add New Family',
+              hasFamily ? 'View My Family' : 'Add New Family',
               style: GoogleFonts.inter(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,

@@ -8,6 +8,7 @@ export interface RegisterRequest {
   email?: string;
   fullName?: string;
   password?: string;
+  mobile?: string;
   fcmToken?: string;
   deviceType?: 'android' | 'ios';
 }

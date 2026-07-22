@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:mobile_app/core/network/api_client.dart';
 import 'package:mobile_app/features/auth/presentation/auth_controller.dart';
+import 'my_family_provider.dart';
+import 'directory_constants.dart';
 // To reuse CommunityEmblem if needed
 import 'package:mobile_app/core/utils/income_parser.dart';
 
@@ -148,16 +150,7 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
   final _incomeController = TextEditingController();
   int? _parsedIncome;
 
-  final List<String> _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Don\'t Know'];
-  final List<Map<String, String>> _occupations = [
-    {'value': 'business', 'label': 'Business / व्यापार'},
-    {'value': 'salaried', 'label': 'Salaried Job / नौकरी'},
-    {'value': 'professional', 'label': 'Professional / पेशेवर (CA, Doctor, Engineer)'},
-    {'value': 'student', 'label': 'Student / विद्यार्थी'},
-    {'value': 'homemaker', 'label': 'Homemaker / गृहणी'},
-    {'value': 'retired', 'label': 'Retired / सेवानिवृत्त'},
-    {'value': 'other', 'label': 'Other / अन्य'},
-  ];
+
 
   @override
   void initState() {
@@ -423,6 +416,8 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
               backgroundColor: theme.colorScheme.secondary,
             ),
           );
+          // Invalidate the provider so that other screens fetch the new family association
+          ref.invalidate(myFamilyProvider);
           // Redirect to family tree screen
           context.replace('/family/$familyId/tree');
         }
@@ -809,7 +804,7 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
                   decoration: const InputDecoration(
                     labelText: 'Blood Group',
                   ),
-                  items: _bloodGroups.map((bg) {
+                  items: DirectoryConstants.bloodGroups.map((bg) {
                     return DropdownMenuItem<String>(
                       value: bg,
                       child: Text(bg),
@@ -939,7 +934,7 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
               labelText: 'Occupation Category',
               prefixIcon: Icon(Icons.work_outline),
             ),
-            items: _occupations.map((item) {
+            items: DirectoryConstants.occupations.map((item) {
               return DropdownMenuItem<String>(
                 value: item['value'],
                 child: Text(item['label']!),

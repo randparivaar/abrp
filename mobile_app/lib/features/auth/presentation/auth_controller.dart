@@ -146,7 +146,7 @@ class Auth extends _$Auth {
       final response = await dio.post('/auth/login', data: {
         'email': email,
         'password': password,
-        'fcmToken': ?fcmToken,
+        'fcmToken': fcmToken,
         'deviceType': deviceType,
       });
 
@@ -163,7 +163,7 @@ class Auth extends _$Auth {
     }
   }
 
-  Future<void> signUpWithEmail(String email, String fullName, String password) async {
+  Future<void> signUpWithEmail(String email, String fullName, String password, String mobile) async {
     state = state.copyWith(isLoading: true);
     try {
       final fcmToken = await _getFcmToken();
@@ -174,7 +174,8 @@ class Auth extends _$Auth {
         'email': email,
         'fullName': fullName,
         'password': password,
-        'fcmToken': ?fcmToken,
+        'mobile': mobile,
+        'fcmToken': fcmToken,
         'deviceType': deviceType,
       });
 

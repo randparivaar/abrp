@@ -23,9 +23,12 @@
     "jsonwebtoken": "^9.0.3",
     "ws": "^8.21.0"
   },
+  "engines": {
+    "node": ">=22"
+  },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^20.11.17",
+    "@types/node": "^22.10.0",
     "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.7.1",

@@ -15,19 +15,6 @@ class MemberProfileDetailScreen extends StatefulWidget {
 }
 
 class _MemberProfileDetailScreenState extends State<MemberProfileDetailScreen> {
-  bool _revealAadhaar = false;
-
-  String _formatAadhaar(String? raw) {
-    if (raw == null || raw.isEmpty) return 'Not Provided';
-    final clean = raw.replaceAll(RegExp(r'\s+'), '');
-    if (clean.length != 12) return raw;
-    if (_revealAadhaar) {
-      return '${clean.substring(0, 4)} ${clean.substring(4, 8)} ${clean.substring(8, 12)}';
-    } else {
-      return 'XXXX XXXX ${clean.substring(8, 12)}';
-    }
-  }
-
   void _copyToClipboard(String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -246,81 +233,43 @@ class _MemberProfileDetailScreenState extends State<MemberProfileDetailScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 4. Aadhaar & Special Remarks (Secure Layout)
-                  _buildSectionCard(
-                    title: 'Secure Details / संवेदनशील जानकारी',
-                    icon: Icons.security_outlined,
-                    colorScheme: colorScheme,
-                    children: [
-                      _buildDetailItem(
-                        context,
-                        'Aadhaar Number / आधार नंबर',
-                        _formatAadhaar(member.aadhaarNo),
-                        trailing: member.aadhaarNo != null && member.aadhaarNo!.isNotEmpty
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      _revealAadhaar ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                      size: 18,
-                                      color: colorScheme.primary,
-                                    ),
-                                    onPressed: () => setState(() => _revealAadhaar = !_revealAadhaar),
+                  // 4. Special Remarks
+                  if (member.specialRemarks != null && member.specialRemarks!.isNotEmpty) ...[
+                    _buildSectionCard(
+                      title: 'Special Remarks / विशेष टिप्पणी',
+                      icon: Icons.info_outline,
+                      colorScheme: colorScheme,
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade50.withValues(alpha: 0.5),
+                            border: Border.all(color: Colors.amber.shade200, width: 0.5),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.info_outline, size: 16, color: Colors.amber.shade800),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  member.specialRemarks!,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    color: Colors.brown.shade800,
+                                    height: 1.4,
                                   ),
-                                  IconButton(
-                                    icon: Icon(Icons.copy, size: 16, color: colorScheme.primary),
-                                    onPressed: () => _copyToClipboard(member.aadhaarNo!, 'Aadhaar Card'),
-                                  ),
-                                ],
-                              )
-                            : null,
-                      ),
-                      if (member.specialRemarks != null && member.specialRemarks!.isNotEmpty) ...[
-                        const Divider(height: 24),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Special Remarks / विशेष टिप्पणी',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.shade50.withValues(alpha: 0.5),
-                                border: Border.all(color: Colors.amber.shade200, width: 0.5),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(Icons.info_outline, size: 16, color: Colors.amber.shade800),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      member.specialRemarks!,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        color: Colors.brown.shade800,
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
 
                   // 5. Linked Business Card
                   if (member.businessProfile != null) ...[

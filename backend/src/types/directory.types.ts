@@ -77,7 +77,6 @@ export interface AddFamilyMemberRequest {
   occupationType?: 'business' | 'salaried' | 'professional' | 'student' | 'homemaker' | 'retired' | 'other';
   occupationDetail?: string;
   yearlyIncome?: number;
-  aadhaarNo?: string;
   specialRemarks?: string;
   avatarUrl?: string;
   fatherId?: number;

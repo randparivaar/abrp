@@ -9,6 +9,7 @@ import 'package:mobile_app/features/admin/presentation/admin_screen.dart';
 import 'package:mobile_app/features/directory/presentation/family_onboarding_screen.dart';
 import 'package:mobile_app/features/directory/presentation/family_tree_screen.dart';
 import 'package:mobile_app/features/directory/presentation/directory_screen.dart';
+import 'package:mobile_app/features/directory/presentation/business_directory_screen.dart';
 
 part 'app_router.g.dart';
 
@@ -72,6 +73,10 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => FamilyTreeScreen(
           familyId: int.parse(state.pathParameters['familyId']!),
         ),
+      ),
+      GoRoute(
+        path: '/business-directory',
+        builder: (context, state) => const BusinessDirectoryScreen(),
       ),
     ],
   );

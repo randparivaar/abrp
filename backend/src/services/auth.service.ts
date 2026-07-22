@@ -15,13 +15,14 @@ export async function findUserByEmail(email: string) {
   });
 }
 
-export async function createUser(data: { email: string; fullName: string; passwordHash?: string; googleId?: string; avatarUrl?: string }) {
+export async function createUser(data: { email: string; fullName: string; passwordHash?: string; googleId?: string; avatarUrl?: string; mobile?: string }) {
   const [newUser] = await db.insert(users).values({
     email: data.email.toLowerCase().trim(),
     fullName: data.fullName.trim(),
     passwordHash: data.passwordHash || null,
     googleId: data.googleId || null,
     avatarUrl: data.avatarUrl || null,
+    mobile: data.mobile || null,
     role: 'member',
     preferredLanguage: 'en',
     status: 'active',
