@@ -188,13 +188,11 @@ export async function handleLogin(c: Context) {
       return c.json({ error: `Your account is currently ${user.status}. Access denied.` }, 403);
     }
 
-    // Save FCM Token if provided
+    // Save FCM Token if provided (fire & forget)
     if (fcmToken) {
-      try {
-        await registerDeviceToken(user.id, fcmToken, deviceType || 'android');
-      } catch (fcmError) {
+      registerDeviceToken(user.id, fcmToken, deviceType || 'android').catch((fcmError) => {
         console.error('FCM Token registration failed in Login:', fcmError);
-      }
+      });
     }
 
     // Associate family member by mobile if available (fire & forget)

@@ -15,13 +15,33 @@ import 'package:mobile_app/features/auth/presentation/onboarding_screen.dart';
 
 part 'app_router.g.dart';
 
-@riverpod
+/// A [ChangeNotifier] that listens to [AuthState] changes and notifies
+/// GoRouter to re-evaluate its redirect logic without rebuilding the router.
+class _AuthRouterNotifier extends ChangeNotifier {
+  _AuthRouterNotifier(this._ref) {
+    _ref.listen<AuthState>(authProvider, (_, __) {
+      notifyListeners();
+    });
+  }
+
+  final Ref _ref;
+
+  AuthState get authState => _ref.read(authProvider);
+}
+
+// keepAlive: true ensures the router is NEVER recreated when auth state
+// changes, which was causing the splash screen to replay on login/signup.
+@Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
-  final authState = ref.watch(authProvider);
+  final notifier = _AuthRouterNotifier(ref);
 
   return GoRouter(
     initialLocation: '/splash',
+    // refreshListenable triggers redirect() re-evaluation without rebuilding
+    // the router itself, so the current location is preserved.
+    refreshListenable: notifier,
     redirect: (BuildContext context, GoRouterState state) {
+      final authState = notifier.authState;
       final isAuthenticated = authState.user != null;
       final isLoggingIn = state.matchedLocation == '/login';
       final isSplash = state.matchedLocation == '/splash';
@@ -39,7 +59,7 @@ GoRouter appRouter(Ref ref) {
       if (isAuthenticated && isLoggingIn) {
         return '/';
       }
-      
+
       // 3. Admin guard: restrict access to /admin
       if (state.matchedLocation.startsWith('/admin')) {
         final role = authState.user?.role;

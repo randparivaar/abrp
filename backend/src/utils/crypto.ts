@@ -9,7 +9,7 @@ const scryptAsync = promisify(scrypt);
  */
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString('hex');
-  const hash = (await scryptAsync(password, salt, 64)) as Buffer;
+  const hash = (await scryptAsync(password, salt, 64, { N: 16384, r: 8, p: 1 })) as Buffer;
   return `${salt}:${hash.toString('hex')}`;
 }
 
@@ -21,7 +21,7 @@ export async function verifyPassword(password: string, storedHash: string): Prom
     const [salt, hash] = storedHash.split(':');
     if (!salt || !hash) return false;
 
-    const targetHash = (await scryptAsync(password, salt, 64)) as Buffer;
+    const targetHash = (await scryptAsync(password, salt, 64, { N: 16384, r: 8, p: 1 })) as Buffer;
     const originalHashBuffer = Buffer.from(hash, 'hex');
 
     return timingSafeEqual(originalHashBuffer, targetHash);
