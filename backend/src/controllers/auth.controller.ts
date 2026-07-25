@@ -71,8 +71,10 @@ export async function handleGoogleLogin(c: Context) {
       }
     }
 
-    // Associate family member by mobile if available
-    await associateUserWithFamilyMemberByMobile(user.id, user.mobile);
+    // Associate family member by mobile if available (fire & forget)
+    associateUserWithFamilyMemberByMobile(user.id, user.mobile).catch((e: any) =>
+      console.error('associateUserWithFamilyMemberByMobile error:', e)
+    );
 
     const token = generateSessionToken(user);
 
@@ -129,8 +131,10 @@ export async function handleRegister(c: Context) {
       mobile: cleanMobile,
     });
 
-    // Try associating user with existing family member node by mobile
-    await associateUserWithFamilyMemberByMobile(newUser.id, cleanMobile);
+    // Try associating user with existing family member node by mobile (fire & forget)
+    associateUserWithFamilyMemberByMobile(newUser.id, cleanMobile).catch((e: any) =>
+      console.error('associateUserWithFamilyMemberByMobile error:', e)
+    );
 
     // Save FCM Token if provided
     if (fcmToken) {
@@ -193,8 +197,10 @@ export async function handleLogin(c: Context) {
       }
     }
 
-    // Associate family member by mobile if available
-    await associateUserWithFamilyMemberByMobile(user.id, user.mobile);
+    // Associate family member by mobile if available (fire & forget)
+    associateUserWithFamilyMemberByMobile(user.id, user.mobile).catch((e: any) =>
+      console.error('associateUserWithFamilyMemberByMobile error:', e)
+    );
 
     const token = generateSessionToken(user);
 
