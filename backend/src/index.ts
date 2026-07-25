@@ -42,12 +42,11 @@ app.route('/api/v1/directory', directoryRouter);
 // Start native Node.js HTTP server if running locally (not in Vercel)
 if (!process.env.VERCEL) {
   const port = process.env.PORT ? parseInt(process.env.PORT) : 8005;
-  console.log(`Server is running on port ${port}`);
-  const { serve } = await import('@hono/node-server');
-  serve({
-    fetch: app.fetch,
-    port,
-  });
+  (async () => {
+    const { serve } = await import('@hono/node-server');
+    serve({ fetch: app.fetch, port });
+    console.log(`Server is running on port ${port}`);
+  })();
 }
 
 export default app;

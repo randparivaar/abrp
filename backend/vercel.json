@@ -1,7 +1,5 @@
 {
   "version": 2,
-  "buildCommand": "pnpm run build",
-  "outputDirectory": "dist",
   "functions": {
     "api/index.ts": {
       "memory": 512,
@@ -11,8 +9,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api"
+      "destination": "/api/index"
     }
   ]
 }
-
