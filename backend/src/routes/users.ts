@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
-import { authMiddleware, roleGuard } from '@/middleware/auth';
+import { authMiddleware, roleGuard } from '../middleware/auth';
 import { 
   handleGetMyProfile, 
   handleUpdateMyProfile, 
   handleChangeRole, 
   handleListUsers 
-} from '@/controllers/users.controller';
+} from '../controllers/users.controller';
 
 const usersRouter = new Hono();
 

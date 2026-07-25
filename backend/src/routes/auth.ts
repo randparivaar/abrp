@@ -3,7 +3,7 @@ import {
   handleGoogleLogin, 
   handleRegister, 
   handleLogin 
-} from '@/controllers/auth.controller';
+} from '../controllers/auth.controller';
 
 const authRouter = new Hono();
 

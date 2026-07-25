@@ -1,16 +1,16 @@
 import { Context } from 'hono';
-import { db } from '@/db';
+import { db } from '../db';
 import { 
   findUserByEmail, 
   createUser, 
   updateGoogleLink, 
   verifyGoogleIdToken, 
   generateSessionToken 
-} from '@/services/auth.service';
-import { registerDeviceToken } from '@/services/notifications.service';
-import { associateUserWithFamilyMemberByMobile } from '@/services/directory.service';
-import { GoogleLoginRequest, RegisterRequest, LoginRequest } from '@/types/auth.types';
-import { hashPassword, verifyPassword } from '@/utils/crypto';
+} from '../services/auth.service';
+import { registerDeviceToken } from '../services/notifications.service';
+import { associateUserWithFamilyMemberByMobile } from '../services/directory.service';
+import { GoogleLoginRequest, RegisterRequest, LoginRequest } from '../types/auth.types';
+import { hashPassword, verifyPassword } from '../utils/crypto';
 
 export async function handleGoogleLogin(c: Context) {
   try {

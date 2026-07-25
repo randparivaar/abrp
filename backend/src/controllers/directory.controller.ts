@@ -1,5 +1,5 @@
 import { Context } from 'hono';
-import { UserSession } from '@/middleware/auth';
+import { UserSession } from '../middleware/auth';
 import { 
   getVillagesList, 
   onboardNewFamily, 
@@ -20,8 +20,8 @@ import {
   removeMemberFromBusiness,
   getMembersList,
   getBusinessProfilesList
-} from '@/services/directory.service';
-import { OnboardFamilyRequest, AddFamilyMemberRequest } from '@/types/directory.types';
+} from '../services/directory.service';
+import { OnboardFamilyRequest, AddFamilyMemberRequest } from '../types/directory.types';
 
 /**
  * Handle listing all villages

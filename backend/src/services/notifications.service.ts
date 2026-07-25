@@ -1,7 +1,7 @@
-import { db } from '@/db';
-import { devices } from '@/db/schema';
+import { db } from '../db';
+import { devices } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { fcmService } from '@/services/fcm.service';
+import { fcmService } from './fcm.service';
 
 export async function registerDeviceToken(userId: string, fcmToken: string, deviceType: 'android' | 'ios' = 'android') {
   await db.insert(devices)

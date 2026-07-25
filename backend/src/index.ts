@@ -1,11 +1,12 @@
 import { Hono } from 'hono';
+import { handle } from 'hono/vercel';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { authRouter } from '@/routes/auth';
-import { uploadRouter } from '@/routes/upload';
-import { notificationsRouter } from '@/routes/notifications';
-import { usersRouter } from '@/routes/users';
-import { directoryRouter } from '@/routes/directory';
+import { authRouter } from './routes/auth';
+import { uploadRouter } from './routes/upload';
+import { notificationsRouter } from './routes/notifications';
+import { usersRouter } from './routes/users';
+import { directoryRouter } from './routes/directory';
 import dotenv from 'dotenv';
 import { serve } from '@hono/node-server';
 
@@ -49,4 +50,5 @@ if (!process.env.VERCEL) {
   });
 }
 
-export default app;
+export default handle(app);
+

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { authMiddleware, roleGuard } from '@/middleware/auth';
+import { authMiddleware, roleGuard } from '../middleware/auth';
 import { 
   handleGetVillages, 
   handleOnboardFamily, 
@@ -20,7 +20,7 @@ import {
   handleDeleteBusinessMember,
   handleGetMembers,
   handleGetBusinesses
-} from '@/controllers/directory.controller';
+} from '../controllers/directory.controller';
 
 const directoryRouter = new Hono();
 

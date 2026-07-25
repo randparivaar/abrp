@@ -1,7 +1,7 @@
 import { Context } from 'hono';
-import { UserSession } from '@/middleware/auth';
-import { r2Service } from '@/services/r2.service';
-import { PresignedUrlRequest } from '@/types/upload.types';
+import { UserSession } from '../middleware/auth';
+import { r2Service } from '../services/r2.service';
+import { PresignedUrlRequest } from '../types/upload.types';
 
 export async function handleGetPresignedUrl(c: Context) {
   try {

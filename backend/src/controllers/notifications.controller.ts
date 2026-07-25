@@ -1,12 +1,12 @@
 import { Context } from 'hono';
-import { UserSession } from '@/middleware/auth';
+import { UserSession } from '../middleware/auth';
 import { 
   registerDeviceToken, 
   unregisterDeviceToken, 
   getUserDevices, 
   sendPushNotification 
-} from '@/services/notifications.service';
-import { RegisterDeviceRequest, UnregisterDeviceRequest, SendTestNotificationRequest } from '@/types/notifications.types';
+} from '../services/notifications.service';
+import { RegisterDeviceRequest, UnregisterDeviceRequest, SendTestNotificationRequest } from '../types/notifications.types';
 
 export async function handleRegisterDevice(c: Context) {
   try {
