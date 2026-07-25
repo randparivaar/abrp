@@ -197,3 +197,85 @@ export async function handleLogin(c: Context) {
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }
+
+// In-memory OTP Cache for Password Reset (valid for 15 mins)
+const otpStore = new Map<string, { otp: string; expiresAt: number }>();
+
+export async function handleForgotPassword(c: Context) {
+  try {
+    const { email } = await c.req.json<{ email: string }>();
+
+    if (!email || !email.trim()) {
+      return c.json({ error: 'Please enter a valid email address.' }, 400);
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await findUserByEmail(cleanEmail);
+
+    if (!user) {
+      return c.json({ message: 'If an account exists with this email, an OTP has been sent.', success: true });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 15 * 60 * 1000;
+
+    otpStore.set(cleanEmail, { otp, expiresAt });
+
+    console.log(`[AUTH] Password Reset OTP for ${cleanEmail}: ${otp}`);
+
+    return c.json({
+      message: 'Password reset OTP has been sent to your email.',
+      success: true,
+      otp,
+    });
+  } catch (error: any) {
+    console.error('Forgot Password handler error:', error);
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
+}
+
+export async function handleResetPassword(c: Context) {
+  try {
+    const { email, otp, newPassword } = await c.req.json<{ email: string; otp: string; newPassword: string }>();
+
+    if (!email || !otp || !newPassword) {
+      return c.json({ error: 'Missing required parameters: email, otp, newPassword' }, 400);
+    }
+
+    if (newPassword.length < 6) {
+      return c.json({ error: 'New password must be at least 6 characters long.' }, 400);
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const storedOtpData = otpStore.get(cleanEmail);
+
+    if (!storedOtpData || storedOtpData.otp !== otp.trim()) {
+      return c.json({ error: 'Invalid or expired OTP code.' }, 400);
+    }
+
+    if (Date.now() > storedOtpData.expiresAt) {
+      otpStore.delete(cleanEmail);
+      return c.json({ error: 'OTP code has expired. Please request a new one.' }, 400);
+    }
+
+    const user = await findUserByEmail(cleanEmail);
+    if (!user) {
+      return c.json({ error: 'User not found.' }, 404);
+    }
+
+    const { updateUserPassword } = await import('../services/auth.service.js');
+    const newPasswordHash = await hashPassword(newPassword);
+    await updateUserPassword(user.id, newPasswordHash);
+
+    otpStore.delete(cleanEmail);
+
+    return c.json({
+      message: 'Password updated successfully. Please log in with your new password.',
+      success: true,
+    });
+  } catch (error: any) {
+    console.error('Reset Password handler error:', error);
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
+}
+

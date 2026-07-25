@@ -228,6 +228,30 @@ class Auth extends _$Auth {
     }
   }
 
+  Future<String?> forgotPassword(String email) async {
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.post('/auth/forgot-password', data: {'email': email});
+      final otp = response.data['otp'] as String?;
+      return otp;
+    } catch (e) {
+      throw Exception(_getErrorMessage(e));
+    }
+  }
+
+  Future<void> resetPassword(String email, String otp, String newPassword) async {
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.post('/auth/reset-password', data: {
+        'email': email,
+        'otp': otp,
+        'newPassword': newPassword,
+      });
+    } catch (e) {
+      throw Exception(_getErrorMessage(e));
+    }
+  }
+
   String _getErrorMessage(dynamic e) {
     if (e is DioException) {
       final data = e.response?.data;

@@ -71,20 +71,35 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
     final family = treeAsync.value?.family;
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      drawer: const AppDrawer(),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: theme.colorScheme.primary),
-          onPressed: () {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-          },
-        ),
+    return PopScope(
+      canPop: _focusedRootMemberId == null,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _focusedRootMemberId != null) {
+          setState(() {
+            _focusedRootMemberId = null;
+          });
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.surface,
+        drawer: const AppDrawer(),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: theme.colorScheme.primary),
+            onPressed: () {
+              if (_focusedRootMemberId != null) {
+                setState(() {
+                  _focusedRootMemberId = null;
+                });
+              } else {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+              }
+            },
+          ),
         title: treeAsync.when(
           data: (data) {
             final head = data.members.firstWhere(
@@ -181,8 +196,9 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
             )
           : null,
       bottomNavigationBar: const AppBottomNavigation(currentIndex: 2),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTreeContent(BuildContext context, FamilyTreeData data, ThemeData theme) {
     // Determine the root member (either Main Head or Focused Sub-Tree Root)

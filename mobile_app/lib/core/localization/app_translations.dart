@@ -83,8 +83,8 @@ class AppTranslations {
       AppLanguage.hi: 'परीक्षण पुश अधिसूचना भेजें',
     },
     'upload_r2_desc': {
-      AppLanguage.en: 'Direct image upload to Cloudflare R2 storage',
-      AppLanguage.hi: 'क्लाउडफ्लेयर R2 स्टोरेज में सीधे इमेज अपलोड करें',
+      AppLanguage.en: 'Upload profile photo',
+      AppLanguage.hi: 'प्रोफ़ाइल फ़ोटो अपलोड करें',
     },
   };
 

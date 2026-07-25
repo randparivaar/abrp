@@ -162,11 +162,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              AppTranslations.get('upload_r2_desc', lang),
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
+
             if (_uploadError != null) ...[
               const SizedBox(height: 8),
               Text(

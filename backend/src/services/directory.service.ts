@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
 import { users, families, familyMembers, villages, businessProfiles, businessMembers, businessLocations } from '../db/schema.js';
-import { eq, sql, and, inArray } from 'drizzle-orm';
+import { eq, sql, and, inArray, desc } from 'drizzle-orm';
 import { OnboardFamilyRequest, AddFamilyMemberRequest } from '../types/directory.types.js';
 import { getUserDevices, sendPushNotification } from './notifications.service.js';
 
@@ -8,9 +8,11 @@ import { getUserDevices, sendPushNotification } from './notifications.service.js
  * Generate a unique family code (e.g. ABRP-10001)
  */
 async function generateUniqueFamilyCode(tx: any): Promise<string> {
-  const lastFamily = await tx.query.families.findFirst({
-    orderBy: (f: any, { desc }: any) => [desc(f.id)],
-  });
+  const [lastFamily] = await tx
+    .select({ id: families.id })
+    .from(families)
+    .orderBy(desc(families.id))
+    .limit(1);
   const nextId = lastFamily ? lastFamily.id + 1 : 1;
   return `ABRP-${10000 + nextId}`;
 }
@@ -456,8 +458,18 @@ export async function updateFamilyMember(sessionUserId: string, memberId: number
     motherId: payload.motherId,
     spouseId: payload.spouseId,
     status: 'pending', // Re-evaluate status on edits
-    validationFeedback: null,
   }).where(eq(familyMembers.id, memberId)).returning();
+
+  // Bi-directional Sync: Update linked user profile avatar if member is linked to a user account
+  if (updatedMember.userId && payload.avatarUrl !== undefined) {
+    try {
+      await db.update(users)
+        .set({ avatarUrl: updatedMember.avatarUrl, updatedAt: new Date() })
+        .where(eq(users.id, updatedMember.userId));
+    } catch (err) {
+      console.error('Error syncing family member avatar to user profile:', err);
+    }
+  }
 
   // If a spouseId is provided and was updated, we should update the target spouse
   if (payload.spouseId && updatedMember.id) {
@@ -1073,9 +1085,24 @@ export async function associateUserWithFamilyMemberByMobile(userId: string, mobi
   });
 
   if (matchingMember) {
+    const userRec = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+
+    const targetAvatar = userRec?.avatarUrl || matchingMember.avatarUrl;
+
     await db.update(familyMembers)
-      .set({ userId: userId })
+      .set({
+        userId: userId,
+        avatarUrl: targetAvatar || matchingMember.avatarUrl,
+      })
       .where(eq(familyMembers.id, matchingMember.id));
+
+    if (userRec && !userRec.avatarUrl && matchingMember.avatarUrl) {
+      await db.update(users)
+        .set({ avatarUrl: matchingMember.avatarUrl, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+    }
   }
 }
 

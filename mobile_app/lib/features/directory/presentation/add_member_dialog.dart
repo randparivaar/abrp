@@ -959,9 +959,18 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
                 controller: _mobileController,
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
-                  labelText: 'Mobile / मोबाइल',
+                  labelText: 'Mobile (Optional) / मोबाइल',
+                  hintText: '10 digits',
                   border: OutlineInputBorder(),
                 ),
+                validator: (val) {
+                  if (val != null && val.trim().isNotEmpty) {
+                    if (!RegExp(r'^[0-9]{10}$').hasMatch(val.trim())) {
+                      return 'Enter valid 10 digits';
+                    }
+                  }
+                  return null;
+                },
               ),
             ),
           ],

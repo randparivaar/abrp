@@ -59,7 +59,13 @@ export async function handleOnboardFamily(c: Context) {
     if (error.message?.includes('already created') || error.message?.includes('already registered')) {
       return c.json({ error: error.message }, 400);
     }
-    return c.json({ error: 'Internal Server Error' }, 500);
+    if (error.code === '23503' || error.message?.includes('foreign key constraint')) {
+      return c.json({ error: 'Invalid villageId specified.' }, 400);
+    }
+    if (error.code === '23505') {
+      return c.json({ error: 'A record with these details already exists.' }, 400);
+    }
+    return c.json({ error: error.message || 'Internal Server Error' }, 500);
   }
 }
 

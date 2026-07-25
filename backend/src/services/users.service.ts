@@ -24,6 +24,15 @@ export async function updateUserProfile(userId: string, data: UpdateUserProfileR
 
   if (data.avatarUrl !== undefined) {
     updateFields.avatarUrl = data.avatarUrl;
+    // Bi-directional Sync: Update linked family member node avatar
+    try {
+      const { familyMembers } = await import('../db/schema.js');
+      await db.update(familyMembers)
+        .set({ avatarUrl: data.avatarUrl, updatedAt: new Date() })
+        .where(eq(familyMembers.userId, userId));
+    } catch (err) {
+      console.error('Error syncing user avatar to familyMember node:', err);
+    }
   }
 
   const [updatedUser] = await db.update(users)

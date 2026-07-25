@@ -2,7 +2,9 @@ import { Hono } from 'hono';
 import { 
   handleGoogleLogin, 
   handleRegister, 
-  handleLogin 
+  handleLogin,
+  handleForgotPassword,
+  handleResetPassword
 } from '../controllers/auth.controller.js';
 
 const authRouter = new Hono();
@@ -10,5 +12,7 @@ const authRouter = new Hono();
 authRouter.post('/google', handleGoogleLogin);
 authRouter.post('/register', handleRegister);
 authRouter.post('/login', handleLogin);
+authRouter.post('/forgot-password', handleForgotPassword);
+authRouter.post('/reset-password', handleResetPassword);
 
 export { authRouter };

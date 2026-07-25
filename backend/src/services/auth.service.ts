@@ -61,7 +61,14 @@ export function generateSessionToken(user: { id: string; email: string | null; r
       role: user.role,
     },
     JWT_SECRET,
-    { expiresIn: '30d' }
+    { expiresIn: '300d' }
   );
 }
+
+export async function updateUserPassword(userId: string, newPasswordHash: string) {
+  await db.update(users)
+    .set({ passwordHash: newPasswordHash, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+}
+
 
