@@ -5,12 +5,25 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  throw new Error('DATABASE_URL environment variable is missing.');
+function createDbClient() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL environment variable is missing on server.');
+  }
+  const sql = neon(databaseUrl);
+  return drizzle(sql, { schema });
 }
 
-const sql = neon(databaseUrl);
-export const db = drizzle(sql, { schema });
+let dbInstance: ReturnType<typeof createDbClient> | null = null;
+
+export const db = new Proxy({} as ReturnType<typeof createDbClient>, {
+  get(_target, prop, receiver) {
+    if (!dbInstance) {
+      dbInstance = createDbClient();
+    }
+    return Reflect.get(dbInstance, prop, receiver);
+  },
+});
+
 
 
