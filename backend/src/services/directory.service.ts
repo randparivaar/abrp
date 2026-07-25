@@ -7,8 +7,8 @@ import { getUserDevices, sendPushNotification } from './notifications.service.js
 /**
  * Generate a unique family code (e.g. ABRP-10001)
  */
-async function generateUniqueFamilyCode(tx: any): Promise<string> {
-  const [lastFamily] = await tx
+async function generateUniqueFamilyCode(): Promise<string> {
+  const [lastFamily] = await db
     .select({ id: families.id })
     .from(families)
     .orderBy(desc(families.id))
@@ -30,7 +30,7 @@ export async function getVillagesList() {
 }
 
 /**
- * Onboard a new family (Atomic Transaction)
+ * Onboard a new family
  */
 export async function onboardNewFamily(sessionUserId: string, payload: OnboardFamilyRequest) {
   // Check if user has already created or is linked to a family
@@ -51,20 +51,20 @@ export async function onboardNewFamily(sessionUserId: string, payload: OnboardFa
     }
   }
 
-  return await db.transaction(async (tx: any) => {
-    // 1. Generate unique family code
-    const familyCode = await generateUniqueFamilyCode(tx);
+  // 1. Generate unique family code
+  const familyCode = await generateUniqueFamilyCode();
 
-    // 2. Create the family record
-    const [newFamily] = await tx.insert(families).values({
-      familyCode,
-      address: payload.family.address,
-      city: payload.family.city || null,
-      state: payload.family.state || null,
-      pincode: payload.family.pincode || null,
-      villageId: payload.family.villageId,
-    }).returning();
+  // 2. Create the family record
+  const [newFamily] = await db.insert(families).values({
+    familyCode,
+    address: payload.family.address,
+    city: payload.family.city || null,
+    state: payload.family.state || null,
+    pincode: payload.family.pincode || null,
+    villageId: payload.family.villageId,
+  }).returning();
 
+  try {
     // 3. Create the Family Head
     const birthDateParsed = payload.head.birthDate ? new Date(payload.head.birthDate) : null;
     let estimatedBirthYear: number | null = null;
@@ -73,7 +73,7 @@ export async function onboardNewFamily(sessionUserId: string, payload: OnboardFa
       estimatedBirthYear = currentYear - payload.head.estimatedAgeOnCreation;
     }
 
-    const [newHead] = await tx.insert(familyMembers).values({
+    const [newHead] = await db.insert(familyMembers).values({
       familyId: newFamily.id,
       userId: sessionUserId, // Link current authenticated user to the head node
       fullName: payload.head.fullName,
@@ -95,7 +95,7 @@ export async function onboardNewFamily(sessionUserId: string, payload: OnboardFa
     }).returning();
 
     // 4. Update family record to set the familyHeadId circular reference
-    await tx.update(families)
+    await db.update(families)
       .set({ familyHeadId: newHead.id })
       .where(eq(families.id, newFamily.id));
 
@@ -103,7 +103,11 @@ export async function onboardNewFamily(sessionUserId: string, payload: OnboardFa
       family: newFamily,
       head: newHead
     };
-  });
+  } catch (error) {
+    // Clean up created family if subsequent inserts fail
+    await db.delete(families).where(eq(families.id, newFamily.id));
+    throw error;
+  }
 }
 
 /**
