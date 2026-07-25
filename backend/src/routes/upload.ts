@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { authMiddleware } from '../middleware/auth';
-import { handleGetPresignedUrl } from '../controllers/upload.controller';
+import { authMiddleware } from '../middleware/auth.js';
+import { handleGetPresignedUrl } from '../controllers/upload.controller.js';
 
 const uploadRouter = new Hono();
 

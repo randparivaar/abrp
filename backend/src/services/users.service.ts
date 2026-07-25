@@ -1,7 +1,7 @@
-import { db } from '../db';
-import { users } from '../db/schema';
+import { db } from '../db/index.js';
+import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { UpdateUserProfileRequest } from '../types/users.types';
+import { UpdateUserProfileRequest } from '../types/users.types.js';
 
 export async function getUserById(userId: string) {
   return await db.query.users.findFirst({

@@ -1,9 +1,9 @@
-import { db } from '../db';
-import { users } from '../db/schema';
+import { db } from '../db/index.js';
+import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
-import { hashPassword } from '../utils/crypto';
+import { hashPassword } from '../utils/crypto.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'abrp_local_development_jwt_secret_key_change_me_in_production';
 const googleClientIds = (process.env.GOOGLE_CLIENT_IDS || process.env.GOOGLE_CLIENT_ID || '').split(',').map(id => id.trim()).filter(Boolean);

@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
-import { authMiddleware, roleGuard } from '../middleware/auth';
+import { authMiddleware, roleGuard } from '../middleware/auth.js';
 import { 
   handleRegisterDevice, 
   handleUnregisterDevice, 
   handleSendTest 
-} from '../controllers/notifications.controller';
+} from '../controllers/notifications.controller.js';
 
 const notificationsRouter = new Hono();
 

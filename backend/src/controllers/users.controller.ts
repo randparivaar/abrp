@@ -1,12 +1,12 @@
 import { Context } from 'hono';
-import { UserSession } from '../middleware/auth';
+import { UserSession } from '../middleware/auth.js';
 import { 
   getUserById, 
   updateUserProfile, 
   updateUserRole, 
   listAllUsers 
-} from '../services/users.service';
-import { UpdateUserProfileRequest, ChangeRoleRequest } from '../types/users.types';
+} from '../services/users.service.js';
+import { UpdateUserProfileRequest, ChangeRoleRequest } from '../types/users.types.js';
 
 export async function handleGetMyProfile(c: Context) {
   try {

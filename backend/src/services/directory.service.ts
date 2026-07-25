@@ -1,8 +1,8 @@
-import { db } from '../db';
-import { users, families, familyMembers, villages, businessProfiles, businessMembers, businessLocations } from '../db/schema';
+import { db } from '../db/index.js';
+import { users, families, familyMembers, villages, businessProfiles, businessMembers, businessLocations } from '../db/schema.js';
 import { eq, sql, and, inArray } from 'drizzle-orm';
-import { OnboardFamilyRequest, AddFamilyMemberRequest } from '../types/directory.types';
-import { getUserDevices, sendPushNotification } from './notifications.service';
+import { OnboardFamilyRequest, AddFamilyMemberRequest } from '../types/directory.types.js';
+import { getUserDevices, sendPushNotification } from './notifications.service.js';
 
 /**
  * Generate a unique family code (e.g. ABRP-10001)

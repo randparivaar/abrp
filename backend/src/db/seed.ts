@@ -1,7 +1,7 @@
-import { db } from './index';
-import { regions, villages, users, coordinatorRegions } from './schema';
+import { db } from './index.js';
+import { regions, villages, users, coordinatorRegions } from './schema.js';
 import { eq } from 'drizzle-orm';
-import { hashPassword } from '../utils/crypto';
+import { hashPassword } from '../utils/crypto.js';
 
 // ── Village Seed Data ──────────────────────────────────────────────────────
 
