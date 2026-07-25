@@ -24,7 +24,7 @@
     "ws": "^8.21.0"
   },
   "engines": {
-    "node": ">=22"
+    "node": "22.x || 24.x"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
