@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/app_avatar.dart';
+import '../../../core/utils/name_formatter.dart';
 import 'app_bottom_navigation.dart';
 import 'family_member_detail_screen.dart';
 import 'family_tree_screen.dart';
@@ -31,12 +33,44 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
   String _searchQuery = '';
   Timer? _debounce;
   bool _isFabVisible = true;
+  String? _activeLetter;
+  Timer? _letterIndicatorTimer;
+  final List<String> _alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
   @override
   void initState() {
     super.initState();
     _loadData();
     _scrollController.addListener(_scrollListener);
+  }
+
+  void _scrollToLetter(String letter) {
+    setState(() {
+      _activeLetter = letter;
+    });
+
+    _letterIndicatorTimer?.cancel();
+    _letterIndicatorTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        setState(() => _activeLetter = null);
+      }
+    });
+
+    // Find index of first member starting with letter
+    final targetIndex = _members.indexWhere((m) {
+      final name = (m['fullName'] as String? ?? '').trim().toUpperCase();
+      return name.startsWith(letter);
+    });
+
+    if (targetIndex != -1) {
+      // Estimated height calculation: Ad slot ~ 180 + headers ~ 200 + item ~ 110
+      final double targetOffset = 380.0 + (targetIndex * 115.0);
+      _scrollController.animateTo(
+        targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   @override
@@ -74,8 +108,15 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
       ]);
 
       if (mounted) {
+        final membersList = responses[0].data['members'] as List<dynamic>;
+        membersList.sort((a, b) {
+          final nameA = (a['fullName'] as String? ?? '').toLowerCase();
+          final nameB = (b['fullName'] as String? ?? '').toLowerCase();
+          return nameA.compareTo(nameB);
+        });
+
         setState(() {
-          _members = responses[0].data['members'] as List<dynamic>;
+          _members = membersList;
           _villages = responses[1].data['villages'] as List<dynamic>;
           _isLoading = false;
         });
@@ -97,9 +138,16 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
         if (_searchQuery.isNotEmpty) 'q': _searchQuery,
         if (_selectedVillageId != null) 'villageId': _selectedVillageId,
       });
+      final membersList = response.data['members'] as List<dynamic>;
+      membersList.sort((a, b) {
+        final nameA = (a['fullName'] as String? ?? '').toLowerCase();
+        final nameB = (b['fullName'] as String? ?? '').toLowerCase();
+        return nameA.compareTo(nameB);
+      });
+
       if (mounted) {
         setState(() {
-          _members = response.data['members'] as List<dynamic>;
+          _members = membersList;
         });
       }
     } catch (e) {
@@ -251,11 +299,13 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: _loadData,
-        child: SingleChildScrollView(
-          controller: _scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-          child: Column(
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 20, 28, 20),
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Search & Filter Bar
@@ -501,22 +551,29 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                   separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final member = _members[index];
+                    final String rawName = (member['fullName'] as String? ?? '').toTitleCase();
                     final village = member['village']?['name'] as String?;
                     final titleText = village != null
-                        ? '${member['fullName']} ($village)'
-                        : member['fullName'];
+                        ? '$rawName ($village)'
+                        : rawName;
                     final avatarUrl = member['avatarUrl'] as String?;
-                    final familyCode = member['familyCode'] as String;
-                    
+                    final relationToHead = (member['relationshipToHead'] as String? ?? member['relationToHead'] as String? ?? '').toUpperCase();
+                    final bool isHead = relationToHead == 'HEAD' || relationToHead == 'SELF' || member['isHead'] == true;
+                    final familyHeadName = (member['familyHeadName'] as String? ?? '').toTitleCase();
+                    final gotra = member['gotra'] as String?;
+                    final occupation = member['occupationType'] as String?;
+
                     return Card(
                       margin: EdgeInsets.zero,
-                      color: Colors.white,
-                      elevation: 0,
+                      color: isHead ? const Color(0xFFFFFDF5) : Colors.white,
+                      elevation: isHead ? 1 : 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                         side: BorderSide(
-                          color: secondaryColor.withValues(alpha: 0.05),
-                          width: 1,
+                          color: isHead 
+                              ? const Color(0xFFD4AF37) 
+                              : secondaryColor.withValues(alpha: 0.08),
+                          width: isHead ? 1.5 : 1,
                         ),
                       ),
                       child: InkWell(
@@ -527,29 +584,14 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                           child: Row(
                             children: [
                               // Avatar
-                              Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: primaryColor,
-                                    width: 2,
-                                  ),
-                                  image: avatarUrl != null
-                                      ? DecorationImage(
-                                          image: NetworkImage(avatarUrl),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : null,
+                              AppAvatar(
+                                name: rawName,
+                                imageUrl: avatarUrl,
+                                radius: 28,
+                                border: Border.all(
+                                  color: isHead ? const Color(0xFFD4AF37) : primaryColor, 
+                                  width: 2,
                                 ),
-                                child: avatarUrl == null
-                                    ? Icon(
-                                        Icons.person,
-                                        color: primaryColor,
-                                        size: 28,
-                                      )
-                                    : null,
                               ),
                               const SizedBox(width: 12),
                               // Info
@@ -557,33 +599,155 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      titleText,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.bold,
-                                        color: colorScheme.onSurface,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            titleText,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
+                                              color: colorScheme.onSurface,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (isHead) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              gradient: const LinearGradient(
+                                                colors: [Color(0xFFB8860B), Color(0xFFDAA520)],
+                                              ),
+                                              borderRadius: BorderRadius.circular(6),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: const Color(0xFFB8860B).withValues(alpha: 0.3),
+                                                  blurRadius: 3,
+                                                  offset: const Offset(0, 1),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.workspace_premium,
+                                                  size: 10,
+                                                  color: Colors.white,
+                                                ),
+                                                const SizedBox(width: 2),
+                                                Text(
+                                                  'Family Head',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(
-                                      'Occupation: ${member['occupationType'] ?? 'N/A'} | Family ID: $familyCode',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+
+                                    // Family Head Name Row (if not self head)
+                                    if (!isHead && familyHeadName.isNotEmpty) ...[
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.family_restroom_rounded,
+                                            size: 13,
+                                            color: secondaryColor,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              'Head: $familyHeadName',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: secondaryColor,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      const SizedBox(height: 5),
+                                    ],
+
+                                    // Occupation & Gotra / Details Row
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      children: [
+                                        // Prominent Occupation Tag
+                                        if (occupation != null && occupation.isNotEmpty && occupation != 'N/A')
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: primaryColor.withValues(alpha: 0.08),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color: primaryColor.withValues(alpha: 0.2),
+                                                width: 0.8,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.work_outline_rounded,
+                                                  size: 11,
+                                                  color: primaryColor,
+                                                ),
+                                                const SizedBox(width: 3),
+                                                Text(
+                                                  occupation,
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: primaryColor,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+
+                                        // Gotra Chip
+                                        if (gotra != null && gotra.isNotEmpty)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              'Gotra: $gotra',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: colorScheme.onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ],
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Icon(
-                                Icons.chevron_right,
+                                Icons.chevron_right_rounded,
                                 color: colorScheme.outlineVariant,
+                                size: 22,
                               ),
                             ],
                           ),
@@ -595,8 +759,93 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
             ],
           ),
         ),
-      ),
-      floatingActionButton: AnimatedSlide(
+
+        // ── Right Side A-Z Fast Scroll Sidebar ─────────────────
+        if (!_isLoading && _members.isNotEmpty)
+          Positioned(
+            right: 2,
+            top: 20,
+            bottom: 20,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(-1, 1),
+                    ),
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: _alphabet.map((letter) {
+                      final bool isAvailable = _members.any((m) {
+                        final name = (m['fullName'] as String? ?? '').trim().toUpperCase();
+                        return name.startsWith(letter);
+                      });
+
+                      return InkWell(
+                        onTap: isAvailable ? () => _scrollToLetter(letter) : null,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 1.5, horizontal: 3),
+                          child: Text(
+                            letter,
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: _activeLetter == letter ? FontWeight.bold : FontWeight.w600,
+                              color: isAvailable
+                                  ? (_activeLetter == letter ? secondaryColor : primaryColor)
+                                  : Colors.black26,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // ── Floating Letter Indicator Bubble ────────────────────
+        if (_activeLetter != null)
+          Center(
+            child: Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.9),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  _activeLetter!,
+                  style: GoogleFonts.inter(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  ),
+  floatingActionButton: AnimatedSlide(
         duration: const Duration(milliseconds: 200),
         offset: _isFabVisible ? Offset.zero : const Offset(0, 2),
         child: AnimatedOpacity(

@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/localization/app_language.dart';
 import '../../../core/localization/app_translations.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/app_avatar.dart';
 import '../../../core/utils/image_cropper_screen.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../directory/presentation/app_bottom_navigation.dart';
@@ -124,14 +125,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Center(
               child: Stack(
                 children: [
-                  CircleAvatar(
+                  AppAvatar(
+                    name: user?.fullName ?? 'User',
+                    imageUrl: _uploadedImageUrl ?? user?.avatarUrl,
                     radius: 60,
-                    backgroundImage: _uploadedImageUrl != null 
-                        ? NetworkImage(_uploadedImageUrl!) 
-                        : (user?.avatarUrl != null ? NetworkImage(user!.avatarUrl!) : null),
-                    child: (_uploadedImageUrl == null && user?.avatarUrl == null) 
-                        ? const Icon(Icons.person, size: 60) 
-                        : null,
+                    fontSize: 48,
                   ),
                   if (_isUploading)
                     Positioned.fill(

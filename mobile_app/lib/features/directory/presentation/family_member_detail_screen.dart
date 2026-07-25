@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:mobile_app/core/utils/app_avatar.dart';
 import 'family_tree_screen.dart';
 import 'business_profile_detail_screen.dart';
 
@@ -10,12 +11,18 @@ class FamilyMemberDetailScreen extends StatelessWidget {
   final MemberNode member;
   final List<MemberNode> familyMembers;
   final int familyId;
+  final bool isPending;
+  final Future<bool?> Function()? onApprove;
+  final Future<bool?> Function()? onReject;
 
   const FamilyMemberDetailScreen({
     super.key,
     required this.member,
     required this.familyMembers,
     required this.familyId,
+    this.isPending = false,
+    this.onApprove,
+    this.onReject,
   });
 
   String _formatDob(MemberNode m) {
@@ -96,6 +103,46 @@ class FamilyMemberDetailScreen extends StatelessWidget {
             _HeroSection(member: member, onCall: _launchPhone, onSms: _launchSms),
             const SizedBox(height: 16),
 
+            if (member.status == 'rejected') ...[
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.6), width: 1),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.red, size: 22),
+                        SizedBox(width: 8),
+                        Text(
+                          'Request Rejected by Admin',
+                          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                      ],
+                    ),
+                    if (member.validationFeedback != null && member.validationFeedback!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Reason: ${member.validationFeedback}',
+                        style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Please edit member details to update and resubmit for approval.',
+                      style: TextStyle(color: Colors.black87, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -138,6 +185,66 @@ class FamilyMemberDetailScreen extends StatelessWidget {
           ],
         ),
       ),
+      bottomNavigationBar: isPending
+          ? Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cs.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          if (onReject != null) {
+                            final res = await onReject!();
+                            if (res == true && context.mounted && Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.close, color: Colors.red),
+                        label: const Text('Reject', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red, width: 1.5),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          if (onApprove != null) {
+                            final res = await onApprove!();
+                            if (res == true && context.mounted && Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.check, color: Colors.white),
+                        label: const Text('Approve', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
     );
   }
 }
@@ -184,32 +291,12 @@ class _HeroSection extends StatelessWidget {
           Stack(
             alignment: Alignment.center,
             children: [
-              Container(
-                width: 136,
-                height: 136,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: cs.primaryContainer,
-                    width: 4,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: cs.primary.withValues(alpha: 0.15),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: member.avatarUrl != null && member.avatarUrl!.isNotEmpty
-                      ? Image.network(
-                          member.avatarUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _placeholderIcon(member, cs),
-                        )
-                      : _placeholderIcon(member, cs),
-                ),
+              AppAvatar(
+                name: member.fullName,
+                imageUrl: member.avatarUrl,
+                radius: 64,
+                fontSize: 48,
+                border: Border.all(color: cs.primaryContainer, width: 4),
               ),
               // Role Badge
               Positioned(
@@ -269,7 +356,7 @@ class _HeroSection extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Action Buttons: Call / Email / Chat
+          // Action Buttons: Call / Chat / Family Tree
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -279,27 +366,28 @@ class _HeroSection extends StatelessWidget {
                 cs: cs,
                 onTap: member.mobile != null ? () => onCall(member.mobile!) : null,
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 16),
               _ActionButton(
                 icon: Icons.message_rounded,
                 label: 'Chat',
                 cs: cs,
                 onTap: member.mobile != null ? () => onSms(member.mobile!) : null,
               ),
+              const SizedBox(width: 16),
+              _ActionButton(
+                icon: Icons.account_tree_rounded,
+                label: 'Tree',
+                cs: cs,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FamilyTreeScreen(familyId: member.familyId),
+                  ),
+                ),
+              ),
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _placeholderIcon(MemberNode m, ColorScheme cs) {
-    return Container(
-      color: m.gender == 'male' ? Colors.blue.shade50 : Colors.pink.shade50,
-      child: Icon(
-        m.gender == 'male' ? Icons.face : Icons.face_3,
-        size: 64,
-        color: m.gender == 'male' ? Colors.blue.shade300 : Colors.pink.shade300,
       ),
     );
   }
@@ -617,29 +705,42 @@ class _ImmediateFamilyCard extends StatelessWidget {
                       builder: (_) => FamilyTreeScreen(familyId: familyId),
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Text(
-                        'View Family Tree',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: cs.primary,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: cs.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.account_tree_rounded, size: 15, color: cs.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'View Tree',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: cs.primary,
+                          ),
                         ),
-                      ),
-                      Icon(Icons.chevron_right, size: 18, color: cs.primary),
-                    ],
+                        Icon(Icons.chevron_right, size: 16, color: cs.primary),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // Horizontal scroll of member cards
+            // Horizontal scroll of member cards with smooth BouncingScrollPhysics
             SizedBox(
-              height: 168,
+              height: 175,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 2),
                 itemCount: members.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (context, index) {
@@ -690,22 +791,12 @@ class _FamilyMemberCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Avatar
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: cs.primary, width: 2),
-            ),
-            child: ClipOval(
-              child: member.avatarUrl != null && member.avatarUrl!.isNotEmpty
-                  ? Image.network(
-                      member.avatarUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => _placeholder(),
-                    )
-                  : _placeholder(),
-            ),
+          AppAvatar(
+            name: member.fullName,
+            imageUrl: member.avatarUrl,
+            radius: 36,
+            fontSize: 22,
+            border: Border.all(color: cs.primary, width: 2),
           ),
           const SizedBox(height: 8),
 
@@ -735,17 +826,6 @@ class _FamilyMemberCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _placeholder() {
-    return Container(
-      color: member.gender == 'male' ? Colors.blue.shade50 : Colors.pink.shade50,
-      child: Icon(
-        member.gender == 'male' ? Icons.face : Icons.face_3,
-        size: 36,
-        color: member.gender == 'male' ? Colors.blue.shade300 : Colors.pink.shade300,
       ),
     );
   }

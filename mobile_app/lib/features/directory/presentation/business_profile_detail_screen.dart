@@ -3,17 +3,25 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile_app/core/network/api_client.dart';
+import 'package:mobile_app/core/utils/app_avatar.dart';
+import 'package:mobile_app/core/utils/name_formatter.dart';
 import 'family_tree_screen.dart';
 import 'family_member_detail_screen.dart';
 
 class BusinessProfileDetailScreen extends ConsumerStatefulWidget {
   final BusinessProfile business;
   final MemberNode? owner; // Optional, represents the member associated with this business
+  final bool isPending;
+  final Future<bool?> Function()? onApprove;
+  final Future<bool?> Function()? onReject;
 
   const BusinessProfileDetailScreen({
     super.key,
     required this.business,
     this.owner,
+    this.isPending = false,
+    this.onApprove,
+    this.onReject,
   });
 
   @override
@@ -206,12 +214,15 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                     )
                   else
                     Container(
-                      color: colorScheme.primaryContainer,
+                      color: getAvatarBgColor(widget.business.businessName),
                       child: Center(
-                        child: Icon(
-                          Icons.storefront,
-                          size: 64,
-                          color: colorScheme.onPrimaryContainer.withValues(alpha: 0.5),
+                        child: Text(
+                          widget.business.businessName.isNotEmpty ? widget.business.businessName[0].toUpperCase() : 'B',
+                          style: GoogleFonts.inter(
+                            fontSize: 64,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -529,7 +540,6 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                             final role = m['roleInBusiness'] as String? ?? 'Partner';
                             final avatarUrl = m['avatarUrl'] as String?;
                             final name = m['fullName'] as String? ?? 'Unknown';
-                            final gender = m['gender'] as String? ?? 'male';
 
                             return Container(
                               margin: const EdgeInsets.only(bottom: 8),
@@ -539,14 +549,10 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                                 border: Border.all(color: colorScheme.outlineVariant, width: 0.5),
                               ),
                               child: ListTile(
-                                leading: CircleAvatar(
+                                leading: AppAvatar(
+                                  name: name,
+                                  imageUrl: avatarUrl,
                                   radius: 20,
-                                  backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                                      ? NetworkImage(avatarUrl)
-                                      : null,
-                                  child: avatarUrl != null && avatarUrl.isNotEmpty
-                                      ? null
-                                      : Icon(gender == 'male' ? Icons.face : Icons.face_3, size: 20),
                                 ),
                                 title: Text(
                                   name,
@@ -669,6 +675,66 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
           ),
         ],
       ),
+      bottomNavigationBar: widget.isPending
+          ? Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          if (widget.onReject != null) {
+                            final res = await widget.onReject!();
+                            if (res == true && context.mounted && Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.close, color: Colors.red),
+                        label: const Text('Reject', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red, width: 1.5),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          if (widget.onApprove != null) {
+                            final res = await widget.onApprove!();
+                            if (res == true && context.mounted && Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.check, color: Colors.white),
+                        label: const Text('Approve', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
     );
   }
 

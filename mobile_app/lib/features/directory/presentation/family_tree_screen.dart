@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/network/api_client.dart';
+import 'package:mobile_app/core/utils/app_avatar.dart';
 import 'package:mobile_app/features/directory/presentation/add_member_dialog.dart';
 import 'package:mobile_app/features/directory/presentation/app_bottom_navigation.dart';
 import 'package:mobile_app/features/directory/presentation/family_member_detail_screen.dart';
 import 'package:mobile_app/features/directory/presentation/app_drawer.dart';
 import 'package:mobile_app/features/directory/presentation/directory_models.dart';
+import 'package:mobile_app/features/directory/presentation/my_family_provider.dart';
 export 'package:mobile_app/features/directory/presentation/directory_models.dart';
 
 class FamilyTreeNotifier extends AsyncNotifier<FamilyTreeData> {
@@ -54,6 +56,8 @@ class FamilyTreeScreen extends ConsumerStatefulWidget {
 class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  int? _focusedRootMemberId;
+  final Set<int> _collapsedMemberIds = {};
 
   @override
   void dispose() {
@@ -87,10 +91,25 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
               (m) => m.relationshipToHead == 'self',
               orElse: () => data.members.first,
             );
-            final nameParts = head.fullName.trim().split(' ');
-            final lineageName = nameParts.length > 1 ? nameParts.last : 'Family';
+
+            final myFamilyAsync = ref.watch(myFamilyProvider);
+            final myFamilyData = myFamilyAsync.value;
+            final myFamilyId = (myFamilyData != null && myFamilyData['family'] != null)
+                ? myFamilyData['family']['id']
+                : null;
+            final isMyFamily = myFamilyId != null && myFamilyId == widget.familyId;
+
+            final String titleText;
+            if (isMyFamily) {
+              final nameParts = head.fullName.trim().split(' ');
+              final lineageName = nameParts.length > 1 ? nameParts.last : 'Family';
+              titleText = 'Our Family Tree ($lineageName Lineage)';
+            } else {
+              titleText = '${head.fullName} Family Tree';
+            }
+
             return Text(
-              'Our Family Tree ($lineageName Lineage)',
+              titleText,
               style: GoogleFonts.inter(
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.bold,
@@ -166,23 +185,35 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
   }
 
   Widget _buildTreeContent(BuildContext context, FamilyTreeData data, ThemeData theme) {
-    // Find the Family Head (relationshipToHead == 'self')
+    // Determine the root member (either Main Head or Focused Sub-Tree Root)
     final head = data.members.firstWhere(
       (m) => m.relationshipToHead == 'self',
       orElse: () => data.members.first,
     );
 
-    // Find Head's spouse if exists
+    final currentRoot = _focusedRootMemberId != null
+        ? data.members.firstWhere(
+            (m) => m.id == _focusedRootMemberId,
+            orElse: () => head,
+          )
+        : head;
+
+    final isFocused = _focusedRootMemberId != null && _focusedRootMemberId != head.id;
+
+    // Find Root's spouse if exists
     final spouse = data.members.firstWhere(
-      (m) => m.spouseId == head.id || (head.spouseId != null && m.id == head.spouseId),
+      (m) => m.spouseId == currentRoot.id || (currentRoot.spouseId != null && m.id == currentRoot.spouseId),
       orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
     );
     final hasSpouse = spouse.id != -1;
 
-    // Find Head's children
-    final children = data.members.where(
-      (m) => m.fatherId == head.id || (hasSpouse && m.motherId == spouse.id) || m.relationshipToHead == 'son' || m.relationshipToHead == 'daughter',
-    ).toList();
+    // Find Root's direct children
+    final rootAndSpouseIds = {currentRoot.id, if (hasSpouse) spouse.id};
+    final children = data.members.where((m) {
+      final linkedToRoot = (m.fatherId != null && rootAndSpouseIds.contains(m.fatherId)) ||
+          (m.motherId != null && rootAndSpouseIds.contains(m.motherId));
+      return linkedToRoot && m.id != currentRoot.id && m.id != spouse.id;
+    }).toList();
 
     // Filter children based on search query
     final filteredChildren = children.where((child) {
@@ -194,6 +225,48 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Breadcrumb Navigation Bar for Sub-Tree Focus Mode
+          if (isFocused) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.account_tree_outlined, color: theme.colorScheme.primary, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Sub-Tree View: ${currentRoot.fullName}\'s Lineage',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: theme.colorScheme.primary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _focusedRootMemberId = null;
+                      });
+                    },
+                    icon: const Icon(Icons.home_outlined, size: 14),
+                    label: const Text('Main Tree', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+          ],
           // Search Bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
@@ -228,82 +301,87 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
 
           const SizedBox(height: 16),
 
-          // Head Node Card
-          _buildHeadNodeCard(
-            context: context,
-            member: head,
-            roleLabel: 'FAMILY HEAD • ${data.family.city?.toUpperCase() ?? 'DELHI'}',
-            theme: theme,
-          ),
+          // Scrollable Tree Area (Head + Spouse + Children all aligned together)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: MediaQuery.of(context).size.width,
+              ),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Root Couple Row
+                      _buildCoupleRow(
+                        context: context,
+                        head: currentRoot,
+                        spouse: spouse,
+                        hasSpouse: hasSpouse,
+                        city: data.family.city?.toUpperCase() ?? 'DELHI',
+                        theme: theme,
+                        family: data.family,
+                      ),
 
-          _buildVerticalLine(theme),
+                      // Children Generation Layer
+                      if (filteredChildren.isNotEmpty) ...[
+                        Builder(builder: (context) {
+                          final List<double> branchWidths = filteredChildren.map((child) {
+                            final hasChildSpouse = data.members.any(
+                              (m) => (child.spouseId != null && m.id == child.spouseId) || m.spouseId == child.id,
+                            );
+                            return hasChildSpouse ? 200.0 : 120.0;
+                          }).toList();
+                          final totalWidth = branchWidths.fold(0.0, (a, b) => a + b);
 
-          // Spouse Node Card or Placeholder
-          _buildSpouseNodeCard(
-            context: context,
-            member: spouse,
-            isPlaceholder: !hasSpouse,
-            defaultSpouseId: head.id,
-            theme: theme,
-            family: data.family,
-          ),
-
-          // Children Generation Layer
-          if (filteredChildren.isNotEmpty) ...[
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minWidth: MediaQuery.of(context).size.width,
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Custom paint connector for child nodes with 80px vertical spacing (48px top-drop, 32px bottom-drop) and 4px elbow joints
-                        CustomPaint(
-                          size: Size(filteredChildren.length * 100.0, 80.0),
-                          painter: ConnectorPainter(
-                            childCount: filteredChildren.length,
-                            color: theme.colorScheme.primaryContainer,
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Custom paint connector for child nodes
+                              CustomPaint(
+                                size: Size(totalWidth, 48.0),
+                                painter: ConnectorPainter(
+                                  childCount: filteredChildren.length,
+                                  branchWidths: branchWidths,
+                                  color: theme.colorScheme.primaryContainer,
+                                ),
+                              ),
+                              // Row of children couple-branch nodes
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: filteredChildren.map((child) {
+                                  return _buildRecursiveMemberBranch(context, child, data.members, theme);
+                                }).toList(),
+                              ),
+                            ],
+                          );
+                        }),
+                      ] else if (_searchQuery.isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        const Center(
+                          child: Text(
+                            'No family members match your search.',
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
                           ),
                         ),
-                        // Row of children avatar nodes (width 100 per child for proper spacing)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: filteredChildren.map((child) {
-                            return SizedBox(
-                              width: 100,
-                              child: _buildChildAvatarNode(context, child, theme),
-                            );
-                          }).toList(),
+                      ] else ...[
+                        const SizedBox(height: 24),
+                        const Center(
+                          child: Text(
+                            'No children added yet.',
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
                 ),
               ),
             ),
-          ] else if (_searchQuery.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Center(
-              child: Text(
-                'No family members match your search.',
-                style: TextStyle(color: Colors.grey, fontSize: 13),
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 24),
-            Center(
-              child: Text(
-                'No children added yet.',
-                style: TextStyle(color: Colors.grey, fontSize: 13),
-              ),
-            ),
-          ],
+          ),
           
           const SizedBox(height: 40),
         ],
@@ -311,372 +389,500 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
     );
   }
 
-  Widget _buildVerticalLine(ThemeData theme) {
-    return Center(
-      child: Container(
-        width: 2,
-        height: 32, // Matches tree-connector-vertical (32px)
-        color: theme.colorScheme.primaryContainer, // Primary container (gold) for connectors
-      ),
-    );
-  }
-
-  Widget _buildHeadNodeCard({
+  /// Builds the horizontal Head + Spouse couple row with a heart connector,
+  /// followed by a vertical drop line to children.
+  Widget _buildCoupleRow({
     required BuildContext context,
-    required MemberNode member,
-    required String roleLabel,
-    required ThemeData theme,
-  }) {
-    final colorScheme = theme.colorScheme;
-    return Center(
-      child: GestureDetector(
-        onTap: () => _showMemberActionSheet(context, member),
-        child: Container(
-          width: 256,
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerLowest, // bg-surface-container-lowest
-            borderRadius: BorderRadius.circular(12), // rounded-xl
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 3,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Stack(
-              children: [
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 4.0,
-                    color: colorScheme.primary, // border-l-4 border-primary
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      // Avatar
-                      Stack(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(2.0),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: colorScheme.primary, width: 2.0),
-                            ),
-                            child: CircleAvatar(
-                              radius: 26,
-                              backgroundColor: member.gender == 'male' ? Colors.blue.shade50 : Colors.pink.shade50,
-                              backgroundImage: member.avatarUrl != null && member.avatarUrl!.isNotEmpty
-                                  ? NetworkImage(member.avatarUrl!)
-                                  : null,
-                              child: member.avatarUrl != null && member.avatarUrl!.isNotEmpty
-                                  ? null
-                                  : Icon(
-                                      member.gender == 'male' ? Icons.face : Icons.face_3,
-                                      color: member.gender == 'male' ? Colors.blue.shade400 : Colors.pink.shade400,
-                                      size: 28,
-                                    ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 1.5),
-                              ),
-                              child: const Icon(
-                                Icons.add,
-                                color: Colors.white,
-                                size: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 12),
-                      // Info
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              member.fullName,
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16, // title-md
-                                color: colorScheme.onSurface,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              roleLabel,
-                              style: GoogleFonts.inter(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 11, // label-sm
-                                letterSpacing: 0.5,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSpouseNodeCard({
-    required BuildContext context,
-    required MemberNode member,
-    required bool isPlaceholder,
-    int? defaultSpouseId,
+    required MemberNode head,
+    required MemberNode spouse,
+    required bool hasSpouse,
+    required String city,
     required ThemeData theme,
     required FamilyUnit family,
   }) {
     final colorScheme = theme.colorScheme;
-    return Center(
-      child: GestureDetector(
-        onTap: () {
-          if (isPlaceholder) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AddMemberDialog(
-                  familyId: widget.familyId,
-                  defaultRelation: 'spouse',
-                  defaultGender: 'female',
-                  spouseId: defaultSpouseId,
-                  defaultAddress: family.address,
-                  defaultCity: family.city,
-                  defaultState: family.state,
-                  defaultPincode: family.pincode,
-                  onMemberAdded: () {
-                    ref.read(familyTreeProvider(widget.familyId).notifier).fetchTree();
-                  },
-                ),
-                fullscreenDialog: true,
-              ),
-            );
-          } else {
-            _showMemberActionSheet(context, member);
-          }
-        },
+    final canEdit = ref.read(familyTreeProvider(widget.familyId)).value?.canEdit ?? false;
+
+    Widget buildMemberCard(MemberNode member, {bool isHead = false}) {
+      return GestureDetector(
+        onTap: () => _showMemberActionSheet(context, member),
         child: Container(
-          width: 192, // w-48
-          padding: const EdgeInsets.all(12),
+          width: 148,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerLowest, // bg-white
-            borderRadius: BorderRadius.circular(8), // rounded-lg
+            color: colorScheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: colorScheme.secondary.withValues(alpha: 0.3), // border-secondary/30
-              width: 1.0,
+              color: isHead
+                  ? colorScheme.primary.withValues(alpha: 0.6)
+                  : colorScheme.secondary.withValues(alpha: 0.4),
+              width: isHead ? 1.5 : 1.0,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 2,
-                offset: const Offset(0, 1),
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Avatar
               Stack(
+                alignment: Alignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(1.0),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: colorScheme.secondary.withValues(alpha: 0.4), // border-secondary/40
-                        width: 1.0,
-                      ),
-                    ),
-                    child: CircleAvatar(
-                      radius: 20, // w-10
-                      backgroundColor: isPlaceholder
-                          ? colorScheme.surfaceContainerLow
-                          : (member.gender == 'male' ? Colors.blue.shade50 : Colors.pink.shade50),
-                      backgroundImage: !isPlaceholder && member.avatarUrl != null && member.avatarUrl!.isNotEmpty
-                          ? NetworkImage(member.avatarUrl!)
-                          : null,
-                      child: !isPlaceholder && member.avatarUrl != null && member.avatarUrl!.isNotEmpty
-                          ? null
-                          : Icon(
-                              isPlaceholder
-                                  ? Icons.person_add_alt_1_outlined
-                                  : (member.gender == 'male' ? Icons.face : Icons.face_3),
-                              color: isPlaceholder
-                                  ? colorScheme.onSurfaceVariant
-                                  : (member.gender == 'male' ? Colors.blue.shade400 : Colors.pink.shade400),
-                              size: 20,
-                            ),
+                  AppAvatar(
+                    name: member.fullName,
+                    imageUrl: member.avatarUrl,
+                    radius: 24,
+                    border: Border.all(
+                      color: isHead ? colorScheme.primary : colorScheme.secondary.withValues(alpha: 0.6),
+                      width: 2.0,
                     ),
                   ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(1),
-                      decoration: BoxDecoration(
-                        color: colorScheme.secondary,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1.0),
-                      ),
-                      child: const Icon(
-                        Icons.add,
-                        color: Colors.white,
-                        size: 10,
+                  if (canEdit)
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: isHead ? colorScheme.primary : colorScheme.secondary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                        child: Icon(Icons.add, color: Colors.white, size: 10),
                       ),
                     ),
-                  ),
                 ],
               ),
-              const SizedBox(width: 12),
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      isPlaceholder ? 'Spouse' : member.fullName,
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: colorScheme.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      isPlaceholder ? 'Self/Spouse' : 'SPOUSE',
-                      style: GoogleFonts.inter(
-                        color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                        fontStyle: FontStyle.italic,
-                        fontSize: 11, // label-sm
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+              const SizedBox(height: 8),
+              Text(
+                member.fullName,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: colorScheme.onSurface,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                isHead ? 'FAMILY HEAD • $city' : 'SPOUSE',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  color: isHead ? colorScheme.primary : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  fontWeight: FontWeight.w500,
+                  fontSize: 9,
+                  letterSpacing: 0.4,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (member.status == 'rejected') ...[
+                const SizedBox(height: 3),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'REJECTED',
+                    style: TextStyle(color: Colors.red, fontSize: 8, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Placeholder spouse card (tap to add)
+    Widget buildSpousePlaceholder() {
+      return GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AddMemberDialog(
+              familyId: widget.familyId,
+              defaultRelation: 'spouse',
+              defaultGender: head.gender == 'male' ? 'female' : 'male',
+              spouseId: head.id,
+              defaultAddress: family.address,
+              defaultCity: family.city,
+              defaultState: family.state,
+              defaultPincode: family.pincode,
+              onMemberAdded: () {
+                ref.read(familyTreeProvider(widget.familyId).notifier).fetchTree();
+              },
+            ),
+            fullscreenDialog: true,
+          ),
+        ),
+        child: Container(
+          width: 148,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: colorScheme.secondary.withValues(alpha: 0.25),
+              style: BorderStyle.solid,
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: colorScheme.surfaceContainerLow,
+                child: Icon(
+                  Icons.person_add_alt_1_outlined,
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Add Spouse',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12,
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'TAP TO ADD',
+                style: GoogleFonts.inter(
+                  color: colorScheme.primary.withValues(alpha: 0.6),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 9,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
           ),
         ),
-      ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Horizontal couple row
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Head card
+              buildMemberCard(head, isHead: true),
+
+              // Heart connector
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 1.5,
+                      color: colorScheme.secondary.withValues(alpha: 0.4),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer.withValues(alpha: 0.3),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: colorScheme.secondary.withValues(alpha: 0.3),
+                          width: 1.0,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.favorite_rounded,
+                        size: 12,
+                        color: colorScheme.secondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: 24,
+                      height: 1.5,
+                      color: colorScheme.secondary.withValues(alpha: 0.4),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Spouse card or placeholder
+              hasSpouse ? buildMemberCard(spouse, isHead: false) : buildSpousePlaceholder(),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildChildAvatarNode(
-    BuildContext context, 
-    MemberNode member, 
+  Widget _buildRecursiveMemberBranch(
+    BuildContext context,
+    MemberNode member,
+    List<MemberNode> allMembers,
     ThemeData theme,
   ) {
     final colorScheme = theme.colorScheme;
-    final isMale = member.gender == 'male';
+    final canEdit = ref.read(familyTreeProvider(widget.familyId)).value?.canEdit ?? false;
 
-    return GestureDetector(
-      onTap: () => _showMemberActionSheet(context, member),
-      child: Column(
-        children: [
-          Stack(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(2.0),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+    // Find spouse for this node if registered
+    final spouseNode = allMembers.firstWhere(
+      (m) => (member.spouseId != null && m.id == member.spouseId) || m.spouseId == member.id,
+      orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
+    );
+    final hasSpouse = spouseNode.id != -1;
+
+    // Find direct children of this member — ONLY by fatherId/motherId link
+    final memberAndSpouseIds = {member.id, if (hasSpouse) spouseNode.id};
+    final directChildren = allMembers.where((m) {
+      if (memberAndSpouseIds.contains(m.id)) return false;
+      final linkedToMember = (m.fatherId != null && memberAndSpouseIds.contains(m.fatherId)) ||
+          (m.motherId != null && memberAndSpouseIds.contains(m.motherId));
+      return linkedToMember;
+    }).toList();
+
+    // Branch width: 200 if has spouse (couple pair), 120 if single
+    final double branchWidth = hasSpouse ? 200.0 : 120.0;
+
+    // ----------- Mini member avatar widget (used for both member and spouse) ----------
+    Widget miniAvatar(MemberNode m, {bool isPrimary = true}) {
+      return GestureDetector(
+        onTap: () => _showMemberActionSheet(context, m),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              children: [
+                AppAvatar(
+                  name: m.fullName,
+                  imageUrl: m.avatarUrl,
+                  radius: 24,
                   border: Border.all(
-                    color: colorScheme.primaryContainer, // border-primary-container
+                    color: isPrimary
+                        ? colorScheme.primaryContainer
+                        : colorScheme.secondary.withValues(alpha: 0.5),
                     width: 2.0,
                   ),
                 ),
-                child: CircleAvatar(
-                  radius: 30, // w-16
-                  backgroundColor: isMale ? Colors.blue.shade50 : Colors.pink.shade50,
-                  backgroundImage: member.avatarUrl != null && member.avatarUrl!.isNotEmpty
-                      ? NetworkImage(member.avatarUrl!)
-                      : null,
-                  child: member.avatarUrl != null && member.avatarUrl!.isNotEmpty
-                      ? null
-                      : Icon(
-                          isMale ? Icons.face : Icons.face_3,
-                          color: isMale ? Colors.blue.shade400 : Colors.pink.shade400,
-                          size: 32,
-                        ),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 24, // w-6
-                  height: 24, // h-6
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 2,
-                        offset: const Offset(0, 1),
+                if (canEdit)
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: isPrimary ? colorScheme.primaryContainer : colorScheme.secondary,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 2,
+                          ),
+                        ],
                       ),
-                    ],
+                      child: Icon(
+                        Icons.add,
+                        color: isPrimary ? colorScheme.onPrimaryContainer : Colors.white,
+                        size: 12,
+                      ),
+                    ),
                   ),
-                  child: Icon(
-                    Icons.add,
-                    color: colorScheme.onPrimaryContainer,
-                    size: 16,
-                  ),
+              ],
+            ),
+            const SizedBox(height: 5),
+            SizedBox(
+              width: 72,
+              child: Text(
+                m.fullName,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  color: colorScheme.onSurface,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (m.status == 'rejected') ...[
+              const SizedBox(height: 2),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: const Text(
+                  'REJECTED',
+                  style: TextStyle(color: Colors.red, fontSize: 8, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            member.fullName,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w600,
-              fontSize: 14, // text-body-md
-              color: colorScheme.onSurface,
+          ],
+        ),
+      );
+    }
+
+    // ----------- Couple or single node header ----------
+    Widget coupleHeader;
+    if (hasSpouse) {
+      coupleHeader = Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          miniAvatar(member, isPrimary: true),
+          // Heart connector
+          Padding(
+            padding: const EdgeInsets.only(top: 20.0, left: 4, right: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: 10, height: 1.5, color: colorScheme.secondary.withValues(alpha: 0.4)),
+                const SizedBox(height: 2),
+                Icon(Icons.favorite_rounded, size: 10, color: colorScheme.secondary),
+                const SizedBox(height: 2),
+                Container(width: 10, height: 1.5, color: colorScheme.secondary.withValues(alpha: 0.4)),
+              ],
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
+          miniAvatar(spouseNode, isPrimary: false),
+        ],
+      );
+    } else {
+      coupleHeader = miniAvatar(member, isPrimary: true);
+    }
+
+    // ----------- Sub-branch children connector + recursive row ----------
+    Widget? childrenSection;
+    final isCollapsed = _collapsedMemberIds.contains(member.id);
+
+    if (directChildren.isNotEmpty) {
+      final List<double> subBranchWidths = directChildren.map((sc) {
+        final hasSubSpouse = allMembers.any(
+          (m) => (sc.spouseId != null && m.id == sc.spouseId) || m.spouseId == sc.id,
+        );
+        return hasSubSpouse ? 200.0 : 120.0;
+      }).toList();
+      final double subTotalWidth = subBranchWidths.fold(0.0, (a, b) => a + b);
+
+      childrenSection = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Expand / Collapse Toggle Pill
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                if (isCollapsed) {
+                  _collapsedMemberIds.remove(member.id);
+                } else {
+                  _collapsedMemberIds.add(member.id);
+                }
+              });
+            },
+            child: Container(
+              margin: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.colorScheme.primaryContainer),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isCollapsed ? Icons.unfold_more : Icons.unfold_less,
+                    size: 11,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 3),
+                  Text(
+                    '${directChildren.length} ${directChildren.length == 1 ? 'Child' : 'Children'}',
+                    style: GoogleFonts.inter(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          if (!isCollapsed) ...[
+            Container(width: 2, height: 16, color: colorScheme.primaryContainer),
+            CustomPaint(
+              size: Size(subTotalWidth, 40.0),
+              painter: ConnectorPainter(
+                childCount: directChildren.length,
+                branchWidths: subBranchWidths,
+                color: colorScheme.primaryContainer,
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: directChildren.map((subChild) {
+                return _buildRecursiveMemberBranch(context, subChild, allMembers, theme);
+              }).toList(),
+            ),
+          ],
+        ],
+      );
+    }
+
+    return SizedBox(
+      width: branchWidth,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          coupleHeader,
+          ?childrenSection,
         ],
       ),
     );
   }
 
   void _showMemberActionSheet(BuildContext context, MemberNode member) {
+    final treeData = ref.read(familyTreeProvider(widget.familyId)).value;
+    final canEdit = treeData?.canEdit ?? false;
+
+    // If user does not have edit rights for this family tree, directly open Full Detail Screen
+    if (!canEdit) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FamilyMemberDetailScreen(
+            member: member,
+            familyMembers: treeData?.members ?? [],
+            familyId: widget.familyId,
+          ),
+        ),
+      );
+      return;
+    }
+
     final theme = Theme.of(context);
-    final family = ref.read(familyTreeProvider(widget.familyId)).value?.family;
+    final family = treeData?.family;
 
     showModalBottomSheet(
       context: context,
@@ -712,6 +918,19 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const Divider(height: 24),
+                ListTile(
+                  leading: Icon(Icons.account_tree_outlined, color: theme.colorScheme.primary),
+                  title: Text(
+                    'Focus Sub-Tree / वंश वृक्ष देखें',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w500),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    setState(() {
+                      _focusedRootMemberId = member.id;
+                    });
+                  },
+                ),
                 ListTile(
                   leading: Icon(Icons.info_outline, color: theme.colorScheme.primary),
                   title: Text(
@@ -926,13 +1145,18 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
 
 class ConnectorPainter extends CustomPainter {
   final int childCount;
+  final List<double> branchWidths; // Width of each branch (120 single, 200 couple)
   final Color color;
 
-  ConnectorPainter({required this.childCount, required this.color});
+  ConnectorPainter({
+    required this.childCount,
+    required this.branchWidths,
+    required this.color,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (childCount <= 0) return;
+    if (childCount <= 0 || branchWidths.isEmpty) return;
 
     final paint = Paint()
       ..color = color
@@ -942,11 +1166,18 @@ class ConnectorPainter extends CustomPainter {
     final double radius = 4.0;
     final double midX = size.width / 2;
 
-    // Top drop height is 48.0 px, and total height of the painter is 80.0 px
-    const double topDrop = 48.0;
-    const double totalHeight = 80.0;
-    const double childWidth = 100.0;
-    const double halfChildWidth = childWidth / 2;
+    // Top drop and total painter height
+    const double topDrop = 32.0;
+    const double totalHeight = 48.0;
+
+    // Compute the center X of each branch
+    final List<double> centerXs = [];
+    double offset = 0.0;
+    for (int i = 0; i < childCount; i++) {
+      final w = i < branchWidths.length ? branchWidths[i] : 120.0;
+      centerXs.add(offset + w / 2);
+      offset += w;
+    }
 
     // Vertical line from top-center down to y = topDrop
     final path = Path()
@@ -954,44 +1185,40 @@ class ConnectorPainter extends CustomPainter {
       ..lineTo(midX, topDrop);
 
     if (childCount == 1) {
-      // Only 1 child, draw straight down to y = totalHeight
+      // Only 1 child, draw straight down
       path.lineTo(midX, totalHeight);
     } else {
-      final double startX = halfChildWidth; // Center of first child node (width 100)
-      final double endX = size.width - halfChildWidth; // Center of last child node
+      final double startX = centerXs.first;
+      final double endX = centerXs.last;
 
-      // Left side of horizontal bar (from midX to startX + radius)
+      // Left elbow
       path.moveTo(midX, topDrop);
       path.lineTo(startX + radius, topDrop);
-      // Elbow curve to (startX, topDrop + radius)
       path.arcToPoint(
         Offset(startX, topDrop + radius),
         radius: Radius.circular(radius),
         clockwise: false,
       );
-      // Vertical line down to y = totalHeight
       path.lineTo(startX, totalHeight);
 
-      // Right side of horizontal bar (from midX to endX - radius)
+      // Right elbow
       path.moveTo(midX, topDrop);
       path.lineTo(endX - radius, topDrop);
-      // Elbow curve to (endX, topDrop + radius)
       path.arcToPoint(
         Offset(endX, topDrop + radius),
         radius: Radius.circular(radius),
         clockwise: true,
       );
-      // Vertical line down to y = totalHeight
       path.lineTo(endX, totalHeight);
 
       // Intermediate drops
       for (int i = 1; i < childCount - 1; i++) {
-        final double childX = i * childWidth + halfChildWidth;
+        final double childX = centerXs[i];
         path.moveTo(childX, topDrop);
         path.lineTo(childX, totalHeight);
       }
 
-      // Fill in horizontal line gap
+      // Horizontal bar connecting all branches
       path.moveTo(startX + radius, topDrop);
       path.lineTo(endX - radius, topDrop);
     }
@@ -1001,6 +1228,8 @@ class ConnectorPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant ConnectorPainter oldDelegate) {
-    return oldDelegate.childCount != childCount || oldDelegate.color != color;
+    return oldDelegate.childCount != childCount ||
+        oldDelegate.color != color ||
+        oldDelegate.branchWidths != branchWidths;
   }
 }

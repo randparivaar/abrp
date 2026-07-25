@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_app/core/network/api_client.dart';
+import 'package:mobile_app/core/utils/app_avatar.dart';
 import 'package:mobile_app/core/utils/income_parser.dart';
 import 'package:mobile_app/features/directory/presentation/directory_constants.dart';
 import 'package:mobile_app/features/directory/presentation/family_tree_screen.dart' show MemberNode, familyTreeProvider;
@@ -699,30 +700,19 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
               GestureDetector(
                 onTap: _isAvatarUploading ? null : _pickAndUploadAvatar,
                 child: Container(
-                  padding: const EdgeInsets.all(3.0),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: theme.colorScheme.primary,
-                      width: 2.0,
-                    ),
-                  ),
-                  child: CircleAvatar(
-                    radius: 45,
-                    backgroundColor: _gender == 'male' ? Colors.blue.shade50 : Colors.pink.shade50,
-                    backgroundImage: _avatarUrl != null && _avatarUrl!.isNotEmpty
-                        ? NetworkImage(_avatarUrl!)
-                        : null,
-                    child: _isAvatarUploading
-                        ? const CircularProgressIndicator()
-                        : (_avatarUrl != null && _avatarUrl!.isNotEmpty
-                            ? null
-                            : Icon(
-                                _gender == 'male' ? Icons.face : Icons.face_3,
-                                color: _gender == 'male' ? Colors.blue.shade400 : Colors.pink.shade400,
-                                size: 45,
-                              )),
-                  ),
+                  child: _isAvatarUploading
+                      ? CircleAvatar(
+                          radius: 45,
+                          backgroundColor: Colors.grey.shade200,
+                          child: const CircularProgressIndicator(),
+                        )
+                      : AppAvatar(
+                          name: _fullNameController.text.trim().isNotEmpty ? _fullNameController.text : 'Member',
+                          imageUrl: _avatarUrl,
+                          radius: 45,
+                          fontSize: 36,
+                          border: Border.all(color: theme.colorScheme.primary, width: 2.0),
+                        ),
                 ),
               ),
               Positioned(
@@ -845,8 +835,10 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
         ),
         const SizedBox(height: 16),
 
-        // Dynamic Spouse/Parent Selectors
-        if (_relationship == 'daughter_in_law' || _relationship == 'son_in_law' || _relationship == 'grandson' || _relationship == 'granddaughter') ...[
+        // Dynamic Spouse/Parent Selectors — show for all non-head, non-spouse relationship types
+        if (_relationship != 'self' && _relationship != 'spouse' &&
+            _relationship != 'father' && _relationship != 'mother' &&
+            _relationship != 'brother' && _relationship != 'sister') ...[
           _buildRelationshipSelectors(theme, familyMembers),
           const SizedBox(height: 16),
         ],
@@ -1090,12 +1082,86 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
     );
   }
 
+  /// Returns the generation depth of a member:
+  /// Head = 0, Head's children = 1, Grandchildren = 2, etc.
+  int _getMemberGeneration(MemberNode member, List<MemberNode> allMembers) {
+    // Find Head
+    final head = allMembers.firstWhere(
+      (m) => m.relationshipToHead == 'self',
+      orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
+    );
+    if (head.id == -1 || member.id == head.id) return 0;
+
+    // BFS to find depth
+    final Map<int, int> depthMap = {head.id: 0};
+    final queue = [head];
+    final headSpouse = allMembers.firstWhere(
+      (m) => (head.spouseId != null && m.id == head.spouseId) || m.spouseId == head.id,
+      orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
+    );
+    if (headSpouse.id != -1) depthMap[headSpouse.id] = 0;
+
+    while (queue.isNotEmpty) {
+      final current = queue.removeAt(0);
+      final currentDepth = depthMap[current.id] ?? 0;
+      for (final m in allMembers) {
+        if (depthMap.containsKey(m.id)) continue;
+        if (m.fatherId == current.id || m.motherId == current.id) {
+          depthMap[m.id] = currentDepth + 1;
+          // Also map their spouse at same depth
+          if (m.spouseId != null) {
+            final sp = allMembers.where((x) => x.id == m.spouseId).firstOrNull;
+            if (sp != null && !depthMap.containsKey(sp.id)) {
+              depthMap[sp.id] = currentDepth + 1;
+            }
+          }
+          queue.add(m);
+        }
+      }
+    }
+    return depthMap[member.id] ?? -1;
+  }
+
+  /// Auto-compute the correct relationshipToHead based on the selected father's generation.
+  String _autoRelationFromParent(MemberNode father, List<MemberNode> allMembers) {
+    final depth = _getMemberGeneration(father, allMembers);
+    // depth 0 = head level → child is son/daughter
+    // depth 1 = son/daughter level → child is grandson/granddaughter
+    // depth 2+ = great-grandchild, etc.
+    if (depth <= 0) return _gender == 'female' ? 'daughter' : 'son';
+    if (depth == 1) return _gender == 'female' ? 'granddaughter' : 'grandson';
+    return 'other'; // great-grandchild and beyond → other
+  }
+
   Widget _buildRelationshipSelectors(ThemeData theme, List<MemberNode> familyMembers) {
-    if (_relationship == 'daughter_in_law') {
-      final eligibleHusbands = familyMembers.where((m) => m.gender == 'male' && m.id != widget.memberToEdit?.id).toList();
+    // Find Head and Spouse IDs to exclude from parent dropdowns for deeper generations
+    final head = familyMembers.firstWhere(
+      (m) => m.relationshipToHead == 'self',
+      orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
+    );
+    final headSpouse = head.id != -1
+        ? familyMembers.firstWhere(
+            (m) => (head.spouseId != null && m.id == head.spouseId) || m.spouseId == head.id,
+            orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
+          )
+        : MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: '');
+    final headLevelIds = {if (head.id != -1) head.id, if (headSpouse.id != -1) headSpouse.id};
+
+    // For son/daughter: eligible fathers are Head-level members (depth 0)
+    // For grandson/granddaughter: eligible fathers are Level-1 members (depth 1) — exclude head-level
+    final bool isGrandChild = _relationship == 'grandson' || _relationship == 'granddaughter';
+    final bool isDIL = _relationship == 'daughter_in_law';
+    final bool isSIL = _relationship == 'son_in_law';
+
+    if (isDIL) {
+      // Daughter-in-law: select her husband (a male family member)
+      final eligibleHusbands = familyMembers
+          .where((m) => m.gender == 'male' && m.id != widget.memberToEdit?.id)
+          .toList();
       final spouseValue = eligibleHusbands.any((m) => m.id == _spouseId) ? _spouseId : null;
 
       return DropdownButtonFormField<int>(
+        key: ValueKey('dil_spouse_$_spouseId'),
         initialValue: spouseValue,
         isExpanded: true,
         decoration: const InputDecoration(
@@ -1119,11 +1185,17 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
           });
         },
       );
-    } else if (_relationship == 'son_in_law') {
-      final eligibleWives = familyMembers.where((m) => m.gender == 'female' && m.id != widget.memberToEdit?.id).toList();
+    }
+
+    if (isSIL) {
+      // Son-in-law: select his wife (a female family member)
+      final eligibleWives = familyMembers
+          .where((m) => m.gender == 'female' && m.id != widget.memberToEdit?.id)
+          .toList();
       final spouseValue = eligibleWives.any((m) => m.id == _spouseId) ? _spouseId : null;
 
       return DropdownButtonFormField<int>(
+        key: ValueKey('sil_spouse_$_spouseId'),
         initialValue: spouseValue,
         isExpanded: true,
         decoration: const InputDecoration(
@@ -1147,73 +1219,170 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
           });
         },
       );
-    } else if (_relationship == 'grandson' || _relationship == 'granddaughter') {
-      final eligibleFathers = familyMembers.where((m) => m.gender == 'male' && m.id != widget.memberToEdit?.id).toList();
-      final eligibleMothers = familyMembers.where((m) => m.gender == 'female' && m.id != widget.memberToEdit?.id).toList();
-      
-      final fatherValue = eligibleFathers.any((m) => m.id == _fatherId) ? _fatherId : null;
-      final motherValue = eligibleMothers.any((m) => m.id == _motherId) ? _motherId : null;
-
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          DropdownButtonFormField<int>(
-            initialValue: fatherValue,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Select Father / पिता का चयन करें',
-              prefixIcon: Icon(Icons.person_outline),
-              border: OutlineInputBorder(),
-            ),
-            items: [
-              const DropdownMenuItem<int>(
-                value: null,
-                child: Text('Not specified / निर्दिष्ट नहीं है'),
-              ),
-              ...eligibleFathers.map((m) {
-                return DropdownMenuItem<int>(
-                  value: m.id,
-                  child: Text(m.fullName),
-                );
-              }),
-            ],
-            onChanged: (val) {
-              setState(() {
-                _fatherId = val;
-              });
-            },
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<int>(
-            initialValue: motherValue,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Select Mother / माता का चयन करें',
-              prefixIcon: Icon(Icons.person_outline),
-              border: OutlineInputBorder(),
-            ),
-            items: [
-              const DropdownMenuItem<int>(
-                value: null,
-                child: Text('Not specified / निर्दिष्ट नहीं है'),
-              ),
-              ...eligibleMothers.map((m) {
-                return DropdownMenuItem<int>(
-                  value: m.id,
-                  child: Text(m.fullName),
-                );
-              }),
-            ],
-            onChanged: (val) {
-              setState(() {
-                _motherId = val;
-              });
-            },
-          ),
-        ],
-      );
     }
-    return const SizedBox.shrink();
+
+    // For son/daughter/grandson/granddaughter: show Father + Mother dropdowns
+    // Grandson/granddaughter: exclude Head-level members from father dropdown
+    final eligibleFathers = familyMembers.where((m) {
+      if (m.gender != 'male') return false;
+      if (m.id == widget.memberToEdit?.id) return false;
+      if (isGrandChild && headLevelIds.contains(m.id)) return false; // exclude head for grandchild
+      return true;
+    }).toList();
+
+    final eligibleMothers = familyMembers.where((m) {
+      if (m.gender != 'female') return false;
+      if (m.id == widget.memberToEdit?.id) return false;
+      if (isGrandChild && headLevelIds.contains(m.id)) return false; // exclude head's wife for grandchild
+      return true;
+    }).toList();
+
+    final fatherValue = eligibleFathers.any((m) => m.id == _fatherId) ? _fatherId : null;
+    final motherValue = eligibleMothers.any((m) => m.id == _motherId) ? _motherId : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Info banner for grandchild
+        if (isGrandChild) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline_rounded, size: 14, color: theme.colorScheme.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Select the parent (Son/Daughter of Head). Relation will be auto-set.',
+                    style: TextStyle(fontSize: 11, color: theme.colorScheme.primary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        // Father Dropdown
+        DropdownButtonFormField<int>(
+          key: ValueKey('father_${_fatherId}_$_relationship'),
+          initialValue: fatherValue,
+          isExpanded: true,
+          decoration: const InputDecoration(
+            labelText: 'Select Father / पिता का चयन करें',
+            prefixIcon: Icon(Icons.person_outline),
+            border: OutlineInputBorder(),
+          ),
+          items: [
+            const DropdownMenuItem<int>(
+              value: null,
+              child: Text('Not specified / निर्दिष्ट नहीं है'),
+            ),
+            ...eligibleFathers.map((m) {
+              final depth = _getMemberGeneration(m, familyMembers);
+              final depthLabel = depth == 0 ? ' (Head Level)' : depth == 1 ? ' (Son Level)' : depth == 2 ? ' (Grandson Level)' : '';
+              return DropdownMenuItem<int>(
+                value: m.id,
+                child: Text('${m.fullName}$depthLabel'),
+              );
+            }),
+          ],
+          onChanged: (val) {
+            setState(() {
+              _fatherId = val;
+              if (val != null) {
+                // Auto-set relation based on father's generation
+                final father = familyMembers.firstWhere((m) => m.id == val,
+                    orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''));
+                if (father.id != -1) {
+                  _relationship = _autoRelationFromParent(father, familyMembers);
+                  // Auto-link father's spouse as mother
+                  if (father.spouseId != null) {
+                    final fatherSpouse = familyMembers.where((m) => m.id == father.spouseId).firstOrNull;
+                    if (fatherSpouse != null) {
+                      _motherId = fatherSpouse.id;
+                    }
+                  } else {
+                    // Try reverse: find member whose spouseId == father.id
+                    final fatherSpouse = familyMembers.where((m) => m.spouseId == father.id).firstOrNull;
+                    if (fatherSpouse != null) {
+                      _motherId = fatherSpouse.id;
+                    }
+                  }
+                  // Auto-set gender based on updated relation
+                  if (_relationship == 'son' || _relationship == 'grandson') {
+                    _gender = 'male';
+                  } else if (_relationship == 'daughter' || _relationship == 'granddaughter') {
+                    _gender = 'female';
+                  }
+                }
+              } else {
+                _motherId = null;
+              }
+            });
+          },
+        ),
+        const SizedBox(height: 12),
+        // Mother Dropdown (may be auto-filled)
+        DropdownButtonFormField<int>(
+          key: ValueKey('mother_${_motherId}_$_relationship'),
+          initialValue: motherValue,
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: 'Select Mother / माता का चयन करें',
+            prefixIcon: const Icon(Icons.person_outline),
+            border: const OutlineInputBorder(),
+            suffixIcon: _motherId != null
+                ? Tooltip(
+                    message: 'Auto-linked from Father\'s spouse',
+                    child: Icon(Icons.auto_awesome, size: 16, color: theme.colorScheme.primary),
+                  )
+                : null,
+          ),
+          items: [
+            const DropdownMenuItem<int>(
+              value: null,
+              child: Text('Not specified / निर्दिष्ट नहीं है'),
+            ),
+            ...eligibleMothers.map((m) {
+              return DropdownMenuItem<int>(
+                value: m.id,
+                child: Text(m.fullName),
+              );
+            }),
+          ],
+          onChanged: (val) {
+            setState(() {
+              _motherId = val;
+              // If mother selected and no father yet, auto-link mother's spouse as father
+              if (val != null && _fatherId == null) {
+                final mother = familyMembers.firstWhere((m) => m.id == val,
+                    orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''));
+                if (mother.id != -1) {
+                  if (mother.spouseId != null) {
+                    final motherSpouse = familyMembers.where((m) => m.id == mother.spouseId).firstOrNull;
+                    if (motherSpouse != null) {
+                      _fatherId = motherSpouse.id;
+                      _relationship = _autoRelationFromParent(motherSpouse, familyMembers);
+                    }
+                  } else {
+                    final motherSpouse = familyMembers.where((m) => m.spouseId == mother.id).firstOrNull;
+                    if (motherSpouse != null) {
+                      _fatherId = motherSpouse.id;
+                      _relationship = _autoRelationFromParent(motherSpouse, familyMembers);
+                    }
+                  }
+                }
+              }
+            });
+          },
+        ),
+      ],
+    );
   }
 
   Widget _buildAddressStep(ThemeData theme) {

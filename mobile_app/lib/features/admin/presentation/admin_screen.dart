@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/localization/app_language.dart';
 import '../../../core/localization/app_translations.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/name_formatter.dart';
+import '../../directory/presentation/family_member_detail_screen.dart';
+import '../../directory/presentation/business_profile_detail_screen.dart';
+import '../../directory/presentation/family_tree_screen.dart';
 
 class AdminScreen extends ConsumerStatefulWidget {
   const AdminScreen({super.key});
@@ -80,7 +84,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     }
   }
 
-  Future<void> _approveMember(int memberId, String fullName) async {
+  Future<bool> _approveMember(int memberId, String fullName) async {
     try {
       final dio = ref.read(apiClientProvider);
       final response = await dio.post('/directory/moderation/member/$memberId/approve');
@@ -91,6 +95,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           );
         }
         _fetchPendingMembers();
+        return true;
       }
     } catch (e) {
       if (mounted) {
@@ -99,9 +104,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         );
       }
     }
+    return false;
   }
 
-  Future<void> _rejectMember(int memberId, String fullName) async {
+  Future<bool> _rejectMember(int memberId, String fullName) async {
     final reasonController = TextEditingController();
     final confirm = await showDialog<bool>(
       context: context,
@@ -140,7 +146,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       },
     );
 
-    if (confirm != true) return;
+    if (confirm != true) return false;
 
     try {
       final dio = ref.read(apiClientProvider);
@@ -154,6 +160,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           );
         }
         _fetchPendingMembers();
+        return true;
       }
     } catch (e) {
       if (mounted) {
@@ -162,6 +169,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         );
       }
     }
+    return false;
   }
 
   Future<void> _fetchPendingBusinesses() async {
@@ -184,7 +192,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     }
   }
 
-  Future<void> _approveBusiness(int businessId, String businessName) async {
+  Future<bool> _approveBusiness(int businessId, String businessName) async {
     try {
       final dio = ref.read(apiClientProvider);
       final response = await dio.post('/directory/moderation/business/$businessId/approve');
@@ -195,6 +203,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           );
         }
         _fetchPendingBusinesses();
+        return true;
       }
     } catch (e) {
       if (mounted) {
@@ -203,9 +212,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         );
       }
     }
+    return false;
   }
 
-  Future<void> _rejectBusiness(int businessId, String businessName) async {
+  Future<bool> _rejectBusiness(int businessId, String businessName) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) {
@@ -230,7 +240,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       },
     );
 
-    if (confirm != true) return;
+    if (confirm != true) return false;
 
     try {
       final dio = ref.read(apiClientProvider);
@@ -242,6 +252,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           );
         }
         _fetchPendingBusinesses();
+        return true;
       }
     } catch (e) {
       if (mounted) {
@@ -250,6 +261,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         );
       }
     }
+    return false;
   }
 
   Future<void> _sendTestNotification() async {
@@ -498,74 +510,144 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
             borderRadius: BorderRadius.circular(8),
             side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.secondary,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        relation.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () {
+              final familyId = item['familyId'] as int;
+              final member = MemberNode(
+                id: id,
+                familyId: familyId,
+                fullName: name,
+                gender: gender,
+                relationshipToHead: relation,
+                mobile: item['mobile'] as String?,
+                gotra: item['gotra'] as String?,
+                estimatedAgeOnCreation: item['estimatedAgeOnCreation'] as int?,
+                birthDate: item['birthDate'] != null ? DateTime.tryParse(item['birthDate'].toString()) : null,
+                education: item['education'] as String?,
+                occupationType: item['occupationType'] as String?,
+                occupationDetail: item['occupationDetail'] as String?,
+                yearlyIncome: item['yearlyIncome'] as int?,
+                fatherId: item['fatherId'] as int?,
+                motherId: item['motherId'] as int?,
+                spouseId: item['spouseId'] as int?,
+                status: item['status'] as String? ?? 'pending',
+                bloodGroup: item['bloodGroup'] as String?,
+                maritalStatus: item['maritalStatus'] as String?,
+                anniversaryDate: item['anniversaryDate'] != null ? DateTime.tryParse(item['anniversaryDate'].toString()) : null,
+                currentAddress: item['currentAddress'] as String?,
+                currentCity: item['currentCity'] as String?,
+                currentState: item['currentState'] as String?,
+                currentPincode: item['currentPincode'] as String?,
+                avatarUrl: item['avatarUrl'] as String?,
+                specialRemarks: item['specialRemarks'] as String?,
+              );
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FamilyMemberDetailScreen(
+                    member: member,
+                    familyMembers: [member],
+                    familyId: familyId,
+                    isPending: true,
+                    onApprove: () => _approveMember(id, name),
+                    onReject: () => _rejectMember(id, name),
+                  ),
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        name.toTitleCase(),
+                        style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
+                          color: colorScheme.secondary,
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              relation.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.chevron_right, size: 20, color: colorScheme.primary),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Gender: ${gender.toUpperCase()}'),
+                  Text('Family Code: $familyCode'),
+                  Text('Location: $address'),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.touch_app_outlined, size: 14, color: colorScheme.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Tap card to view full details',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                           color: colorScheme.primary,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text('Gender: ${gender.toUpperCase()}'),
-                Text('Family Code: $familyCode'),
-                Text('Location: $address'),
-                const Divider(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () => _rejectMember(id, name),
-                      icon: const Icon(Icons.close, size: 16, color: Colors.red),
-                      label: const Text('Reject', style: TextStyle(color: Colors.red)),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.red),
-                        minimumSize: const Size(120, 36),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    ],
+                  ),
+                  const Divider(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => _rejectMember(id, name),
+                        icon: const Icon(Icons.close, size: 16, color: Colors.red),
+                        label: const Text('Reject', style: TextStyle(color: Colors.red)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red),
+                          minimumSize: const Size(120, 36),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: () => _approveMember(id, name),
-                      icon: const Icon(Icons.check, size: 16, color: Colors.white),
-                      label: const Text('Approve', style: TextStyle(color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        minimumSize: const Size(120, 36),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => _approveMember(id, name),
+                        icon: const Icon(Icons.check, size: 16, color: Colors.white),
+                        label: const Text('Approve', style: TextStyle(color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          minimumSize: const Size(120, 36),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -661,91 +743,153 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
             borderRadius: BorderRadius.circular(8),
             side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        businessName,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.secondary,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () {
+              final bp = BusinessProfile(
+                id: id,
+                businessName: businessName,
+                industryCategory: industryCategory,
+                contactMobile: contactMobile,
+                email: email,
+                websiteUrl: websiteUrl,
+                description: item['description'] as String?,
+                address: address ?? '',
+                city: city ?? '',
+                state: state,
+                pincode: pincode,
+              );
+              MemberNode? ownerNode;
+              if (ownerName != null && ownerName.isNotEmpty && item['ownerId'] != null) {
+                ownerNode = MemberNode(
+                  id: item['ownerId'] as int,
+                  familyId: -1,
+                  fullName: ownerName,
+                  gender: '',
+                  relationshipToHead: 'self',
+                );
+              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BusinessProfileDetailScreen(
+                    business: bp,
+                    owner: ownerNode,
+                    isPending: true,
+                    onApprove: () => _approveBusiness(id, businessName),
+                    onReject: () => _rejectBusiness(id, businessName),
+                  ),
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          businessName.toTitleCase(),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.secondary,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
+                      const SizedBox(width: 8),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              industryCategory.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.chevron_right, size: 20, color: colorScheme.primary),
+                        ],
                       ),
-                      child: Text(
-                        industryCategory.toUpperCase(),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (ownerName != null && ownerName.isNotEmpty) ...[
+                    Text('Owner: $ownerName'),
+                    const SizedBox(height: 4),
+                  ],
+                  Text('Mobile: $contactMobile'),
+                  if (email != null && email.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text('Email: $email'),
+                  ],
+                  if (websiteUrl != null && websiteUrl.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text('Website: $websiteUrl'),
+                  ],
+                  if (fullAddress.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text('Address: $fullAddress'),
+                  ],
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.touch_app_outlined, size: 14, color: colorScheme.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Tap card to view full details',
                         style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                           color: colorScheme.primary,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (ownerName != null && ownerName.isNotEmpty) ...[
-                  Text('Owner: $ownerName'),
-                  const SizedBox(height: 4),
-                ],
-                Text('Mobile: $contactMobile'),
-                if (email != null && email.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text('Email: $email'),
-                ],
-                if (websiteUrl != null && websiteUrl.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text('Website: $websiteUrl'),
-                ],
-                if (fullAddress.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text('Address: $fullAddress'),
-                ],
-                const Divider(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () => _rejectBusiness(id, businessName),
-                      icon: const Icon(Icons.close, size: 16, color: Colors.red),
-                      label: const Text('Reject', style: TextStyle(color: Colors.red)),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.red),
-                        minimumSize: const Size(120, 36),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    ],
+                  ),
+                  const Divider(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => _rejectBusiness(id, businessName),
+                        icon: const Icon(Icons.close, size: 16, color: Colors.red),
+                        label: const Text('Reject', style: TextStyle(color: Colors.red)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red),
+                          minimumSize: const Size(120, 36),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: () => _approveBusiness(id, businessName),
-                      icon: const Icon(Icons.check, size: 16, color: Colors.white),
-                      label: const Text('Approve', style: TextStyle(color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        minimumSize: const Size(120, 36),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => _approveBusiness(id, businessName),
+                        icon: const Icon(Icons.check, size: 16, color: Colors.white),
+                        label: const Text('Approve', style: TextStyle(color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          minimumSize: const Size(120, 36),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );

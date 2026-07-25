@@ -1,3 +1,5 @@
+import '../../../core/utils/name_formatter.dart';
+
 class BusinessProfile {
   final int id;
   final String businessName;
@@ -21,7 +23,7 @@ class BusinessProfile {
 
   BusinessProfile({
     required this.id,
-    required this.businessName,
+    required String businessName,
     this.logoUrl,
     required this.industryCategory,
     required this.contactMobile,
@@ -39,12 +41,12 @@ class BusinessProfile {
     this.state,
     this.pincode,
     this.googleMapsLink,
-  });
+  }) : businessName = businessName.toTitleCase();
 
   factory BusinessProfile.fromJson(Map<String, dynamic> json) {
     return BusinessProfile(
       id: json['id'] as int,
-      businessName: json['businessName'] as String,
+      businessName: (json['businessName'] as String? ?? '').toTitleCase(),
       logoUrl: json['logoUrl'] as String?,
       industryCategory: json['industryCategory'] as String,
       contactMobile: json['contactMobile'] as String,
@@ -94,11 +96,12 @@ class MemberNode {
   final BusinessProfile? businessProfile;
   final String? avatarUrl;
   final String? specialRemarks;
+  final String? validationFeedback;
 
   MemberNode({
     required this.id,
     required this.familyId,
-    required this.fullName,
+    required String fullName,
     required this.gender,
     required this.relationshipToHead,
     this.mobile,
@@ -123,13 +126,14 @@ class MemberNode {
     this.businessProfile,
     this.avatarUrl,
     this.specialRemarks,
-  });
+    this.validationFeedback,
+  }) : fullName = fullName.toTitleCase();
 
   factory MemberNode.fromJson(Map<String, dynamic> json) {
     return MemberNode(
       id: json['id'] as int,
       familyId: json['familyId'] as int,
-      fullName: json['fullName'] as String,
+      fullName: (json['fullName'] as String? ?? '').toTitleCase(),
       gender: json['gender'] as String,
       relationshipToHead: json['relationshipToHead'] as String,
       mobile: json['mobile'] as String?,
@@ -156,6 +160,7 @@ class MemberNode {
           : null,
       avatarUrl: json['avatarUrl'] as String?,
       specialRemarks: json['specialRemarks'] as String?,
+      validationFeedback: json['validationFeedback'] as String?,
     );
   }
 

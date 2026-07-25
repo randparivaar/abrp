@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/network/api_client.dart';
+import 'package:mobile_app/core/utils/app_avatar.dart';
+import 'package:mobile_app/core/utils/name_formatter.dart';
 import 'business_profile_detail_screen.dart';
 import 'directory_models.dart';
 import 'directory_constants.dart';
@@ -280,7 +282,7 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
                   separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final biz = _businesses[index];
-                    final String name = biz['businessName'] ?? 'Business';
+                    final String name = (biz['businessName'] as String? ?? 'Business').toTitleCase();
                     final String category = biz['industryCategory'] ?? 'Other';
                     final String city = biz['city'] ?? '';
                     final String? logoUrl = biz['logoUrl'];
@@ -315,29 +317,12 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // Business Logo Avatar
-                              Container(
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: primaryColor,
-                                    width: 1.5,
-                                  ),
-                                  image: logoUrl != null && logoUrl.isNotEmpty
-                                      ? DecorationImage(
-                                          image: NetworkImage(logoUrl),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : null,
-                                ),
-                                child: logoUrl == null || logoUrl.isEmpty
-                                    ? Icon(
-                                        Icons.storefront,
-                                        color: primaryColor,
-                                        size: 30,
-                                      )
-                                    : null,
+                              AppAvatar(
+                                name: name,
+                                imageUrl: logoUrl,
+                                radius: 30,
+                                fontSize: 24,
+                                border: Border.all(color: primaryColor, width: 1.5),
                               ),
                               const SizedBox(width: 12),
                               // Info

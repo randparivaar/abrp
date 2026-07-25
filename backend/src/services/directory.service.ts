@@ -1,6 +1,6 @@
 import { db } from '@/db';
-import { families, familyMembers, villages, businessProfiles, businessMembers, businessLocations } from '@/db/schema';
-import { eq, sql, and } from 'drizzle-orm';
+import { users, families, familyMembers, villages, businessProfiles, businessMembers, businessLocations } from '@/db/schema';
+import { eq, sql, and, inArray } from 'drizzle-orm';
 import { OnboardFamilyRequest, AddFamilyMemberRequest } from '@/types/directory.types';
 import { getUserDevices, sendPushNotification } from '@/services/notifications.service';
 
@@ -240,47 +240,70 @@ export async function getFamilyTreeData(familyId: number, currentUserId: string)
   const members = await db.select().from(familyMembers).where(eq(familyMembers.familyId, familyId));
 
   // 3. Filter members based on authorization status
-  // Policy: Members of the SAME family can see pending nodes.
+  // Policy: Members of the SAME family or Admins/Moderators can see pending nodes.
   // Others can only see approved nodes.
+  const userRec = await db.query.users.findFirst({
+    where: eq(users.id, currentUserId),
+  });
+  const isAdminOrMod = userRec?.role === 'admin' || userRec?.role === 'moderator';
   const isMemberOfFamily = members.some((m: any) => m.userId === currentUserId || m.createdBy === currentUserId);
 
-  const filteredMembers = isMemberOfFamily 
+  const filteredMembers = (isMemberOfFamily || isAdminOrMod)
     ? members 
     : members.filter((m: any) => m.status === 'approved');
 
-  const membersWithBiz = await Promise.all(
-    filteredMembers.map(async (m) => {
-      const bizLink = await db.query.businessMembers.findFirst({
-        where: eq(businessMembers.memberId, m.id),
-      });
-      let businessProfile: any = null;
-      if (bizLink) {
-        const bp = await db.query.businessProfiles.findFirst({
-          where: eq(businessProfiles.id, bizLink.businessId),
-        });
-        if (bp) {
-          const loc = await db.query.businessLocations.findFirst({
-            where: and(
-              eq(businessLocations.businessId, bp.id),
+  let membersWithBiz = filteredMembers.map((m: any) => ({ ...m, businessProfile: null }));
+
+  try {
+    const memberIds = filteredMembers.map((m: any) => m.id);
+    if (memberIds.length > 0) {
+      const bizLinks = await db.select().from(businessMembers).where(inArray(businessMembers.memberId, memberIds));
+
+      if (bizLinks.length > 0) {
+        const bizIds = Array.from(new Set(bizLinks.map((b: any) => b.businessId)));
+
+        const [profiles, locations] = await Promise.all([
+          db.select().from(businessProfiles).where(inArray(businessProfiles.id, bizIds)),
+          db.select().from(businessLocations).where(
+            and(
+              inArray(businessLocations.businessId, bizIds),
               eq(businessLocations.isPrimary, true)
-            ),
-          });
-          businessProfile = {
-            ...bp,
-            address: loc?.address || '',
-            city: loc?.city || '',
-            state: loc?.state || '',
-            pincode: loc?.pincode || '',
-            googleMapsLink: loc?.googleMapsLink || '',
+            )
+          ),
+        ]);
+
+        const profileMap = new Map(profiles.map((p: any) => [p.id, p]));
+        const locationMap = new Map(locations.map((l: any) => [l.businessId, l]));
+        const memberBizMap = new Map(bizLinks.map((b: any) => [b.memberId, b.businessId]));
+
+        membersWithBiz = filteredMembers.map((m: any) => {
+          const bizId = memberBizMap.get(m.id);
+          let businessProfile: any = null;
+          if (bizId) {
+            const bp = profileMap.get(bizId);
+            if (bp) {
+              const loc = locationMap.get(bp.id);
+              businessProfile = {
+                ...bp,
+                address: loc?.address || '',
+                city: loc?.city || '',
+                state: loc?.state || '',
+                pincode: loc?.pincode || '',
+                googleMapsLink: loc?.googleMapsLink || '',
+              };
+            }
+          }
+          return {
+            ...m,
+            businessProfile,
           };
-        }
+        });
       }
-      return {
-        ...m,
-        businessProfile,
-      };
-    })
-  );
+    }
+  } catch (err) {
+    console.error('Error fetching business profiles for family tree:', err);
+    // Fallback: return members without business profile if DB glitch occurs
+  }
 
   const myMemberInFamily = members.find((m: any) => m.userId === currentUserId || m.createdBy === currentUserId);
   const canEdit = myMemberInFamily ? (myMemberInFamily.createdBy === currentUserId || myMemberInFamily.relationshipToHead === 'self' || family.familyHeadId === myMemberInFamily.id) : false;
@@ -433,6 +456,7 @@ export async function updateFamilyMember(sessionUserId: string, memberId: number
     motherId: payload.motherId,
     spouseId: payload.spouseId,
     status: 'pending', // Re-evaluate status on edits
+    validationFeedback: null,
   }).where(eq(familyMembers.id, memberId)).returning();
 
   // If a spouseId is provided and was updated, we should update the target spouse
@@ -591,8 +615,27 @@ export async function getPendingFamilyMembers() {
     fullName: familyMembers.fullName,
     gender: familyMembers.gender,
     relationshipToHead: familyMembers.relationshipToHead,
-    estimatedAgeOnCreation: familyMembers.estimatedAgeOnCreation,
+    mobile: familyMembers.mobile,
     gotra: familyMembers.gotra,
+    estimatedAgeOnCreation: familyMembers.estimatedAgeOnCreation,
+    birthDate: familyMembers.birthDate,
+    education: familyMembers.education,
+    occupationType: familyMembers.occupationType,
+    occupationDetail: familyMembers.occupationDetail,
+    yearlyIncome: familyMembers.yearlyIncome,
+    fatherId: familyMembers.fatherId,
+    motherId: familyMembers.motherId,
+    spouseId: familyMembers.spouseId,
+    status: familyMembers.status,
+    bloodGroup: familyMembers.bloodGroup,
+    maritalStatus: familyMembers.maritalStatus,
+    anniversaryDate: familyMembers.anniversaryDate,
+    currentAddress: familyMembers.currentAddress,
+    currentCity: familyMembers.currentCity,
+    currentState: familyMembers.currentState,
+    currentPincode: familyMembers.currentPincode,
+    avatarUrl: familyMembers.avatarUrl,
+    specialRemarks: familyMembers.specialRemarks,
     createdBy: familyMembers.createdBy,
     createdAt: familyMembers.createdAt,
     familyId: familyMembers.familyId,
@@ -677,10 +720,14 @@ export async function rejectFamilyMember(memberId: number, moderatorId: string, 
     console.error('Failed to send rejection notification:', err);
   }
 
-  await db.delete(familyMembers).where(eq(familyMembers.id, memberId));
-  await db.update(familyMembers).set({ spouseId: null }).where(eq(familyMembers.spouseId, memberId));
-  await db.update(familyMembers).set({ fatherId: null }).where(eq(familyMembers.fatherId, memberId));
-  await db.update(familyMembers).set({ motherId: null }).where(eq(familyMembers.motherId, memberId));
+  await db.update(familyMembers)
+    .set({
+      status: 'rejected',
+      validationFeedback: reason || null,
+      validatedBy: moderatorId,
+      validatedAt: new Date(),
+    })
+    .where(eq(familyMembers.id, memberId));
 
   return { success: true };
 }
@@ -901,6 +948,8 @@ export async function getMembersList(search?: string, villageId?: number) {
     });
   }
 
+  filtered.sort((a, b) => a.fullName.localeCompare(b.fullName, undefined, { sensitivity: 'base' }));
+
   return filtered.map(m => ({
     id: m.id,
     fullName: m.fullName,
@@ -914,7 +963,9 @@ export async function getMembersList(search?: string, villageId?: number) {
     familyId: m.familyId,
     familyCode: m.family?.familyCode || '',
     village: m.family?.village || null,
+    city: m.family?.city || null,
     familyHeadName: m.family?.head?.fullName || '',
+    isHead: m.family?.headId === m.id || m.relationshipToHead === 'self' || m.relationshipToHead === 'head',
   }));
 }
 
@@ -927,54 +978,67 @@ export async function getBusinessProfilesList(search?: string, category?: string
     orderBy: (bp: any, { desc }: any) => [desc(bp.createdAt)],
   });
 
-  const formattedBusinesses = await Promise.all(
-    allBusinesses.map(async (bp) => {
-      const loc = await db.query.businessLocations.findFirst({
-        where: and(
-          eq(businessLocations.businessId, bp.id),
-          eq(businessLocations.isPrimary, true)
-        ),
-      });
+  if (allBusinesses.length === 0) return [];
 
-      const bizMembers = await db.query.businessMembers.findMany({
-        where: eq(businessMembers.businessId, bp.id),
-        with: {
-          member: true,
-        },
-      });
+  const bizIds = allBusinesses.map(bp => bp.id);
 
-      const owners = bizMembers.map((bm: any) => ({
-        id: bm.member?.id,
-        fullName: bm.member?.fullName,
-        avatarUrl: bm.member?.avatarUrl,
-        mobile: bm.member?.mobile,
-        roleInBusiness: bm.roleInBusiness,
-      }));
+  const [locations, bizMembers] = await Promise.all([
+    db.select().from(businessLocations).where(
+      and(
+        inArray(businessLocations.businessId, bizIds),
+        eq(businessLocations.isPrimary, true)
+      )
+    ),
+    db.query.businessMembers.findMany({
+      where: inArray(businessMembers.businessId, bizIds),
+      with: {
+        member: true,
+      },
+    }),
+  ]);
 
-      return {
-        id: bp.id,
-        businessName: bp.businessName,
-        logoUrl: bp.logoUrl,
-        industryCategory: bp.industryCategory,
-        contactMobile: bp.contactMobile,
-        whatsappMobile: bp.whatsappMobile,
-        email: bp.email,
-        websiteUrl: bp.websiteUrl,
-        gstin: bp.gstin,
-        description: bp.description,
-        tags: bp.tags,
-        operatingHours: bp.operatingHours,
-        communityPerk: bp.communityPerk,
-        catalog: bp.catalog,
-        address: loc?.address || '',
-        city: loc?.city || '',
-        state: loc?.state || '',
-        pincode: loc?.pincode || '',
-        googleMapsLink: loc?.googleMapsLink || '',
-        owners,
-      };
-    })
-  );
+  const locationMap = new Map(locations.map(l => [l.businessId, l]));
+  const ownersMap = new Map<number, any[]>();
+  for (const bm of bizMembers) {
+    if (!ownersMap.has(bm.businessId)) {
+      ownersMap.set(bm.businessId, []);
+    }
+    ownersMap.get(bm.businessId)!.push({
+      id: bm.member?.id,
+      fullName: bm.member?.fullName,
+      avatarUrl: bm.member?.avatarUrl,
+      mobile: bm.member?.mobile,
+      roleInBusiness: bm.roleInBusiness,
+    });
+  }
+
+  const formattedBusinesses = allBusinesses.map((bp) => {
+    const loc = locationMap.get(bp.id);
+    const owners = ownersMap.get(bp.id) || [];
+
+    return {
+      id: bp.id,
+      businessName: bp.businessName,
+      logoUrl: bp.logoUrl,
+      industryCategory: bp.industryCategory,
+      contactMobile: bp.contactMobile,
+      whatsappMobile: bp.whatsappMobile,
+      email: bp.email,
+      websiteUrl: bp.websiteUrl,
+      gstin: bp.gstin,
+      description: bp.description,
+      tags: bp.tags,
+      operatingHours: bp.operatingHours,
+      communityPerk: bp.communityPerk,
+      catalog: bp.catalog,
+      address: loc?.address || '',
+      city: loc?.city || '',
+      state: loc?.state || '',
+      pincode: loc?.pincode || '',
+      googleMapsLink: loc?.googleMapsLink || '',
+      owners,
+    };
+  });
 
   let filtered = formattedBusinesses;
   if (category && category.trim().length > 0 && category !== 'All') {
