@@ -965,7 +965,7 @@ export async function getMembersList(search?: string, villageId?: number) {
     village: m.family?.village || null,
     city: m.family?.city || null,
     familyHeadName: m.family?.head?.fullName || '',
-    isHead: m.family?.headId === m.id || m.relationshipToHead === 'self' || m.relationshipToHead === 'head',
+    isHead: m.family?.familyHeadId === m.id || m.relationshipToHead === 'self',
   }));
 }
 

@@ -299,4 +299,28 @@ export const familyMembersRelations = relations(familyMembers, ({ one }) => ({
   }),
 }));
 
+export const businessProfilesRelations = relations(businessProfiles, ({ many }) => ({
+  members: many(businessMembers),
+  locations: many(businessLocations),
+}));
+
+export const businessMembersRelations = relations(businessMembers, ({ one }) => ({
+  business: one(businessProfiles, {
+    fields: [businessMembers.businessId],
+    references: [businessProfiles.id],
+  }),
+  member: one(familyMembers, {
+    fields: [businessMembers.memberId],
+    references: [familyMembers.id],
+  }),
+}));
+
+export const businessLocationsRelations = relations(businessLocations, ({ one }) => ({
+  business: one(businessProfiles, {
+    fields: [businessLocations.businessId],
+    references: [businessProfiles.id],
+  }),
+}));
+
+
 
