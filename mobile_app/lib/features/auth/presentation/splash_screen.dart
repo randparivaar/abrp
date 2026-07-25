@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/features/auth/presentation/auth_controller.dart';
@@ -73,7 +74,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     if (isAuthenticated) {
       context.go('/');
     } else {
-      context.go('/login');
+      const storage = FlutterSecureStorage();
+      final hasCompleted = await storage.read(key: 'has_completed_onboarding');
+      if (!mounted) return;
+      if (hasCompleted == 'true') {
+        context.go('/login');
+      } else {
+        context.go('/onboarding');
+      }
     }
   }
 

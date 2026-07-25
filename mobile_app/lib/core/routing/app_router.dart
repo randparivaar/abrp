@@ -11,6 +11,7 @@ import 'package:mobile_app/features/directory/presentation/family_tree_screen.da
 import 'package:mobile_app/features/directory/presentation/directory_screen.dart';
 import 'package:mobile_app/features/directory/presentation/business_directory_screen.dart';
 import 'package:mobile_app/features/auth/presentation/splash_screen.dart';
+import 'package:mobile_app/features/auth/presentation/onboarding_screen.dart';
 
 part 'app_router.g.dart';
 
@@ -24,9 +25,10 @@ GoRouter appRouter(Ref ref) {
       final isAuthenticated = authState.user != null;
       final isLoggingIn = state.matchedLocation == '/login';
       final isSplash = state.matchedLocation == '/splash';
+      final isOnboarding = state.matchedLocation == '/onboarding';
 
-      // Allow splash screen to display without redirection
-      if (isSplash) return null;
+      // Allow splash and onboarding screens to display without redirection
+      if (isSplash || isOnboarding) return null;
 
       // 1. If not authenticated and not currently on login page, send to /login
       if (!isAuthenticated && !isLoggingIn) {
@@ -52,6 +54,10 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/splash',
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingScreen(),
       ),
       GoRoute(
         path: '/login',
