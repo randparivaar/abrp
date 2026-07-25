@@ -50,5 +50,5 @@ if (!process.env.VERCEL) {
   });
 }
 
-export default handle(app);
+export default app;
 
