@@ -56,30 +56,45 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _navigateToNextScreen() async {
-    // Wait for minimum splash duration (2.2 sec for smooth animation experience)
-    await Future.delayed(const Duration(milliseconds: 2400));
+    try {
+      // Wait for minimum splash duration (2.2 sec for smooth animation experience)
+      await Future.delayed(const Duration(milliseconds: 2400));
 
-    if (!mounted) return;
-
-    final authState = ref.read(authProvider);
-
-    // Wait if auth is still initializing
-    if (authState.isLoading) {
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-
-    if (!mounted) return;
-
-    final isAuthenticated = ref.read(authProvider).isAuthenticated;
-    if (isAuthenticated) {
-      context.go('/');
-    } else {
-      const storage = FlutterSecureStorage();
-      final hasCompleted = await storage.read(key: 'has_completed_onboarding');
       if (!mounted) return;
+
+      // Wait while auth state is initializing (up to 3 seconds max)
+      int waitCount = 0;
+      while (ref.read(authProvider).isLoading && waitCount < 6) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        waitCount++;
+      }
+
+      if (!mounted) return;
+
+      final isAuthenticated = ref.read(authProvider).isAuthenticated;
+      if (isAuthenticated) {
+        context.go('/');
+        return;
+      }
+
+      String? hasCompleted;
+      try {
+        const storage = FlutterSecureStorage();
+        hasCompleted = await storage.read(key: 'has_completed_onboarding');
+      } catch (e) {
+        debugPrint('SecureStorage error on splash: $e');
+      }
+
+      if (!mounted) return;
+
       if (hasCompleted == 'true') {
         context.go('/login');
       } else {
+        context.go('/onboarding');
+      }
+    } catch (e) {
+      debugPrint('Error in splash navigation: $e');
+      if (mounted) {
         context.go('/onboarding');
       }
     }

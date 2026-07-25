@@ -62,19 +62,11 @@ export async function handleGoogleLogin(c: Context) {
       return c.json({ error: `Your account is currently ${user.status}. Access denied.` }, 403);
     }
 
-    // Save FCM Token if provided
-    if (fcmToken) {
-      try {
-        await registerDeviceToken(user.id, fcmToken, deviceType || 'android');
-      } catch (fcmError) {
-        console.error('FCM Token registration failed in Google Login:', fcmError);
-      }
-    }
-
-    // Associate family member by mobile if available (fire & forget)
-    associateUserWithFamilyMemberByMobile(user.id, user.mobile).catch((e: any) =>
-      console.error('associateUserWithFamilyMemberByMobile error:', e)
-    );
+    // Save FCM Token & Associate Family Member reliably before returning response
+    await Promise.allSettled([
+      fcmToken ? registerDeviceToken(user.id, fcmToken, deviceType || 'android') : Promise.resolve(),
+      associateUserWithFamilyMemberByMobile(user.id, user.mobile),
+    ]);
 
     const token = generateSessionToken(user);
 
@@ -131,19 +123,11 @@ export async function handleRegister(c: Context) {
       mobile: cleanMobile,
     });
 
-    // Try associating user with existing family member node by mobile (fire & forget)
-    associateUserWithFamilyMemberByMobile(newUser.id, cleanMobile).catch((e: any) =>
-      console.error('associateUserWithFamilyMemberByMobile error:', e)
-    );
-
-    // Save FCM Token if provided
-    if (fcmToken) {
-      try {
-        await registerDeviceToken(newUser.id, fcmToken, deviceType || 'android');
-      } catch (fcmError) {
-        console.error('FCM Token registration failed in Register:', fcmError);
-      }
-    }
+    // Save FCM Token & Associate Family Member reliably before returning response
+    await Promise.allSettled([
+      fcmToken ? registerDeviceToken(newUser.id, fcmToken, deviceType || 'android') : Promise.resolve(),
+      associateUserWithFamilyMemberByMobile(newUser.id, cleanMobile),
+    ]);
 
     const token = generateSessionToken(newUser);
 
@@ -188,17 +172,11 @@ export async function handleLogin(c: Context) {
       return c.json({ error: `Your account is currently ${user.status}. Access denied.` }, 403);
     }
 
-    // Save FCM Token if provided (fire & forget)
-    if (fcmToken) {
-      registerDeviceToken(user.id, fcmToken, deviceType || 'android').catch((fcmError) => {
-        console.error('FCM Token registration failed in Login:', fcmError);
-      });
-    }
-
-    // Associate family member by mobile if available (fire & forget)
-    associateUserWithFamilyMemberByMobile(user.id, user.mobile).catch((e: any) =>
-      console.error('associateUserWithFamilyMemberByMobile error:', e)
-    );
+    // Save FCM Token & Associate Family Member reliably before returning response
+    await Promise.allSettled([
+      fcmToken ? registerDeviceToken(user.id, fcmToken, deviceType || 'android') : Promise.resolve(),
+      associateUserWithFamilyMemberByMobile(user.id, user.mobile),
+    ]);
 
     const token = generateSessionToken(user);
 

@@ -33,7 +33,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _storage = const FlutterSecureStorage();
 
   Future<void> _completeOnboarding() async {
-    await _storage.write(key: 'has_completed_onboarding', value: 'true');
+    try {
+      await _storage.write(key: 'has_completed_onboarding', value: 'true');
+    } catch (e) {
+      debugPrint('Error saving onboarding state: $e');
+    }
     if (!mounted) return;
     context.go('/login');
   }
