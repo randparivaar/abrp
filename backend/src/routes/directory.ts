@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware, roleGuard } from '../middleware/auth.js';
 import { 
   handleGetVillages, 
+  handleGetRegions,
   handleOnboardFamily, 
   handleAddFamilyMember, 
   handleGetFamilyTree,
@@ -28,6 +29,7 @@ const directoryRouter = new Hono();
 directoryRouter.use('*', authMiddleware);
 
 directoryRouter.get('/villages', handleGetVillages);
+directoryRouter.get('/regions', handleGetRegions);
 directoryRouter.get('/my-family', handleGetMyFamily);
 directoryRouter.post('/onboard-family', handleOnboardFamily);
 directoryRouter.post('/member', handleAddFamilyMember);

@@ -2,6 +2,7 @@ import { Context } from 'hono';
 import { UserSession } from '../middleware/auth.js';
 import { 
   getVillagesList, 
+  getRegionsList,
   onboardNewFamily, 
   addMemberToFamily, 
   getFamilyTreeData,
@@ -32,6 +33,19 @@ export async function handleGetVillages(c: Context) {
     return c.json({ villages });
   } catch (error: any) {
     console.error('Error in handleGetVillages:', error);
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
+}
+
+/**
+ * Handle listing all regions
+ */
+export async function handleGetRegions(c: Context) {
+  try {
+    const regions = await getRegionsList();
+    return c.json({ regions });
+  } catch (error: any) {
+    console.error('Error in handleGetRegions:', error);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }

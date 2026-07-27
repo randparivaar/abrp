@@ -49,7 +49,7 @@ export async function handleUpdateMyProfile(c: Context) {
 
 export async function handleChangeRole(c: Context) {
   try {
-    const { userId, newRole } = await c.req.json<ChangeRoleRequest>();
+    const { userId, newRole, regionIds } = await c.req.json<ChangeRoleRequest>();
 
     if (!userId || !newRole) {
       return c.json({ error: 'Missing required parameters: userId or newRole' }, 400);
@@ -59,7 +59,8 @@ export async function handleChangeRole(c: Context) {
       return c.json({ error: 'Invalid role. Choose from: admin, member, moderator' }, 400);
     }
 
-    const updatedUser = await updateUserRole(userId, newRole);
+    const updatedUser = await updateUserRole(userId, newRole, regionIds);
+
 
     if (!updatedUser) {
       return c.json({ error: 'Target user not found.' }, 404);

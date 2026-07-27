@@ -7,4 +7,6 @@ export interface UpdateUserProfileRequest {
 export interface ChangeRoleRequest {
   userId?: string;
   newRole?: 'admin' | 'member' | 'moderator';
+  regionIds?: number[];
 }
+

@@ -32,10 +32,14 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   bool _isLoadingPendingBusinesses = true;
   String? _pendingBusinessesError;
 
+  List<dynamic> _regionsList = [];
+  bool _isLoadingRegions = false;
+
   @override
   void initState() {
     super.initState();
     _fetchUsers();
+    _fetchRegions();
     _fetchPendingMembers();
     _fetchPendingBusinesses();
   }
@@ -47,7 +51,151 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     super.dispose();
   }
 
+  Future<void> _fetchRegions() async {
+    setState(() => _isLoadingRegions = true);
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.get('/directory/regions');
+      setState(() {
+        _regionsList = response.data['regions'] as List<dynamic>;
+        _isLoadingRegions = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingRegions = false);
+    }
+  }
+
+  Future<void> _showChangeRoleDialog(Map<String, dynamic> userItem) async {
+    String selectedRole = userItem['role'] as String? ?? 'member';
+    final existingAssigned = (userItem['assignedRegions'] as List<dynamic>?) ?? [];
+    final Set<int> selectedRegionIds = existingAssigned.map<int>((r) => r['id'] as int).toSet();
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final theme = Theme.of(context);
+            return AlertDialog(
+              title: Text('Change Role: ${userItem['fullName']}'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Select User Role:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedRole,
+                      items: const [
+                        DropdownMenuItem(value: 'member', child: Text('Member')),
+                        DropdownMenuItem(value: 'moderator', child: Text('Moderator (Area Coordinator)')),
+                        DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() => selectedRole = val);
+                        }
+                      },
+                    ),
+                    if (selectedRole == 'moderator') ...[
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Assign Regions / Zones to Moderate:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 6),
+                      if (_isLoadingRegions)
+                        const Center(child: CircularProgressIndicator())
+                      else if (_regionsList.isEmpty)
+                        const Text('No regions available in system.', style: TextStyle(color: Colors.grey, fontSize: 12))
+                      else
+                        Container(
+                          maxHeight: 180,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _regionsList.length,
+                            itemBuilder: (context, idx) {
+                              final reg = _regionsList[idx];
+                              final regId = reg['id'] as int;
+                              final regName = reg['name'] as String;
+                              final isChecked = selectedRegionIds.contains(regId);
+
+                              return CheckboxListTile(
+                                dense: true,
+                                title: Text(regName, style: const TextStyle(fontSize: 13)),
+                                value: isChecked,
+                                onChanged: (val) {
+                                  setDialogState(() {
+                                    if (val == true) {
+                                      selectedRegionIds.add(regId);
+                                    } else {
+                                      selectedRegionIds.remove(regId);
+                                    }
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('CANCEL'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await _updateUserRole(
+                      userItem['id'] as String,
+                      selectedRole,
+                      selectedRole == 'moderator' ? selectedRegionIds.toList() : null,
+                    );
+                  },
+                  child: const Text('SAVE ROLE'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _updateUserRole(String userId, String newRole, List<int>? regionIds) async {
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.patch('/users/change-role', data: {
+        'userId': userId,
+        'newRole': newRole,
+        if (regionIds != null) 'regionIds': regionIds,
+      });
+
+      if (response.statusCode == 200 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User role updated successfully!')),
+        );
+        _fetchUsers();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update role: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _fetchUsers() async {
+
     setState(() => _isLoadingUsers = true);
     try {
       final dio = ref.read(apiClientProvider);
@@ -408,27 +556,65 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
             itemCount: _usersList.length,
             separatorBuilder: (context, index) => const Divider(),
             itemBuilder: (context, index) {
-              final item = _usersList[index];
+              final item = _usersList[index] as Map<String, dynamic>;
+              final role = (item['role'] as String? ?? 'member').toLowerCase();
+              final assignedRegs = (item['assignedRegions'] as List<dynamic>?) ?? [];
+              final regNames = assignedRegs.map((r) => r['name'] as String).join(', ');
+
               return ListTile(
+                onTap: () => _showChangeRoleDialog(item),
                 leading: CircleAvatar(
                   backgroundImage: item['avatarUrl'] != null ? NetworkImage(item['avatarUrl'] as String) : null,
                   child: item['avatarUrl'] == null ? const Icon(Icons.person) : null,
                 ),
                 title: Text(item['fullName'] as String? ?? ''),
-                subtitle: Text(item['email'] as String),
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    (item['role'] as String).toUpperCase(),
-                    style: TextStyle(fontSize: 11, color: theme.colorScheme.secondary, fontWeight: FontWeight.bold),
-                  ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item['email'] as String? ?? item['mobile'] as String? ?? ''),
+                    if (role == 'moderator')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2.0),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: regNames.isNotEmpty ? Colors.indigo : Colors.orange.shade800,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        child: Text(
+                          regNames.isNotEmpty ? 'Zones: $regNames' : '⚠️ No Area Assigned',
+                        ),
+                      ),
+                  ],
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: role == 'admin' 
+                            ? Colors.red.withValues(alpha: 0.1) 
+                            : role == 'moderator' 
+                                ? Colors.indigo.withValues(alpha: 0.1) 
+                                : theme.colorScheme.secondary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        role.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 11, 
+                          color: role == 'admin' ? Colors.red : role == 'moderator' ? Colors.indigo : theme.colorScheme.secondary, 
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.edit_outlined, size: 18, color: Colors.grey),
+                  ],
                 ),
               );
             },
+
           ),
         ],
       ),

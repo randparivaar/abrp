@@ -1,5 +1,5 @@
 import { db } from '../db/index.js';
-import { users, families, familyMembers, villages, businessProfiles, businessMembers, businessLocations } from '../db/schema.js';
+import { users, families, familyMembers, villages, regions, businessProfiles, businessMembers, businessLocations } from '../db/schema.js';
 import { eq, sql, and, inArray, desc } from 'drizzle-orm';
 import { OnboardFamilyRequest, AddFamilyMemberRequest } from '../types/directory.types.js';
 import { getUserDevices, sendPushNotification } from './notifications.service.js';
@@ -28,6 +28,16 @@ export async function getVillagesList() {
     orderBy: (v: any, { asc }: any) => [asc(v.name)]
   });
 }
+
+/**
+ * Get all administrative regions/zones
+ */
+export async function getRegionsList() {
+  return await db.query.regions.findMany({
+    orderBy: (r: any, { asc }: any) => [asc(r.name)]
+  });
+}
+
 
 /**
  * Onboard a new family
