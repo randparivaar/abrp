@@ -55,6 +55,7 @@ class FamilyTreeScreen extends ConsumerStatefulWidget {
 class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
   int? _focusedRootMemberId;
   final Set<int> _collapsedMemberIds = {};
+  bool _showPremiumUI = false;
   final ScrollController _horizontalScrollController = ScrollController();
   final TransformationController _transformationController = TransformationController();
 
@@ -92,7 +93,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF9F6F0),
+        backgroundColor: _showPremiumUI ? null : const Color(0xFFF9F6F0),
         drawer: const AppDrawer(),
         appBar: AppBar(
           backgroundColor: Colors.transparent,
@@ -147,9 +148,60 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
             error: (_, _) => Text('Error Loading Tree', style: TextStyle(color: theme.colorScheme.primary)),
           ),
           centerTitle: true,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: GestureDetector(
+                onTap: () => setState(() => _showPremiumUI = !_showPremiumUI),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: _showPremiumUI
+                        ? const LinearGradient(
+                            colors: [Color(0xFFD4AF37), Color(0xFFAA771C)],
+                          )
+                        : null,
+                    color: _showPremiumUI ? null : Colors.grey.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _showPremiumUI
+                          ? const Color(0xFFD4AF37)
+                          : Colors.grey.shade400,
+                      width: 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _showPremiumUI
+                            ? Icons.auto_awesome
+                            : Icons.auto_awesome_outlined,
+                        size: 13,
+                        color: _showPremiumUI ? Colors.white : Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _showPremiumUI ? 'V2' : 'V1',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: _showPremiumUI ? Colors.white : Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       body: treeAsync.when(
-        data: (data) => _buildTreeContent(context, data, theme),
+        data: (data) => _showPremiumUI
+            ? _buildPremiumTreeContent(context, data, theme)
+            : _buildTreeContent(context, data, theme),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(
           child: Column(
@@ -1369,6 +1421,1074 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
           member: member,
           familyMembers: allMembers,
           familyId: widget.familyId,
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // PREMIUM V2 UI — Generation badges, status dots, AnimatedSize
+  // ============================================================
+
+  Widget _buildGenerationBadge(int gen) {
+    const labels = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+    final label = gen < labels.length ? 'GENERATION ${labels[gen]}' : 'GEN $gen';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFD4AF37), Color(0xFFAA771C), Color(0xFFD4AF37)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFD4AF37).withValues(alpha: 0.4),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          color: Colors.white,
+          fontSize: 8,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _statItem(IconData icon, String value, String label, Color color) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 16),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: GoogleFonts.outfit(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 8,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPremiumStatsBar(FamilyTreeData data, ThemeData theme) {
+    final totalMembers = data.members.length;
+    final approvedCount = data.members.where((m) => (m.status ?? '') == 'approved').length;
+    final pendingCount = data.members.where((m) => (m.status ?? '') == 'pending').length;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _statItem(Icons.people_rounded, '$totalMembers', 'Members', const Color(0xFF6B1919)),
+          Container(width: 1, height: 28, color: const Color(0xFFD4AF37).withValues(alpha: 0.4)),
+          _statItem(Icons.verified_rounded, '$approvedCount', 'Verified', const Color(0xFF4CAF50)),
+          if (pendingCount > 0) ...[
+            Container(width: 1, height: 28, color: const Color(0xFFD4AF37).withValues(alpha: 0.4)),
+            _statItem(Icons.pending_rounded, '$pendingCount', 'Pending', const Color(0xFFFFC107)),
+          ],
+          Container(width: 1, height: 28, color: const Color(0xFFD4AF37).withValues(alpha: 0.4)),
+          _statItem(Icons.pinch_rounded, 'Pinch', 'to Zoom', theme.colorScheme.primary),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumBreadcrumb(
+    BuildContext context,
+    MemberNode currentRoot,
+    ThemeData theme,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            theme.colorScheme.primary.withValues(alpha: 0.12),
+            theme.colorScheme.primary.withValues(alpha: 0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.account_tree_outlined, color: theme.colorScheme.primary, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Sub-Tree: ${currentRoot.fullName}\'s Lineage',
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: theme.colorScheme.primary,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _focusedRootMemberId = null),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.primary.withValues(alpha: 0.8),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.home_rounded, size: 12, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Main Tree',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumRejectionBanner(FamilyTreeData data) {
+    final rejectedMember = data.members.firstWhere(
+      (m) =>
+          m.status == 'rejected' &&
+          m.validationFeedback != null &&
+          m.validationFeedback!.isNotEmpty,
+    );
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.red.shade700, Colors.red.shade900],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withValues(alpha: 0.35),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Family Update Required / संशोधन आवश्यक',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Moderator Reason: ${rejectedMember.validationFeedback}',
+                  style: GoogleFonts.inter(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Please edit member details to fix the issue and resubmit.',
+                  style: GoogleFonts.inter(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumMemberPhotoColumn(
+    BuildContext context,
+    MemberNode m, {
+    required String roleTag,
+    bool isPrimary = true,
+    int generation = 2,
+  }) {
+    final double avatarRadius = generation == 1 ? 56.0 : 46.0;
+    final double nameWidth = generation == 1 ? 130.0 : 110.0;
+
+    // Build birth year display
+    String? birthInfo;
+    if (m.birthDate != null) {
+      birthInfo = 'b. ${m.birthDate!.year}';
+    }
+
+    // Status indicator dot color
+    final String statusVal = m.status ?? '';
+    final Color dotColor;
+    if (statusVal == 'approved') {
+      dotColor = const Color(0xFF4CAF50);
+    } else if (statusVal == 'rejected') {
+      dotColor = Colors.red.shade600;
+    } else {
+      dotColor = const Color(0xFFFFC107); // pending or unknown
+    }
+
+    return GestureDetector(
+      onTap: () => _showMemberActionSheet(context, m),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              GestureDetector(
+                onTap: () => _showMemberPhotoViewer(context, m),
+                child: Container(
+                  padding: const EdgeInsets.all(3.5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: isPrimary
+                        ? const LinearGradient(
+                            colors: [Color(0xFFF4D068), Color(0xFFAA771C), Color(0xFFD4AF37)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : LinearGradient(
+                            colors: [Colors.pink.shade300, Colors.pink.shade600],
+                          ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isPrimary ? const Color(0xFFD4AF37) : Colors.pink)
+                            .withValues(alpha: 0.4),
+                        blurRadius: 20,
+                        spreadRadius: 3,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: AppAvatar(
+                    name: m.fullName,
+                    imageUrl: m.avatarUrl,
+                    radius: avatarRadius,
+                  ),
+                ),
+              ),
+              // Status indicator dot
+              Positioned(
+                bottom: 2,
+                right: 2,
+                child: Container(
+                  width: 15,
+                  height: 15,
+                  decoration: BoxDecoration(
+                    color: dotColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: dotColor.withValues(alpha: 0.5),
+                        blurRadius: 5,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: nameWidth,
+            child: Text(
+              m.fullName,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.bold,
+                fontSize: generation == 1 ? 16 : 14,
+                color: const Color(0xFF2C1D11),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (birthInfo != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              birthInfo,
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                color: const Color(0xFF8C6615),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              gradient: isPrimary
+                  ? const LinearGradient(
+                      colors: [Color(0xFF8B0000), Color(0xFFB22222)],
+                    )
+                  : null,
+              color: isPrimary ? null : Colors.pink.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: isPrimary
+                  ? null
+                  : Border.all(color: Colors.pink.withValues(alpha: 0.3)),
+              boxShadow: isPrimary
+                  ? [
+                      BoxShadow(
+                        color: Colors.red.withValues(alpha: 0.25),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Text(
+              roleTag.toUpperCase(),
+              style: GoogleFonts.inter(
+                color: isPrimary ? Colors.white : Colors.pink.shade700,
+                fontWeight: FontWeight.w700,
+                fontSize: 8,
+                letterSpacing: 0.8,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumSpousePlaceholderColumn(
+    BuildContext context,
+    MemberNode head,
+    FamilyUnit family,
+  ) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AddMemberDialog(
+            familyId: widget.familyId,
+            defaultRelation: 'spouse',
+            defaultGender: head.gender == 'male' ? 'female' : 'male',
+            spouseId: head.id,
+            defaultAddress: family.address,
+            defaultCity: family.city,
+            defaultState: family.state,
+            defaultPincode: family.pincode,
+            onMemberAdded: () {
+              ref.read(familyTreeProvider(widget.familyId).notifier).fetchTree();
+            },
+          ),
+          fullscreenDialog: true,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(3.5),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: const Color(0xFFD4AF37).withValues(alpha: 0.5),
+                width: 2,
+              ),
+            ),
+            child: CircleAvatar(
+              radius: 56,
+              backgroundColor: const Color(0xFFF5F0E8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.person_add_alt_1_outlined,
+                    color: Color(0xFFAA771C),
+                    size: 28,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Add',
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFFAA771C),
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: 110,
+            child: Text(
+              'Add Spouse',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: const Color(0xFF7A6855),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFD4AF37), Color(0xFFAA771C)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFD4AF37).withValues(alpha: 0.4),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              'TAP TO ADD',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 9,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumCoupleRow({
+    required BuildContext context,
+    required MemberNode head,
+    required MemberNode spouse,
+    required bool hasSpouse,
+    required String city,
+    required ThemeData theme,
+    required FamilyUnit family,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFFDF5), Color(0xFFFDF8E8), Color(0xFFF8F0D8)],
+        ),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(
+          color: const Color(0xFFD4AF37).withValues(alpha: 0.85),
+          width: 2.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFD4AF37).withValues(alpha: 0.25),
+            blurRadius: 30,
+            spreadRadius: 5,
+            offset: const Offset(0, 10),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _buildPremiumMemberPhotoColumn(
+            context,
+            head,
+            roleTag: 'HEAD OF FAMILY • $city',
+            isPrimary: true,
+            generation: 1,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 20,
+                  height: 1.5,
+                  color: const Color(0xFFD4AF37).withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFB3C1), Color(0xFFFF4D6D)],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.pink.withValues(alpha: 0.45),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.favorite_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  width: 20,
+                  height: 1.5,
+                  color: const Color(0xFFD4AF37).withValues(alpha: 0.5),
+                ),
+              ],
+            ),
+          ),
+          hasSpouse
+              ? _buildPremiumMemberPhotoColumn(
+                  context,
+                  spouse,
+                  roleTag: 'SPOUSE',
+                  isPrimary: false,
+                  generation: 1,
+                )
+              : _buildPremiumSpousePlaceholderColumn(context, head, family),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumRecursiveMemberBranch(
+    BuildContext context,
+    MemberNode member,
+    List<MemberNode> allMembers,
+    ThemeData theme, {
+    int generation = 2,
+  }) {
+    final colorScheme = theme.colorScheme;
+
+    final spouseNode = allMembers.firstWhere(
+      (m) =>
+          (member.spouseId != null && m.id == member.spouseId) ||
+          m.spouseId == member.id,
+      orElse: () => MemberNode(
+        id: -1,
+        familyId: -1,
+        fullName: '',
+        gender: '',
+        relationshipToHead: '',
+      ),
+    );
+    final hasSpouse = spouseNode.id != -1;
+
+    final memberAndSpouseIds = {member.id, if (hasSpouse) spouseNode.id};
+    final directChildren = allMembers.where((m) {
+      if (memberAndSpouseIds.contains(m.id)) return false;
+      return (m.fatherId != null && memberAndSpouseIds.contains(m.fatherId)) ||
+          (m.motherId != null && memberAndSpouseIds.contains(m.motherId));
+    }).toList();
+
+    directChildren.sort((a, b) {
+      if (a.birthDate != null && b.birthDate != null) {
+        return a.birthDate!.compareTo(b.birthDate!);
+      }
+      if (a.birthDate != null) return -1;
+      if (b.birthDate != null) return 1;
+      if (a.estimatedAgeOnCreation != null && b.estimatedAgeOnCreation != null) {
+        return b.estimatedAgeOnCreation!.compareTo(a.estimatedAgeOnCreation!);
+      }
+      if (a.estimatedAgeOnCreation != null) return -1;
+      if (b.estimatedAgeOnCreation != null) return 1;
+      return a.id.compareTo(b.id);
+    });
+
+    final double branchWidth = hasSpouse ? 290.0 : 160.0;
+
+    // Premium card with gradient background + generation badge
+    final premiumCard = Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: hasSpouse ? 10 : 14,
+        vertical: 12,
+      ),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFFDF5), Color(0xFFFAF5E6)],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: const Color(0xFFD4AF37).withValues(alpha: 0.5),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFC59B27).withValues(alpha: 0.15),
+            blurRadius: 16,
+            spreadRadius: 2,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildGenerationBadge(generation),
+          const SizedBox(height: 8),
+          if (hasSpouse)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _buildPremiumMemberPhotoColumn(
+                  context,
+                  member,
+                  roleTag: member.relationshipToHead,
+                  isPrimary: true,
+                  generation: generation,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 1.5,
+                        color: const Color(0xFFD4AF37).withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(height: 3),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFFB3C1), Color(0xFFFF4D6D)],
+                          ),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.pink.withValues(alpha: 0.35),
+                              blurRadius: 6,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.favorite_rounded,
+                          size: 10,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Container(
+                        width: 8,
+                        height: 1.5,
+                        color: const Color(0xFFD4AF37).withValues(alpha: 0.6),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildPremiumMemberPhotoColumn(
+                  context,
+                  spouseNode,
+                  roleTag: 'SPOUSE',
+                  isPrimary: false,
+                  generation: generation,
+                ),
+              ],
+            )
+          else
+            _buildPremiumMemberPhotoColumn(
+              context,
+              member,
+              roleTag: member.relationshipToHead,
+              isPrimary: true,
+              generation: generation,
+            ),
+        ],
+      ),
+    );
+
+    final isCollapsed = _collapsedMemberIds.contains(member.id);
+    Widget? childrenSection;
+    double subTotalWidth = 0.0;
+
+    if (directChildren.isNotEmpty) {
+      final List<double> subBranchWidths = directChildren.map((sc) {
+        final hasSubSpouse = allMembers.any(
+          (m) =>
+              (sc.spouseId != null && m.id == sc.spouseId) ||
+              m.spouseId == sc.id,
+        );
+        return hasSubSpouse ? 290.0 : 160.0;
+      }).toList();
+      subTotalWidth = subBranchWidths.fold(0.0, (a, b) => a + b);
+
+      childrenSection = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Gold gradient collapse pill with animated rotating chevron
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                if (isCollapsed) {
+                  _collapsedMemberIds.remove(member.id);
+                } else {
+                  _collapsedMemberIds.add(member.id);
+                }
+              });
+            },
+            child: Container(
+              margin: const EdgeInsets.only(top: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFD4AF37), Color(0xFFAA771C)],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFD4AF37).withValues(alpha: 0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.people_outline_rounded,
+                    size: 11,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    '${directChildren.length} '
+                    '${directChildren.length == 1 ? 'Child' : 'Children'}',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  AnimatedRotation(
+                    turns: isCollapsed ? 0 : 0.5,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Smooth animated expand/collapse
+          AnimatedSize(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeInOut,
+            child: isCollapsed
+                ? const SizedBox.shrink()
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 2,
+                        height: 16,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0xFFD4AF37), Color(0xFFAA771C)],
+                          ),
+                        ),
+                      ),
+                      CustomPaint(
+                        size: Size(subTotalWidth, 44.0),
+                        painter: ConnectorPainter(
+                          childCount: directChildren.length,
+                          branchWidths: subBranchWidths,
+                          color: colorScheme.primaryContainer,
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: directChildren.map((subChild) {
+                          return _buildPremiumRecursiveMemberBranch(
+                            context,
+                            subChild,
+                            allMembers,
+                            theme,
+                            generation: generation + 1,
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      );
+    }
+
+    final double effectiveWidth =
+        (!isCollapsed && subTotalWidth > branchWidth) ? subTotalWidth : branchWidth;
+
+    return SizedBox(
+      width: effectiveWidth,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          premiumCard,
+          if (childrenSection != null) childrenSection,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumTreeContent(
+    BuildContext context,
+    FamilyTreeData data,
+    ThemeData theme,
+  ) {
+    final head = data.members.firstWhere(
+      (m) => m.relationshipToHead == 'self',
+      orElse: () => data.members.first,
+    );
+
+    final currentRoot = _focusedRootMemberId != null
+        ? data.members.firstWhere(
+            (m) => m.id == _focusedRootMemberId,
+            orElse: () => head,
+          )
+        : head;
+
+    final isFocused =
+        _focusedRootMemberId != null && _focusedRootMemberId != head.id;
+
+    final spouse = data.members.firstWhere(
+      (m) =>
+          m.spouseId == currentRoot.id ||
+          (currentRoot.spouseId != null && m.id == currentRoot.spouseId),
+      orElse: () => MemberNode(
+        id: -1,
+        familyId: -1,
+        fullName: '',
+        gender: '',
+        relationshipToHead: '',
+      ),
+    );
+    final hasSpouse = spouse.id != -1;
+
+    List<MemberNode> sortByAge(Iterable<MemberNode> list) {
+      final sorted = list.toList();
+      sorted.sort((a, b) {
+        if (a.birthDate != null && b.birthDate != null) {
+          return a.birthDate!.compareTo(b.birthDate!);
+        }
+        if (a.birthDate != null) return -1;
+        if (b.birthDate != null) return 1;
+        if (a.estimatedAgeOnCreation != null &&
+            b.estimatedAgeOnCreation != null) {
+          return b.estimatedAgeOnCreation!
+              .compareTo(a.estimatedAgeOnCreation!);
+        }
+        if (a.estimatedAgeOnCreation != null) return -1;
+        if (b.estimatedAgeOnCreation != null) return 1;
+        return a.id.compareTo(b.id);
+      });
+      return sorted;
+    }
+
+    final rootAndSpouseIds = {currentRoot.id, if (hasSpouse) spouse.id};
+    final children = sortByAge(data.members.where((m) {
+      final linkedToRoot =
+          (m.fatherId != null && rootAndSpouseIds.contains(m.fatherId)) ||
+              (m.motherId != null && rootAndSpouseIds.contains(m.motherId));
+      return linkedToRoot && m.id != currentRoot.id && m.id != spouse.id;
+    }));
+
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFFFDF9F0),
+            Color(0xFFF5EDD8),
+            Color(0xFFF0E5CC),
+          ],
+        ),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (isFocused) _buildPremiumBreadcrumb(context, currentRoot, theme),
+
+            if (data.members.any((m) =>
+                m.status == 'rejected' &&
+                m.validationFeedback != null &&
+                m.validationFeedback!.isNotEmpty))
+              _buildPremiumRejectionBanner(data),
+
+            const SizedBox(height: 12),
+            _buildPremiumStatsBar(data, theme),
+            const SizedBox(height: 8),
+
+            Builder(builder: (context) {
+              _centerHeadCard();
+              return InteractiveViewer(
+                transformationController: _transformationController,
+                minScale: 0.3,
+                maxScale: 2.5,
+                boundaryMargin: const EdgeInsets.all(80),
+                child: SingleChildScrollView(
+                  controller: _horizontalScrollController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 8.0,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: MediaQuery.of(context).size.width - 48.0,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        _buildGenerationBadge(1),
+                        const SizedBox(height: 10),
+                        _buildPremiumCoupleRow(
+                          context: context,
+                          head: currentRoot,
+                          spouse: spouse,
+                          hasSpouse: hasSpouse,
+                          city: data.family.city?.toUpperCase() ?? 'DELHI',
+                          theme: theme,
+                          family: data.family,
+                        ),
+                        if (children.isNotEmpty) ...[
+                          Builder(builder: (context) {
+                            final List<double> branchWidths =
+                                children.map((child) {
+                              final hasChildSpouse = data.members.any(
+                                (m) =>
+                                    (child.spouseId != null &&
+                                        m.id == child.spouseId) ||
+                                    m.spouseId == child.id,
+                              );
+                              return hasChildSpouse ? 290.0 : 160.0;
+                            }).toList();
+                            final totalWidth =
+                                branchWidths.fold(0.0, (a, b) => a + b);
+
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CustomPaint(
+                                  size: Size(totalWidth, 48.0),
+                                  painter: ConnectorPainter(
+                                    childCount: children.length,
+                                    branchWidths: branchWidths,
+                                    color: theme.colorScheme.primaryContainer,
+                                  ),
+                                ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: children.map((child) {
+                                    return _buildPremiumRecursiveMemberBranch(
+                                      context,
+                                      child,
+                                      data.members,
+                                      theme,
+                                      generation: 2,
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            );
+                          }),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+
+            const SizedBox(height: 100),
+          ],
         ),
       ),
     );
