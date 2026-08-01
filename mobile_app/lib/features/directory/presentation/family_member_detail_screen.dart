@@ -100,7 +100,7 @@ class FamilyMemberDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── Hero Section ──────────────────────────────────────────
-            _HeroSection(member: member, onCall: _launchPhone, onSms: _launchSms),
+            _HeroSection(member: member, familyMembers: familyMembers, onCall: _launchPhone, onSms: _launchSms),
             const SizedBox(height: 16),
 
             if (member.status == 'rejected') ...[
@@ -254,14 +254,62 @@ class FamilyMemberDetailScreen extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 class _HeroSection extends StatelessWidget {
   final MemberNode member;
+  final List<MemberNode> familyMembers;
   final Future<void> Function(String) onCall;
   final Future<void> Function(String) onSms;
 
   const _HeroSection({
     required this.member,
+    required this.familyMembers,
     required this.onCall,
     required this.onSms,
   });
+
+  MemberNode? _getHeadNode() {
+    if (member.relationshipToHead.toLowerCase() == 'self') return null;
+
+    final head = familyMembers.firstWhere(
+      (m) => m.relationshipToHead.toLowerCase() == 'self',
+      orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
+    );
+    if (head.id == -1 || head.fullName.isEmpty) return null;
+    return head;
+  }
+
+  String? _getHeadRelationLabel() {
+    final head = _getHeadNode();
+    if (head == null) return null;
+
+    final rel = member.relationshipToHead.toLowerCase();
+    String relationTitle;
+    switch (rel) {
+      case 'son':
+        relationTitle = 'Son of ${head.fullName}';
+        break;
+      case 'daughter':
+        relationTitle = 'Daughter of ${head.fullName}';
+        break;
+      case 'grandson':
+        relationTitle = 'Grandson of ${head.fullName}';
+        break;
+      case 'granddaughter':
+        relationTitle = 'Granddaughter of ${head.fullName}';
+        break;
+      case 'spouse':
+      case 'wife':
+      case 'husband':
+        relationTitle = 'Wife / Spouse of ${head.fullName}';
+        break;
+      case 'daughter-in-law':
+      case 'daughter in law':
+        relationTitle = 'Daughter-in-law of ${head.fullName}';
+        break;
+      default:
+        relationTitle = '${member.relationshipToHead} of ${head.fullName}';
+        break;
+    }
+    return relationTitle;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -291,12 +339,88 @@ class _HeroSection extends StatelessWidget {
           Stack(
             alignment: Alignment.center,
             children: [
-              AppAvatar(
-                name: member.fullName,
-                imageUrl: member.avatarUrl,
-                radius: 64,
-                fontSize: 48,
-                border: Border.all(color: cs.primaryContainer, width: 4),
+              GestureDetector(
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => Dialog(
+                      backgroundColor: Colors.transparent,
+                      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              constraints: const BoxConstraints(maxWidth: 420),
+                              decoration: BoxDecoration(
+                                color: cs.surface,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.35),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: member.avatarUrl != null && member.avatarUrl!.isNotEmpty
+                                            ? Image.network(
+                                                member.avatarUrl!,
+                                                height: 250,
+                                                width: double.infinity,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, _, _) => Container(
+                                                  height: 200,
+                                                  color: cs.primaryContainer.withValues(alpha: 0.3),
+                                                  child: Icon(Icons.person, size: 80, color: cs.primary),
+                                                ),
+                                              )
+                                            : Container(
+                                                height: 200,
+                                                color: cs.primaryContainer.withValues(alpha: 0.3),
+                                                child: Icon(Icons.person, size: 80, color: cs.primary),
+                                              ),
+                                      ),
+                                      Positioned(
+                                        top: 10,
+                                        right: 10,
+                                        child: IconButton(
+                                          icon: Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.black54,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(Icons.close, color: Colors.white, size: 18),
+                                          ),
+                                          onPressed: () => Navigator.pop(ctx),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                child: AppAvatar(
+                  name: member.fullName,
+                  imageUrl: member.avatarUrl,
+                  radius: 64,
+                  fontSize: 48,
+                  border: Border.all(color: cs.primaryContainer, width: 4),
+                ),
               ),
               // Role Badge
               Positioned(
@@ -343,17 +467,76 @@ class _HeroSection extends StatelessWidget {
           ),
           const SizedBox(height: 6),
 
-          // Sub-label
-          Text(
-            'Maheshwari Community • Rander Parivar',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: cs.onSurfaceVariant.withValues(alpha: 0.8),
-              fontStyle: FontStyle.italic,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          // Sub-label (Family Head Relation Tag if applicable)
+          Builder(builder: (context) {
+            final headRelation = _getHeadRelationLabel();
+            return Column(
+              children: [
+                if (headRelation != null) ...[
+                  GestureDetector(
+                    onTap: () {
+                      final headNode = _getHeadNode();
+                      if (headNode != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FamilyMemberDetailScreen(
+                              member: headNode,
+                              familyMembers: familyMembers,
+                              familyId: headNode.familyId,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 4, bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: cs.primary.withValues(alpha: 0.4), width: 1.0),
+                        boxShadow: [
+                          BoxShadow(
+                            color: cs.primary.withValues(alpha: 0.08),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.family_restroom_rounded, size: 14, color: cs.primary),
+                          const SizedBox(width: 6),
+                          Text(
+                            headRelation,
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: cs.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.arrow_forward_ios_rounded, size: 10, color: cs.primary),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                Text(
+                  'Maheshwari Community • Rander Parivar',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.8),
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            );
+          }),
           const SizedBox(height: 24),
 
           // Action Buttons: Call / Chat / Family Tree

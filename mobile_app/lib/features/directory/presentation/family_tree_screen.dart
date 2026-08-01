@@ -56,10 +56,12 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
   int? _focusedRootMemberId;
   final Set<int> _collapsedMemberIds = {};
   final ScrollController _horizontalScrollController = ScrollController();
+  final TransformationController _transformationController = TransformationController();
 
   @override
   void dispose() {
     _horizontalScrollController.dispose();
+    _transformationController.dispose();
     super.dispose();
   }
 
@@ -90,7 +92,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: theme.colorScheme.surface,
+        backgroundColor: const Color(0xFFF9F6F0),
         drawer: const AppDrawer(),
         appBar: AppBar(
           backgroundColor: Colors.transparent,
@@ -109,28 +111,43 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
               }
             },
           ),
-        title: treeAsync.when(
-          data: (data) {
-            final head = data.members.firstWhere(
-              (m) => m.relationshipToHead == 'self',
-              orElse: () => data.members.first,
-            );
+          title: treeAsync.when(
+            data: (data) {
+              final head = data.members.firstWhere(
+                (m) => m.relationshipToHead == 'self',
+                orElse: () => data.members.first,
+              );
 
-            return Text(
-              head.fullName,
-              style: GoogleFonts.inter(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-              textAlign: TextAlign.center,
-            );
-          },
-          loading: () => Text('Loading...', style: TextStyle(color: theme.colorScheme.primary)),
-          error: (_, _) => Text('Error', style: TextStyle(color: theme.colorScheme.primary)),
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    head.fullName,
+                    style: GoogleFonts.outfit(
+                      color: const Color(0xFF4A3419),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      letterSpacing: 0.3,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  Text(
+                    'FAMILY HERITAGE TREE',
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFFC59B27),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 9,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              );
+            },
+            loading: () => Text('Loading Tree...', style: TextStyle(color: theme.colorScheme.primary)),
+            error: (_, _) => Text('Error Loading Tree', style: TextStyle(color: theme.colorScheme.primary)),
+          ),
+          centerTitle: true,
         ),
-        centerTitle: true,
-      ),
       body: treeAsync.when(
         data: (data) => _buildTreeContent(context, data, theme),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -324,22 +341,27 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
 
           const SizedBox(height: 8),
 
-          // Scrollable Tree Area (Head + Spouse + Children all aligned together)
+          // Interactive Viewer with Pinch-to-Zoom Gesture & Pan Support
           Builder(builder: (context) {
             _centerHeadCard();
-            return SingleChildScrollView(
-              controller: _horizontalScrollController,
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minWidth: MediaQuery.of(context).size.width - 48.0,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
+            return InteractiveViewer(
+              transformationController: _transformationController,
+              minScale: 0.3,
+              maxScale: 2.5,
+              boundaryMargin: const EdgeInsets.all(80),
+              child: SingleChildScrollView(
+                controller: _horizontalScrollController,
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: MediaQuery.of(context).size.width - 48.0,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
                   // Root Couple Row
                   _buildCoupleRow(
                     context: context,
@@ -385,20 +407,13 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                         ],
                       );
                     }),
-                  ] else ...[
-                    const SizedBox(height: 24),
-                    const Center(
-                      child: Text(
-                        'No children added yet.',
-                        style: TextStyle(color: Colors.grey, fontSize: 13),
-                      ),
-                    ),
                   ],
                 ],
               ),
             ),
-          );
-        }),
+          ),
+        );
+      }),
           
           const SizedBox(height: 100),
         ],
@@ -426,50 +441,77 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
           children: [
             GestureDetector(
               onTap: () => _showMemberPhotoViewer(context, member),
-              child: AppAvatar(
-                name: member.fullName,
-                imageUrl: member.avatarUrl,
-                radius: 60, // 120px Huge Avatar
-                border: Border.all(
-                  color: member.gender == 'female'
-                      ? Colors.pink.shade400
-                      : (isHead ? colorScheme.primary : colorScheme.secondary.withValues(alpha: 0.6)),
-                  width: 3.5,
+              child: Container(
+                padding: const EdgeInsets.all(3.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: isHead
+                      ? const LinearGradient(
+                          colors: [Color(0xFFF4D068), Color(0xFFAA771C), Color(0xFFD4AF37)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : LinearGradient(
+                          colors: [Colors.pink.shade300, Colors.pink.shade600],
+                        ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isHead ? const Color(0xFFD4AF37) : Colors.pink).withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: AppAvatar(
+                  name: member.fullName,
+                  imageUrl: member.avatarUrl,
+                  radius: 58,
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             SizedBox(
-              width: 150,
+              width: 140,
               child: Text(
                 member.fullName,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: colorScheme.onSurface,
+                  fontSize: 16,
+                  color: const Color(0xFF2C1D11),
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 4),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
-                color: isHead
-                    ? colorScheme.primaryContainer.withValues(alpha: 0.5)
-                    : colorScheme.secondaryContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(6),
+                gradient: isHead
+                    ? const LinearGradient(
+                        colors: [Color(0xFF8B0000), Color(0xFFB22222)],
+                      )
+                    : LinearGradient(
+                        colors: [colorScheme.secondary, colorScheme.secondary.withValues(alpha: 0.8)],
+                      ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: Text(
-                isHead ? 'HEAD • $city' : 'SPOUSE',
+                isHead ? 'HEAD OF FAMILY • $city' : 'SPOUSE',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
-                  color: isHead ? colorScheme.primary : colorScheme.secondary,
-                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                   fontSize: 9,
-                  letterSpacing: 0.5,
+                  letterSpacing: 0.8,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -505,42 +547,49 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(
-              radius: 34,
-              backgroundColor: colorScheme.surfaceContainerHigh,
-              child: Icon(
-                Icons.person_add_alt_1_outlined,
-                color: colorScheme.primary,
-                size: 28,
+            Container(
+              padding: const EdgeInsets.all(3.5),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.5), width: 2),
               ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: 110,
-              child: Text(
-                'Add Spouse',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                  color: colorScheme.onSurfaceVariant,
+              child: CircleAvatar(
+                radius: 58,
+                backgroundColor: const Color(0xFFF0ECE1),
+                child: const Icon(
+                  Icons.person_add_alt_1_outlined,
+                  color: Color(0xFFAA771C),
+                  size: 32,
                 ),
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: 120,
+              child: Text(
+                'Add Spouse',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: const Color(0xFF7A6855),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(6),
+                color: const Color(0xFFEBE4D5),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 'TAP TO ADD',
                 style: GoogleFonts.inter(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFFAA771C),
+                  fontWeight: FontWeight.bold,
                   fontSize: 9,
-                  letterSpacing: 0.5,
+                  letterSpacing: 0.8,
                 ),
               ),
             ),
@@ -550,17 +599,23 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: colorScheme.primary.withValues(alpha: 0.35),
-          width: 1.5,
+          color: const Color(0xFFD4AF37).withValues(alpha: 0.6),
+          width: 2.0,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
+            color: const Color(0xFFD4AF37).withValues(alpha: 0.15),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -670,15 +725,31 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
           children: [
             GestureDetector(
               onTap: () => _showMemberPhotoViewer(context, m),
-              child: AppAvatar(
-                name: m.fullName,
-                imageUrl: m.avatarUrl,
-                radius: 54, // 108px Huge Avatar for children/spouses
-                border: Border.all(
-                  color: m.gender == 'female'
-                      ? Colors.pink.shade400
-                      : (isPrimary ? colorScheme.primary : colorScheme.secondary.withValues(alpha: 0.6)),
-                  width: 3.0,
+              child: Container(
+                padding: const EdgeInsets.all(2.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: isPrimary
+                      ? const LinearGradient(
+                          colors: [Color(0xFFF4D068), Color(0xFFD4AF37)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : LinearGradient(
+                          colors: [Colors.pink.shade300, Colors.pink.shade500],
+                        ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isPrimary ? const Color(0xFFD4AF37) : Colors.pink).withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: AppAvatar(
+                  name: m.fullName,
+                  imageUrl: m.avatarUrl,
+                  radius: 52,
                 ),
               ),
             ),
@@ -688,27 +759,38 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
               child: Text(
                 m.fullName,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: colorScheme.onSurface,
+                  fontSize: 14,
+                  color: const Color(0xFF2C1D11),
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              roleTag.toUpperCase(),
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                color: isPrimary ? colorScheme.primary : colorScheme.secondary,
-                fontWeight: FontWeight.w700,
-                fontSize: 9,
-                letterSpacing: 0.4,
+            const SizedBox(height: 3),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: isPrimary ? const Color(0xFFFAF2E1) : const Color(0xFFFDE8E9),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isPrimary ? const Color(0xFFD4AF37).withValues(alpha: 0.5) : Colors.pink.withValues(alpha: 0.3),
+                  width: 0.8,
+                ),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              child: Text(
+                roleTag.toUpperCase(),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  color: isPrimary ? const Color(0xFF8C6615) : Colors.pink.shade700,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 9,
+                  letterSpacing: 0.6,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -719,19 +801,19 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
     Widget coupleHeader;
     if (hasSpouse) {
       coupleHeader = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-            width: 1.0,
+            color: const Color(0xFFE5D7BF),
+            width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+              color: const Color(0xFFC59B27).withValues(alpha: 0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -742,15 +824,15 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
             memberPhotoColumn(member, roleTag: member.relationshipToHead, isPrimary: true),
             // Heart connector icon
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              padding: const EdgeInsets.symmetric(horizontal: 6.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(width: 8, height: 1.5, color: colorScheme.secondary.withValues(alpha: 0.4)),
+                  Container(width: 8, height: 1.5, color: const Color(0xFFD4AF37).withValues(alpha: 0.6)),
                   const SizedBox(height: 3),
-                  Icon(Icons.favorite_rounded, size: 12, color: colorScheme.secondary),
+                  Icon(Icons.favorite_rounded, size: 12, color: Colors.pink.shade400),
                   const SizedBox(height: 3),
-                  Container(width: 8, height: 1.5, color: colorScheme.secondary.withValues(alpha: 0.4)),
+                  Container(width: 8, height: 1.5, color: const Color(0xFFD4AF37).withValues(alpha: 0.6)),
                 ],
               ),
             ),
@@ -760,19 +842,19 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
       );
     } else {
       coupleHeader = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-            width: 1.0,
+            color: const Color(0xFFE5D7BF),
+            width: 1.2,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+              color: const Color(0xFFC59B27).withValues(alpha: 0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -884,91 +966,95 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
       context: context,
       builder: (ctx) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                        child: avatarUrl != null && avatarUrl.isNotEmpty
-                            ? Image.network(
-                                avatarUrl,
-                                height: 320,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => _buildPlaceholderPhoto(theme, member.fullName),
-                              )
-                            : _buildPlaceholderPhoto(theme, member.fullName),
-                      ),
-                      Positioned(
-                        top: 10,
-                        right: 10,
-                        child: IconButton(
-                          icon: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: Colors.black54,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.close, color: Colors.white, size: 18),
-                          ),
-                          onPressed: () => Navigator.pop(ctx),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                constraints: const BoxConstraints(maxWidth: 420),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Stack(
                       children: [
-                        Text(
-                          member.fullName,
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          child: avatarUrl != null && avatarUrl.isNotEmpty
+                              ? Image.network(
+                                  avatarUrl,
+                                  height: 250,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => _buildPlaceholderPhoto(theme, member.fullName),
+                                )
+                              : _buildPlaceholderPhoto(theme, member.fullName),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${member.relationshipToHead.toUpperCase()} • ${member.gender.toUpperCase()}',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w600,
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: IconButton(
+                            icon: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close, color: Colors.white, size: 18),
+                            ),
+                            onPressed: () => Navigator.pop(ctx),
                           ),
                         ),
-                        if (member.gotra != null && member.gotra!.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            'Gotra: ${member.gotra}',
-                            style: GoogleFonts.inter(fontSize: 12, color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
-                          ),
-                        ],
                       ],
                     ),
-                  ),
-                ],
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            member.fullName,
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${member.relationshipToHead.toUpperCase()} • ${member.gender.toUpperCase()}',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (member.gotra != null && member.gotra!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Gotra: ${member.gotra}',
+                              style: GoogleFonts.inter(fontSize: 12, color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1304,15 +1390,9 @@ class ConnectorPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (childCount <= 0 || branchWidths.isEmpty) return;
 
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    final double radius = 4.0;
+    final double radius = 6.0;
     final double midX = size.width / 2;
 
-    // Top drop and total painter height
     const double topDrop = 32.0;
     const double totalHeight = 48.0;
 
@@ -1320,18 +1400,14 @@ class ConnectorPainter extends CustomPainter {
     final List<double> centerXs = [];
     double offset = 0.0;
     for (int i = 0; i < childCount; i++) {
-      final w = i < branchWidths.length ? branchWidths[i] : 120.0;
+      final w = i < branchWidths.length ? branchWidths[i] : 160.0;
       centerXs.add(offset + w / 2);
       offset += w;
     }
 
-    // Vertical line from top-center down to y = topDrop
-    final path = Path()
-      ..moveTo(midX, 0)
-      ..lineTo(midX, topDrop);
+    final path = Path()..moveTo(midX, 0)..lineTo(midX, topDrop);
 
     if (childCount == 1) {
-      // Only 1 child, draw straight down
       path.lineTo(midX, totalHeight);
     } else {
       final double startX = centerXs.first;
@@ -1369,7 +1445,35 @@ class ConnectorPainter extends CustomPainter {
       path.lineTo(endX - radius, topDrop);
     }
 
-    canvas.drawPath(path, paint);
+    // Gold Filament Gradient Paint
+    final goldPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFD4AF37), Color(0xFFAA771C), Color(0xFFF4D068)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+
+    // Draw main connectors
+    canvas.drawPath(path, goldPaint);
+
+    // Draw glowing gold junction dots
+    final dotPaint = Paint()
+      ..color = const Color(0xFFD4AF37)
+      ..style = PaintingStyle.fill;
+    final dotGlow = Paint()
+      ..color = const Color(0xFFF4D068).withValues(alpha: 0.4)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+
+    // Root drop junction dot
+    canvas.drawCircle(Offset(midX, topDrop), 4.5, dotGlow);
+    canvas.drawCircle(Offset(midX, topDrop), 3.0, dotPaint);
+
+    // Branch drop junction dots
+    for (final childX in centerXs) {
+      canvas.drawCircle(Offset(childX, totalHeight), 4.0, dotGlow);
+      canvas.drawCircle(Offset(childX, totalHeight), 2.5, dotPaint);
+    }
   }
 
   @override
