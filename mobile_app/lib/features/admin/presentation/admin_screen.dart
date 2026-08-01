@@ -7,6 +7,7 @@ import '../../../core/utils/name_formatter.dart';
 import '../../directory/presentation/family_member_detail_screen.dart';
 import '../../directory/presentation/business_profile_detail_screen.dart';
 import '../../directory/presentation/family_tree_screen.dart';
+import 'family_approval_detail_screen.dart';
 
 class AdminScreen extends ConsumerStatefulWidget {
   const AdminScreen({super.key});
@@ -28,6 +29,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   bool _isLoadingPending = true;
   String? _pendingError;
 
+  List<dynamic> _pendingFamiliesList = [];
+  bool _isLoadingPendingFamilies = true;
+  String? _pendingFamiliesError;
+
   List<dynamic> _pendingBusinessesList = [];
   bool _isLoadingPendingBusinesses = true;
   String? _pendingBusinessesError;
@@ -40,6 +45,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     super.initState();
     _fetchUsers();
     _fetchRegions();
+    _fetchPendingFamilies();
     _fetchPendingMembers();
     _fetchPendingBusinesses();
   }
@@ -75,7 +81,6 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final theme = Theme.of(context);
             return AlertDialog(
               title: Text('Change Role: ${userItem['fullName']}'),
               content: SingleChildScrollView(
@@ -111,7 +116,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                         const Text('No regions available in system.', style: TextStyle(color: Colors.grey, fontSize: 12))
                       else
                         Container(
-                          maxHeight: 180,
+                          constraints: const BoxConstraints(maxHeight: 180),
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.grey.shade300),
                             borderRadius: BorderRadius.circular(8),
@@ -176,7 +181,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       final response = await dio.patch('/users/change-role', data: {
         'userId': userId,
         'newRole': newRole,
-        if (regionIds != null) 'regionIds': regionIds,
+        'regionIds': ?regionIds,
       });
 
       if (response.statusCode == 200 && mounted) {
@@ -210,6 +215,76 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         _isLoadingUsers = false;
       });
     }
+  }
+
+  Future<void> _fetchPendingFamilies() async {
+    setState(() {
+      _isLoadingPendingFamilies = true;
+      _pendingFamiliesError = null;
+    });
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.get('/directory/moderation/pending-families');
+      setState(() {
+        _pendingFamiliesList = response.data['pendingFamilies'] as List<dynamic>;
+        _isLoadingPendingFamilies = false;
+      });
+    } catch (e) {
+      setState(() {
+        _pendingFamiliesError = 'Failed to load pending families: $e';
+        _isLoadingPendingFamilies = false;
+      });
+    }
+  }
+
+  Future<bool> _approveFamily(int familyId, String familyCode) async {
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.post('/directory/moderation/family/$familyId/approve');
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Family $familyCode approved successfully!')),
+          );
+        }
+        _fetchPendingFamilies();
+        _fetchPendingMembers();
+        return true;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Family approval failed: $e')),
+        );
+      }
+    }
+    return false;
+  }
+
+  Future<bool> _rejectFamily(int familyId, String familyCode, String reason) async {
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.post('/directory/moderation/family/$familyId/reject', data: {
+        'reason': reason.isNotEmpty ? reason : null,
+      });
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Family $familyCode rejected.')),
+          );
+        }
+        _fetchPendingFamilies();
+        _fetchPendingMembers();
+        return true;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Family rejection failed: $e')),
+        );
+      }
+    }
+    return false;
   }
 
   Future<void> _fetchPendingMembers() async {
@@ -575,13 +650,13 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                     if (role == 'moderator')
                       Padding(
                         padding: const EdgeInsets.only(top: 2.0),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: regNames.isNotEmpty ? Colors.indigo : Colors.orange.shade800,
-                          fontWeight: FontWeight.w500,
-                        ),
                         child: Text(
                           regNames.isNotEmpty ? 'Zones: $regNames' : '⚠️ No Area Assigned',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: regNames.isNotEmpty ? Colors.indigo : Colors.orange.shade800,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                   ],
@@ -621,6 +696,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildApprovalsTab() {
     final theme = Theme.of(context);
     if (_isLoadingPending) {
@@ -1083,6 +1159,220 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     );
   }
 
+  Widget _buildFamilyApprovalsTab() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    if (_isLoadingPendingFamilies) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_pendingFamiliesError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_pendingFamiliesError!, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _fetchPendingFamilies,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_pendingFamiliesList.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.check_circle_outline, size: 64, color: Colors.green),
+              const SizedBox(height: 16),
+              Text(
+                'All caught up!',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.secondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'There are no pending family approvals.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _pendingFamiliesList.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final family = _pendingFamiliesList[index] as Map<String, dynamic>;
+        final familyId = family['familyId'] as int;
+        final familyCode = family['familyCode'] as String;
+        final headName = (family['headName'] as String? ?? '').toTitleCase();
+        final villageName = family['villageName'] as String? ?? '';
+        final regionName = family['regionName'] as String? ?? '';
+        final totalMembers = family['totalMembers'] as int? ?? 0;
+        final pendingCount = family['pendingCount'] as int? ?? 0;
+        final rejectedCount = family['rejectedCount'] as int? ?? 0;
+
+        return Card(
+          elevation: 2,
+          color: colorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FamilyApprovalDetailScreen(
+                    familyData: family,
+                    onApprove: () => _approveFamily(familyId, familyCode),
+                    onReject: (reason) => _rejectFamily(familyId, familyCode, reason),
+                  ),
+                ),
+              ).then((_) {
+                _fetchPendingFamilies();
+                _fetchPendingMembers();
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          familyCode,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '$totalMembers Members',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(Icons.chevron_right, size: 20, color: colorScheme.primary),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    headName,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.secondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '$villageName ($regionName)',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      if (pendingCount > 0) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '$pendingCount Pending',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orange),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      if (rejectedCount > 0) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '$rejectedCount Rejected',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      const Spacer(),
+                      Row(
+                        children: [
+                          Icon(Icons.touch_app_outlined, size: 14, color: colorScheme.primary),
+                          const SizedBox(width: 4),
+                          Text(
+                            'See full family details',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = ref.watch(languageStateProvider);
@@ -1094,12 +1384,13 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         appBar: AppBar(
           title: Text(AppTranslations.get('admin_dashboard', lang)),
           bottom: TabBar(
+            isScrollable: true,
             labelColor: theme.colorScheme.primary,
             indicatorColor: theme.colorScheme.primary,
             unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
-            tabs: [
+            tabs: const [
               Tab(icon: Icon(Icons.notifications_outlined), text: 'Notifications'),
-              Tab(icon: Icon(Icons.fact_check_outlined), text: 'Member Approvals'),
+              Tab(icon: Icon(Icons.groups_outlined), text: 'Family Approvals'),
               Tab(icon: Icon(Icons.business_center_outlined), text: 'Business Approvals'),
             ],
           ),
@@ -1107,7 +1398,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         body: TabBarView(
           children: [
             _buildNotificationsTab(lang),
-            _buildApprovalsTab(),
+            _buildFamilyApprovalsTab(),
             _buildBusinessApprovalsTab(),
           ],
         ),

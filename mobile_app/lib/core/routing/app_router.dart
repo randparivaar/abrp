@@ -19,7 +19,7 @@ part 'app_router.g.dart';
 /// GoRouter to re-evaluate its redirect logic without rebuilding the router.
 class _AuthRouterNotifier extends ChangeNotifier {
   _AuthRouterNotifier(this._ref) {
-    _ref.listen<AuthState>(authProvider, (_, __) {
+    _ref.listen<AuthState>(authProvider, (_, _) {
       notifyListeners();
     });
   }

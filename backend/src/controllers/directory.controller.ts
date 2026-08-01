@@ -12,6 +12,9 @@ import {
   getPendingFamilyMembers,
   approveFamilyMember,
   rejectFamilyMember,
+  getPendingFamilies,
+  approveEntireFamily,
+  rejectEntireFamily,
   getPendingBusinessProfiles,
   approveBusinessProfile,
   rejectBusinessProfile,
@@ -250,6 +253,56 @@ export async function handleRejectMember(c: Context) {
   } catch (error: any) {
     console.error('Error in handleRejectMember:', error);
     if (error.message === 'Member not found') return c.json({ error: error.message }, 404);
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
+}
+
+/**
+ * Handle listing all pending families for moderation
+ */
+export async function handleGetPendingFamilies(c: Context) {
+  try {
+    const families = await getPendingFamilies();
+    return c.json({ pendingFamilies: families });
+  } catch (error: any) {
+    console.error('Error in handleGetPendingFamilies:', error);
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
+}
+
+/**
+ * Handle approving an entire family
+ */
+export async function handleApproveFamily(c: Context) {
+  try {
+    const sessionUser = c.get('user') as UserSession;
+    const familyId = parseInt(c.req.param('familyId') || '', 10);
+    if (isNaN(familyId)) return c.json({ error: 'Invalid familyId' }, 400);
+
+    const result = await approveEntireFamily(familyId, sessionUser.id);
+    return c.json(result);
+  } catch (error: any) {
+    console.error('Error in handleApproveFamily:', error);
+    if (error.message.includes('not found')) return c.json({ error: error.message }, 404);
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
+}
+
+/**
+ * Handle rejecting an entire family
+ */
+export async function handleRejectFamily(c: Context) {
+  try {
+    const sessionUser = c.get('user') as UserSession;
+    const familyId = parseInt(c.req.param('familyId') || '', 10);
+    const { reason } = await c.req.json<{ reason?: string }>().catch(() => ({ reason: undefined }));
+    if (isNaN(familyId)) return c.json({ error: 'Invalid familyId' }, 400);
+
+    const result = await rejectEntireFamily(familyId, sessionUser.id, reason);
+    return c.json(result);
+  } catch (error: any) {
+    console.error('Error in handleRejectFamily:', error);
+    if (error.message.includes('not found')) return c.json({ error: error.message }, 404);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }

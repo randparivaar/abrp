@@ -1,4 +1,4 @@
-FROM node:22-alpine
+FROM node:24-alpine
 
 # Install pnpm inside the container
 RUN npm install -g pnpm
@@ -9,7 +9,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml* ./
 
 # Install dependencies (including devDependencies for tsx/typescript watch mode)
-RUN pnpm install
+RUN pnpm install --ignore-scripts
 
 # Copy source code
 COPY . .

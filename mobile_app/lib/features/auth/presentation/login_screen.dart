@@ -1152,13 +1152,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 isLoading = true;
                                 errorMessage = null;
                               });
+                               final messenger = ScaffoldMessenger.of(context);
                               try {
                                 await ref.read(authProvider.notifier).resetPassword(email, otp, newPass);
-                                if (mounted) {
+                                if (ctx.mounted) {
                                   Navigator.pop(ctx);
+                                }
+                                if (mounted) {
                                   _emailController.text = email;
                                   _passwordController.text = newPass;
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  messenger.showSnackBar(
                                     SnackBar(
                                       content: Text(lang == AppLanguage.hi ? 'पासवर्ड सफलतापूर्वक बदल दिया गया! लॉग इन करें।' : 'Password reset successful! You can now log in.'),
                                       backgroundColor: Colors.green,

@@ -8,7 +8,7 @@ import { usersRouter } from './routes/users.js';
 import { directoryRouter } from './routes/directory.js';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ override: true });
 
 const app = new Hono();
 

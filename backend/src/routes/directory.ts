@@ -12,6 +12,9 @@ import {
   handleGetPendingMembers,
   handleApproveMember,
   handleRejectMember,
+  handleGetPendingFamilies,
+  handleApproveFamily,
+  handleRejectFamily,
   handleGetPendingBusinesses,
   handleApproveBusiness,
   handleRejectBusiness,
@@ -51,6 +54,10 @@ directoryRouter.delete('/business/:businessId/member/:memberId', handleDeleteBus
 directoryRouter.get('/moderation/pending', roleGuard(['admin', 'moderator']), handleGetPendingMembers);
 directoryRouter.post('/moderation/member/:id/approve', roleGuard(['admin', 'moderator']), handleApproveMember);
 directoryRouter.post('/moderation/member/:id/reject', roleGuard(['admin', 'moderator']), handleRejectMember);
+
+directoryRouter.get('/moderation/pending-families', roleGuard(['admin', 'moderator']), handleGetPendingFamilies);
+directoryRouter.post('/moderation/family/:familyId/approve', roleGuard(['admin', 'moderator']), handleApproveFamily);
+directoryRouter.post('/moderation/family/:familyId/reject', roleGuard(['admin', 'moderator']), handleRejectFamily);
 
 directoryRouter.get('/moderation/pending-businesses', roleGuard(['admin', 'moderator']), handleGetPendingBusinesses);
 directoryRouter.post('/moderation/business/:id/approve', roleGuard(['admin', 'moderator']), handleApproveBusiness);

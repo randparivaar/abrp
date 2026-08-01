@@ -1,2 +1,5 @@
 
 docs/
+.pnpm-store/
+pnpm-store/
+node_modules/

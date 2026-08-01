@@ -444,6 +444,9 @@ export async function updateFamilyMember(sessionUserId: string, memberId: number
     ? (payload.anniversaryDate ? new Date(payload.anniversaryDate) : null) 
     : undefined;
 
+  const isFamilyApproved = familyMems.some((m: any) => m.status === 'approved');
+  const targetStatus = (isFamilyApproved || member.status === 'approved') ? 'approved' : 'pending';
+
   const [updatedMember] = await db.update(familyMembers).set({
     fullName: payload.fullName,
     gender: payload.gender,
@@ -471,7 +474,8 @@ export async function updateFamilyMember(sessionUserId: string, memberId: number
     fatherId: payload.fatherId,
     motherId: payload.motherId,
     spouseId: payload.spouseId,
-    status: 'pending', // Re-evaluate status on edits
+    status: targetStatus,
+    validationFeedback: targetStatus === 'pending' ? null : member.validationFeedback,
   }).where(eq(familyMembers.id, memberId)).returning();
 
   // Bi-directional Sync: Update linked user profile avatar if member is linked to a user account
@@ -754,6 +758,150 @@ export async function rejectFamilyMember(memberId: number, moderatorId: string, 
       validatedAt: new Date(),
     })
     .where(eq(familyMembers.id, memberId));
+
+  return { success: true };
+}
+
+/**
+ * Get all pending families (families with at least 1 pending or rejected member)
+ */
+export async function getPendingFamilies() {
+  // 1. Find all familyIds that have members with status 'pending' or 'rejected'
+  const pendingMemberRows = await db
+    .select({ familyId: familyMembers.familyId })
+    .from(familyMembers)
+    .where(inArray(familyMembers.status, ['pending', 'rejected']));
+
+  const familyIds = Array.from(new Set(pendingMemberRows.map((r: any) => r.familyId)));
+  if (familyIds.length === 0) return [];
+
+  // 2. Fetch families with village and region details
+  const familyList = await db.query.families.findMany({
+    where: inArray(families.id, familyIds),
+    with: {
+      village: {
+        with: {
+          region: true,
+        },
+      },
+      members: true,
+    },
+  });
+
+  // Map to structured output
+  return familyList.map((fam: any) => {
+    const head = fam.members.find((m: any) => m.relationshipToHead === 'self' || m.id === fam.familyHeadId) || fam.members[0];
+    const pendingCount = fam.members.filter((m: any) => m.status === 'pending').length;
+    const rejectedCount = fam.members.filter((m: any) => m.status === 'rejected').length;
+    const approvedCount = fam.members.filter((m: any) => m.status === 'approved').length;
+
+    return {
+      familyId: fam.id,
+      familyCode: fam.familyCode,
+      address: fam.address,
+      city: fam.city,
+      state: fam.state,
+      pincode: fam.pincode,
+      villageName: fam.village?.name || '',
+      regionName: fam.village?.region?.name || '',
+      headName: head?.fullName || 'Unknown',
+      headMobile: head?.mobile || null,
+      totalMembers: fam.members.length,
+      pendingCount,
+      rejectedCount,
+      approvedCount,
+      members: fam.members,
+    };
+  });
+}
+
+/**
+ * Approve an entire family (all non-approved members of the family)
+ */
+export async function approveEntireFamily(familyId: number, moderatorId: string) {
+  const members = await db.select().from(familyMembers).where(eq(familyMembers.familyId, familyId));
+  if (members.length === 0) throw new Error('Family not found or has no members');
+
+  await db.update(familyMembers)
+    .set({
+      status: 'approved',
+      validationFeedback: null,
+      validatedBy: moderatorId,
+      validatedAt: new Date(),
+    })
+    .where(eq(familyMembers.familyId, familyId));
+
+  // Automatically approve any business profiles owned/linked by these family members
+  try {
+    const memberIds = members.map((m: any) => m.id);
+    if (memberIds.length > 0) {
+      const memberships = await db.select().from(businessMembers).where(inArray(businessMembers.memberId, memberIds));
+      for (const m of memberships) {
+        await db.update(businessProfiles)
+          .set({ isApproved: true, updatedAt: new Date() })
+          .where(eq(businessProfiles.id, m.businessId));
+      }
+    }
+  } catch (err) {
+    console.error('Failed to auto-approve associated business profiles for family:', err);
+  }
+
+  // Push notifications to creator(s)
+  try {
+    const creatorIds = Array.from(new Set(members.map((m: any) => m.createdBy)));
+    for (const creatorId of creatorIds) {
+      const devicesList = await getUserDevices(creatorId);
+      if (devicesList.length > 0) {
+        const tokens = devicesList.map((d: any) => d.fcmToken);
+        await sendPushNotification(
+          tokens,
+          'Family Approved / परिवार स्वीकृत',
+          `Your family tree members have been approved and are now visible on the directory.`,
+          { familyId: familyId.toString(), status: 'approved' }
+        );
+      }
+    }
+  } catch (err) {
+    console.error('Failed to send family approval notification:', err);
+  }
+
+  return { success: true };
+}
+
+/**
+ * Reject an entire family (or pending members of the family) with a reason
+ */
+export async function rejectEntireFamily(familyId: number, moderatorId: string, reason?: string) {
+  const members = await db.select().from(familyMembers).where(eq(familyMembers.familyId, familyId));
+  if (members.length === 0) throw new Error('Family not found or has no members');
+
+  await db.update(familyMembers)
+    .set({
+      status: 'rejected',
+      validationFeedback: reason || null,
+      validatedBy: moderatorId,
+      validatedAt: new Date(),
+    })
+    .where(and(eq(familyMembers.familyId, familyId), sql`${familyMembers.status} != 'approved'`));
+
+  // Push notifications to creator(s)
+  try {
+    const creatorIds = Array.from(new Set(members.map((m: any) => m.createdBy)));
+    for (const creatorId of creatorIds) {
+      const devicesList = await getUserDevices(creatorId);
+      if (devicesList.length > 0) {
+        const tokens = devicesList.map((d: any) => d.fcmToken);
+        await sendPushNotification(
+          tokens,
+          'Family Approval Update / परिवार अपडेट',
+          `Your family registration needs updates.${reason ? ` Reason: ${reason}` : ''}`,
+          { familyId: familyId.toString(), status: 'rejected', reason: reason || '' }
+        );
+      }
+    }
+  } catch (err) {
+    console.error('Failed to send family rejection notification:', err);
+  }
 
   return { success: true };
 }
