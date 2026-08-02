@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile_app/core/network/api_client.dart';
 import 'package:mobile_app/core/utils/app_avatar.dart';
-import 'package:mobile_app/core/utils/name_formatter.dart';
 import 'family_tree_screen.dart';
 import 'family_member_detail_screen.dart';
 
@@ -31,6 +31,7 @@ class BusinessProfileDetailScreen extends ConsumerStatefulWidget {
 class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDetailScreen> {
   List<dynamic> _members = [];
   bool _isLoadingMembers = false;
+  bool _isFavorite = false;
 
   @override
   void initState() {
@@ -77,9 +78,19 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
     _launchURL(context, 'tel:$cleanMobile');
   }
 
-  void _openWhatsApp(BuildContext context, String mobile) {
-    final cleanMobile = mobile.replaceAll(RegExp(r'[+\s]+'), '');
-    _launchURL(context, 'https://wa.me/$cleanMobile');
+  void _shareBusinessProfile() {
+    final deepLink = 'abrp://business/${widget.business.id}';
+    final shareText = '🏢 View ${widget.business.businessName}\'s profile on ABRP\n\n'
+        'Category: ${widget.business.industryCategory}\n'
+        'Address: ${widget.business.address}, ${widget.business.city}\n\n'
+        'Open the ABRP app and tap this link to view business details:\n'
+        '$deepLink';
+    SharePlus.instance.share(
+      ShareParams(
+        text: shareText,
+        subject: '${widget.business.businessName} - ABRP Business Profile',
+      ),
+    );
   }
 
   void _navigateToMember(int memberId, int familyId) async {
@@ -184,8 +195,16 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final ownerMember = widget.owner ?? 
+        (_members.isNotEmpty && _members.any((m) => (m['roleInBusiness'] as String? ?? '').toLowerCase().contains('owner'))
+            ? _members.firstWhere((m) => (m['roleInBusiness'] as String? ?? '').toLowerCase().contains('owner'))
+            : null);
+
+    final String? ownerName = widget.owner?.fullName ?? 
+        (ownerMember is Map<String, dynamic> ? ownerMember['fullName'] as String? : null);
+    final String ownerFirstName = ownerName != null && ownerName.isNotEmpty 
+        ? '${ownerName.split(' ').first} ji' 
+        : 'the business owner';
 
     final hasPerk = widget.business.communityPerk != null && 
         (widget.business.communityPerk!['value'] as String? ?? '').isNotEmpty;
@@ -193,493 +212,890 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
     final perkValue = widget.business.communityPerk?['value'] as String? ?? '';
     final perkDesc = widget.business.communityPerk?['description'] as String? ?? '';
 
+    final hasDescription = widget.business.description != null && widget.business.description!.trim().isNotEmpty;
+    final hasTags = widget.business.tags != null && widget.business.tags!.isNotEmpty;
+    final hasCatalog = widget.business.catalog != null && widget.business.catalog!.isNotEmpty;
+    final hasOperatingHours = widget.business.operatingHours != null && widget.business.operatingHours!.isNotEmpty;
+
     return Scaffold(
-      backgroundColor: colorScheme.surfaceContainerLowest,
-      body: CustomScrollView(
+      backgroundColor: const Color(0xFFFBF9F8),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFBF9F8),
+        elevation: 0,
+        scrolledUnderElevation: 1.0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1B1C1C)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          widget.business.businessName,
+          style: GoogleFonts.outfit(
+            color: const Color(0xFF1B1C1C),
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share_outlined, color: Color(0xFF4F4634)),
+            tooltip: 'Share Profile',
+            onPressed: _shareBusinessProfile,
+          ),
+          IconButton(
+            icon: Icon(
+              _isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: _isFavorite ? Colors.red : const Color(0xFF4F4634),
+            ),
+            tooltip: 'Favorite',
+            onPressed: () {
+              setState(() {
+                _isFavorite = !_isFavorite;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(_isFavorite 
+                    ? 'Added to favorites / पसंदीदा में जोड़ा गया' 
+                    : 'Removed from favorites / पसंदीदा से हटाया गया'),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+      body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 200.0,
-            pinned: true,
-            backgroundColor: colorScheme.primary,
-            foregroundColor: Colors.white,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (widget.business.logoUrl != null && widget.business.logoUrl!.isNotEmpty)
-                    Image.network(
-                      widget.business.logoUrl!,
-                      fit: BoxFit.cover,
-                    )
-                  else
-                    Container(
-                      color: getAvatarBgColor(widget.business.businessName),
-                      child: Center(
-                        child: Text(
-                          widget.business.businessName.isNotEmpty ? widget.business.businessName[0].toUpperCase() : 'B',
-                          style: GoogleFonts.inter(
-                            fontSize: 64,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── HERO BENTO COVER CARD ────────────────────────────
+            Container(
+              height: 240,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Cover Image / Logo
+                    if (widget.business.logoUrl != null && widget.business.logoUrl!.isNotEmpty)
+                      Image.network(
+                        widget.business.logoUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFFDAA520), Color(0xFF795900)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.storefront, size: 56, color: Colors.white),
+                                const SizedBox(height: 8),
+                                Text(
+                                  widget.business.businessName,
+                                  style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFDAA520), Color(0xFF795900)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.storefront, size: 56, color: Colors.white),
+                              const SizedBox(height: 8),
+                              Text(
+                                widget.business.businessName,
+                                style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           ),
                         ),
                       ),
+
+                    // Gradient Overlay
+                    const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.transparent, Colors.black87],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
                     ),
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.transparent, Colors.black54],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
+
+                    // Owner Avatar Thumbnail & Info Overlay
+                    Positioned(
+                      left: 16,
+                      bottom: 16,
+                      right: 16,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (ownerName != null)
+                            GestureDetector(
+                              onTap: widget.owner != null 
+                                ? () => _navigateToMember(widget.owner!.id, widget.owner!.familyId)
+                                : null,
+                              child: Container(
+                                width: 64,
+                                height: 64,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.white, width: 2),
+                                  boxShadow: const [
+                                    BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2)),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: AppAvatar(
+                                    name: ownerName,
+                                    imageUrl: widget.owner?.avatarUrl,
+                                    radius: 30,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (ownerName != null) const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        widget.business.businessName,
+                                        style: GoogleFonts.outfit(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20,
+                                          color: Colors.white,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFDAA520),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.verified, size: 12, color: Color(0xFF553D00)),
+                                          const SizedBox(width: 2),
+                                          Text(
+                                            'Verified',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: const Color(0xFF553D00),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (ownerName != null) ...[
+                                  const SizedBox(height: 2),
+                                  GestureDetector(
+                                    onTap: widget.owner != null
+                                      ? () => _navigateToMember(widget.owner!.id, widget.owner!.familyId)
+                                      : null,
+                                    child: Text(
+                                      'Owner: $ownerName',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                        fontWeight: FontWeight.w500,
+                                        decoration: widget.owner != null ? TextDecoration.underline : TextDecoration.none,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── COMMUNITY CONNECT BENTO CARD (SAFFRON GOLD) ────────
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDAA520),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFDAA520).withValues(alpha: 0.25),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Community Connect',
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: const Color(0xFF553D00),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Connect directly with $ownerFirstName for custom orders and wholesale inquiries.',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: const Color(0xFF553D00).withValues(alpha: 0.85),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _callPhone(context, widget.business.contactMobile),
+                          icon: const Icon(Icons.call, size: 18, color: Colors.white),
+                          label: Text(
+                            'Call Now',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF553D00),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            final mapUrl = widget.business.googleMapsLink ?? 
+                                'https://maps.google.com/?q=${Uri.encodeComponent("${widget.business.businessName}, ${widget.business.address}, ${widget.business.city}")}';
+                            _launchURL(context, mapUrl);
+                          },
+                          icon: const Icon(Icons.map_outlined, size: 18, color: Color(0xFF553D00)),
+                          label: Text(
+                            'View on Map',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF553D00)),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── STANDALONE OPERATING HOURS CARD ──────────────────
+            if (hasOperatingHours) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF6F3F2),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE4E2E1), width: 1),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(Icons.schedule, size: 32, color: Color(0xFF795900)),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Operating Hours',
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: const Color(0xFF1B1C1C),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${widget.business.operatingHours!['days'] ?? "Mon - Sat"}: ${widget.business.operatingHours!['open'] ?? "10:00 AM"} - ${widget.business.operatingHours!['close'] ?? "08:30 PM"}',
+                      style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF4F4634)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Open Now',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: const Color(0xFF795900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // ── ABOUT BUSINESS SECTION & TAG CHIPS ───────────────
+            if (hasDescription || hasTags) ...[
+              Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 20, color: Color(0xFF795900)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'About Business',
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: const Color(0xFF795900),
+                    ),
+                  ),
+                ],
+              ),
+              if (hasDescription) ...[
+                const SizedBox(height: 8),
+                Text(
+                  widget.business.description!,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: const Color(0xFF4F4634),
+                  ),
+                ),
+              ],
+              if (hasTags) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: widget.business.tags!.map((tag) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFDAD4),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        tag,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF8F0F07),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+              const SizedBox(height: 24),
+            ],
+
+            // ── PRODUCTS & SERVICES SECTION ─────────────────────
+            if (hasCatalog) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.shopping_bag_outlined, size: 20, color: Color(0xFF795900)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Products & Services',
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: const Color(0xFF795900),
+                        ),
+                      ),
+                    ],
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Loading full product catalogue... / कैटलॉग लोड किया जा रहा है')),
+                      );
+                    },
+                    child: Text(
+                      'View All',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: const Color(0xFF795900),
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          widget.business.businessName,
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 24,
-                            color: colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.shade100,
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 190,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: widget.business.catalog!.length,
+                  itemBuilder: (context, index) {
+                    final item = widget.business.catalog![index] as Map<String, dynamic>;
+                    final title = item['title'] as String? ?? 'Product';
+                    final desc = item['description'] as String? ?? '';
+                    final img = item['imageUrl'] as String? ?? '';
+
+                    return Container(
+                      width: 150,
+                      margin: const EdgeInsets.only(right: 12),
+                      child: Card(
+                        elevation: 0,
+                        clipBehavior: Clip.antiAlias,
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.amber.shade300, width: 0.5),
+                          side: const BorderSide(color: Color(0xFFE4E2E1), width: 0.8),
                         ),
-                        child: Text(
-                          widget.business.industryCategory.toUpperCase(),
-                          style: GoogleFonts.inter(
+                        color: Colors.white,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Container(
+                                color: const Color(0xFFF6F3F2),
+                                child: img.isNotEmpty
+                                    ? Image.network(
+                                        img,
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                        errorBuilder: (context, error, stackTrace) =>
+                                            const Center(child: Icon(Icons.image, color: Colors.grey)),
+                                      )
+                                    : const Center(child: Icon(Icons.shopping_bag, size: 32, color: Color(0xFF795900))),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(10.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    title,
+                                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF1B1C1C)),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (desc.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      desc,
+                                      style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF4F4634)),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // ── COMMUNITY PERK CARD (DEEP MAROON) ────────────────
+            if (hasPerk) ...[
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB22B1D),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFB22B1D).withValues(alpha: 0.25),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.local_offer_outlined, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Community Perk',
+                          style: GoogleFonts.outfit(
                             fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                            color: Colors.amber.shade900,
+                            fontSize: 18,
+                            color: Colors.white,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildQuickAction(
-                        context,
-                        icon: Icons.phone_outlined,
-                        label: 'Call',
-                        onTap: () => _callPhone(context, widget.business.contactMobile),
-                        color: colorScheme.primary,
-                      ),
-                      if (widget.business.whatsappMobile != null && widget.business.whatsappMobile!.isNotEmpty)
-                        _buildQuickAction(
-                          context,
-                          icon: Icons.chat_outlined,
-                          label: 'WhatsApp',
-                          onTap: () => _openWhatsApp(context, widget.business.whatsappMobile!),
-                          color: Colors.green.shade600,
-                        ),
-                      if (widget.business.email != null && widget.business.email!.isNotEmpty)
-                        _buildQuickAction(
-                          context,
-                          icon: Icons.mail_outline,
-                          label: 'Email',
-                          onTap: () => _launchURL(context, 'mailto:${widget.business.email!}'),
-                          color: Colors.blue.shade600,
-                        ),
-                      if (widget.business.websiteUrl != null && widget.business.websiteUrl!.isNotEmpty)
-                        _buildQuickAction(
-                          context,
-                          icon: Icons.language_outlined,
-                          label: 'Website',
-                          onTap: () => _launchURL(context, widget.business.websiteUrl!),
-                          color: Colors.purple.shade600,
-                        ),
-                      if (widget.business.googleMapsLink != null && widget.business.googleMapsLink!.isNotEmpty)
-                        _buildQuickAction(
-                          context,
-                          icon: Icons.map_outlined,
-                          label: 'Directions',
-                          onTap: () => _launchURL(context, widget.business.googleMapsLink!),
-                          color: Colors.red.shade600,
-                        ),
-                    ],
-                  ),
-                  const Divider(height: 32),
-
-                  if (widget.business.description != null && widget.business.description!.isNotEmpty) ...[
-                    Text(
-                      'About / व्यवसाय के बारे में',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15, color: colorScheme.secondary),
+                      ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      widget.business.description!,
-                      style: GoogleFonts.inter(fontSize: 14, height: 1.5, color: colorScheme.onSurfaceVariant),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-
-                  if (hasPerk) ...[
+                    const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.amber.shade600, Colors.orange.shade700],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.orange.shade800.withValues(alpha: 0.25),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          )
-                        ],
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.star, color: Colors.white, size: 22),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Samaj Discount Offer / समाज विशेष छूट',
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            perkType == 'percent' ? '$perkValue%' : (perkType == 'fixed' ? '₹$perkValue' : 'OFFER'),
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 32,
+                              color: Colors.white,
+                              height: 1.0,
+                            ),
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.baseline,
-                            textBaseline: TextBaseline.alphabetic,
-                            children: [
-                              Text(
-                                perkType == 'percent'
-                                    ? '$perkValue%'
-                                    : (perkType == 'fixed' ? '₹$perkValue' : 'OFFER'),
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 32,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                perkType == 'percent' ? 'Discount for Samaj Members' : 'Flat Off for Samaj',
-                                style: GoogleFonts.inter(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
-                              ),
-                            ],
+                          Text(
+                            'SPECIAL DISCOUNT',
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Colors.white,
+                              letterSpacing: 1.0,
+                            ),
                           ),
                           if (perkDesc.isNotEmpty) ...[
                             const SizedBox(height: 8),
                             Text(
                               perkDesc,
-                              style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: Colors.white.withValues(alpha: 0.9),
+                                height: 1.3,
+                              ),
                             ),
                           ],
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
                   ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
 
-                  if (widget.business.catalog != null && widget.business.catalog!.isNotEmpty) ...[
-                    Text(
-                      'Catalog / उत्पाद और सेवाएं',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15, color: colorScheme.secondary),
+            // ── CONTACT INFO & MEMBER TRUST CARD ────────────────
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF6F3F2),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE4E2E1), width: 1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Contact Info',
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: const Color(0xFF795900),
                     ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 180,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: widget.business.catalog!.length,
-                        itemBuilder: (context, index) {
-                          final item = widget.business.catalog![index] as Map<String, dynamic>;
-                          final title = item['title'] as String? ?? 'Product';
-                          final desc = item['description'] as String? ?? '';
-                          final img = item['imageUrl'] as String? ?? '';
-
-                          return Container(
-                            width: 140,
-                            margin: const EdgeInsets.only(right: 12),
-                            child: Card(
-                              elevation: 0,
-                              clipBehavior: Clip.antiAlias,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      color: colorScheme.surfaceContainerLow,
-                                      child: img.isNotEmpty
-                                          ? Image.network(img, fit: BoxFit.cover)
-                                          : const Icon(Icons.image_outlined, size: 28),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          title,
-                                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        if (desc.isNotEmpty) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            desc,
-                                            style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-
-                  // ── Associated Partners Section ───────────────────
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Partners & Owners / साझेदार और स्वामी',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: colorScheme.secondary,
-                            ),
-                          ),
-                          TextButton.icon(
-                            onPressed: _showAssignMemberSheet,
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Add / जोड़ें', style: TextStyle(fontSize: 12)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      if (_isLoadingMembers)
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: CircularProgressIndicator(),
-                          ),
-                        )
-                      else if (_members.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: colorScheme.surfaceContainerLow,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'No partners linked yet / कोई साझेदार लिंक नहीं है',
-                              style: TextStyle(fontSize: 13, fontStyle: FontStyle.italic),
-                            ),
-                          ),
-                        )
-                      else
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _members.length,
-                          itemBuilder: (context, index) {
-                            final m = _members[index];
-                            final memberId = m['id'] as int;
-                            final familyId = m['familyId'] as int;
-                            final role = m['roleInBusiness'] as String? ?? 'Partner';
-                            final avatarUrl = m['avatarUrl'] as String?;
-                            final name = m['fullName'] as String? ?? 'Unknown';
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              decoration: BoxDecoration(
-                                color: colorScheme.surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: colorScheme.outlineVariant, width: 0.5),
-                              ),
-                              child: ListTile(
-                                leading: AppAvatar(
-                                  name: name,
-                                  imageUrl: avatarUrl,
-                                  radius: 20,
-                                ),
-                                title: Text(
-                                  name,
-                                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
-                                ),
-                                subtitle: Text(
-                                  role,
-                                  style: TextStyle(fontSize: 11, color: colorScheme.primary),
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.arrow_forward_ios, size: 14),
-                                      onPressed: () => _navigateToMember(memberId, familyId),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                                      onPressed: () => _unlinkMember(memberId),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      const SizedBox(height: 20),
-                    ],
                   ),
+                  const SizedBox(height: 12),
 
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
-                    ),
+                  // Location
+                  InkWell(
+                    onTap: () {
+                      final mapUrl = widget.business.googleMapsLink ?? 
+                          'https://maps.google.com/?q=${Uri.encodeComponent("${widget.business.address}, ${widget.business.city}")}';
+                      _launchURL(context, mapUrl);
+                    },
+                    borderRadius: BorderRadius.circular(8),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(Icons.location_on_outlined, color: colorScheme.primary, size: 20),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Store Location / स्टोर स्थान',
-                                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.secondary),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${widget.business.address}, ${widget.business.city}',
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                    if (widget.business.pincode != null)
-                                      Text(
-                                        'Pincode: ${widget.business.pincode}',
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          const Icon(Icons.location_on_outlined, color: Color(0xFF795900), size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              '${widget.business.address}, ${widget.business.city}${widget.business.pincode != null ? ' - ${widget.business.pincode}' : ''}',
+                              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF4F4634), height: 1.4),
+                            ),
                           ),
-                          if (widget.business.operatingHours != null) ...[
-                            const Divider(height: 24),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(Icons.access_time_outlined, color: colorScheme.primary, size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Operating Hours / संचालन का समय',
-                                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.secondary),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Days: ${widget.business.operatingHours!['days'] ?? "Mon - Sat"}',
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
-                                      Text(
-                                        'Timings: ${widget.business.operatingHours!['open'] ?? "10:00 AM"} - ${widget.business.operatingHours!['close'] ?? "08:30 PM"}',
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                          if (widget.business.gstin != null && widget.business.gstin!.isNotEmpty) ...[
-                            const Divider(height: 24),
-                            Row(
-                              children: [
-                                Icon(Icons.receipt_long_outlined, color: colorScheme.primary, size: 20),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'GSTIN: ${widget.business.gstin!}',
-                                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.secondary),
-                                ),
-                              ],
-                            ),
-                          ],
                         ],
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Email
+                  if (widget.business.email != null && widget.business.email!.isNotEmpty)
+                    InkWell(
+                      onTap: () => _launchURL(context, 'mailto:${widget.business.email!}'),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.mail_outline, color: Color(0xFF795900), size: 20),
+                            const SizedBox(width: 10),
+                            Text(
+                              widget.business.email!,
+                              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF4F4634)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (widget.business.email != null && widget.business.email!.isNotEmpty)
+                    const SizedBox(height: 8),
+
+                  // Website
+                  if (widget.business.websiteUrl != null && widget.business.websiteUrl!.isNotEmpty)
+                    InkWell(
+                      onTap: () => _launchURL(context, widget.business.websiteUrl!),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.language_outlined, color: Color(0xFF795900), size: 20),
+                            const SizedBox(width: 10),
+                            Text(
+                              widget.business.websiteUrl!,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: const Color(0xFF795900),
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  const Divider(height: 24, color: Color(0xFFE4E2E1)),
+
+                  // Trust Badges
+                  Text(
+                    'Verified Member Since 2018',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: const Color(0xFF4F4634),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 70,
+                        height: 28,
+                        child: Stack(
+                          children: const [
+                            Positioned(
+                              left: 0,
+                              child: CircleAvatar(
+                                radius: 14,
+                                backgroundColor: Color(0xFFE0E0E0),
+                                child: Icon(Icons.person, size: 16, color: Colors.grey),
+                              ),
+                            ),
+                            Positioned(
+                              left: 18,
+                              child: CircleAvatar(
+                                radius: 14,
+                                backgroundColor: Color(0xFFBDBDBD),
+                                child: Icon(Icons.person, size: 16, color: Colors.white),
+                              ),
+                            ),
+                            Positioned(
+                              left: 36,
+                              child: CircleAvatar(
+                                radius: 14,
+                                backgroundColor: Color(0xFF795900),
+                                child: Icon(Icons.person, size: 16, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Trusted by 150+ members',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: const Color(0xFF4F4634),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+
+            // ── PARTNERS & OWNERS SECTION ────────────────────────
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Partners & Owners / साझेदार',
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: const Color(0xFF795900),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _showAssignMemberSheet,
+                      icon: const Icon(Icons.add, size: 18, color: Color(0xFF795900)),
+                      label: Text(
+                        'Add / जोड़ें',
+                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF795900)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                if (_isLoadingMembers)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else if (_members.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF6F3F2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'No partners linked yet / कोई साझेदार लिंक नहीं है',
+                        style: GoogleFonts.inter(fontSize: 13, fontStyle: FontStyle.italic, color: const Color(0xFF4F4634)),
+                      ),
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _members.length,
+                    itemBuilder: (context, index) {
+                      final m = _members[index];
+                      final memberId = m['id'] as int;
+                      final familyId = m['familyId'] as int;
+                      final role = m['roleInBusiness'] as String? ?? 'Partner';
+                      final avatarUrl = m['avatarUrl'] as String?;
+                      final name = m['fullName'] as String? ?? 'Unknown';
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF6F3F2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE4E2E1), width: 0.8),
+                        ),
+                        child: ListTile(
+                          leading: AppAvatar(
+                            name: name,
+                            imageUrl: avatarUrl,
+                            radius: 20,
+                          ),
+                          title: Text(
+                            name,
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          subtitle: Text(
+                            role,
+                            style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF795900), fontWeight: FontWeight.w600),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                                onPressed: () => _navigateToMember(memberId, familyId),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                onPressed: () => _unlinkMember(memberId),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: widget.isPending
           ? Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: colorScheme.surface,
+                color: Colors.white,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.08),
@@ -735,36 +1151,6 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
               ),
             )
           : null,
-    );
-  }
-
-  Widget _buildQuickAction(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    required Color color,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-        child: Column(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: color.withValues(alpha: 0.1),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

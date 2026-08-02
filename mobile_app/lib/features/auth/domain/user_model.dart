@@ -6,6 +6,7 @@ class UserModel {
   final String role; // 'admin', 'member', 'moderator'
   final String preferredLanguage; // 'en', 'hi'
   final String status; // 'active', 'inactive'
+  final String? mobile; // registered mobile number
 
   UserModel({
     required this.id,
@@ -15,6 +16,7 @@ class UserModel {
     required this.role,
     required this.preferredLanguage,
     required this.status,
+    this.mobile,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class UserModel {
       role: json['role'] as String,
       preferredLanguage: json['preferredLanguage'] as String,
       status: json['status'] as String,
+      mobile: json['mobile'] as String?,
     );
   }
 
@@ -38,6 +41,7 @@ class UserModel {
       'role': role,
       'preferredLanguage': preferredLanguage,
       'status': status,
+      'mobile': mobile,
     };
   }
 }

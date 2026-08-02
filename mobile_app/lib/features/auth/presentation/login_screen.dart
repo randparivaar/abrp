@@ -66,7 +66,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final localized = {
       'welcome_title': {
         AppLanguage.en: 'Akhil Bhartiya Rander Parivar',
-        AppLanguage.hi: 'रांदेर परिवार समाज',
+        AppLanguage.hi: 'रांदड़ परिवार समाज',
       },
       'welcome_subtitle': {
         AppLanguage.en: 'Welcome back to your community. Connect with your heritage and kin.',
@@ -759,7 +759,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                                 children: [
                                                   TextSpan(
                                                     text: lang == AppLanguage.hi
-                                                        ? 'खाता बनाकर, मैं रांदेर परिवार समाज के '
+                                                        ? 'खाता बनाकर, मैं रांदड़ परिवार समाज के '
                                                         : 'By creating an account, I agree to the ',
                                                   ),
                                                   WidgetSpan(

@@ -214,7 +214,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
           },
         ),
         title: Text(
-          'Rander Parivar Samaj',
+          'ABRP',
           style: GoogleFonts.inter(
             color: primaryColor,
             fontWeight: FontWeight.bold,

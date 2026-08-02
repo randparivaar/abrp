@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile_app/core/utils/app_avatar.dart';
 import 'family_tree_screen.dart';
@@ -85,10 +86,19 @@ class FamilyMemberDetailScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: Icon(Icons.share_outlined, color: cs.primary),
+            tooltip: 'Share Profile',
             onPressed: () {
-              if (member.mobile != null) {
-                _copyToClipboard(context, member.mobile!, 'Phone number');
-              }
+              // Build a deep link for this member's profile
+              final deepLink = 'abrp://member/$familyId/${member.id}';
+              final shareText = '👤 View ${member.fullName}\'s profile on ABRP\n\n'
+                  'Open the ABRP app and tap this link to view their family profile:\n'
+                  '$deepLink';
+              SharePlus.instance.share(
+                ShareParams(
+                  text: shareText,
+                  subject: '${member.fullName} - ABRP Profile',
+                ),
+              );
             },
           ),
           const SizedBox(width: 8),
@@ -314,7 +324,6 @@ class _HeroSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final role = _roleLabel(member.relationshipToHead);
 
     return Container(
       width: double.infinity,
@@ -422,34 +431,7 @@ class _HeroSection extends StatelessWidget {
                   border: Border.all(color: cs.primaryContainer, width: 4),
                 ),
               ),
-              // Role Badge
-              Positioned(
-                bottom: 4,
-                right: 4,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: cs.secondary,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    role,
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.5,
-                      color: cs.onSecondary,
-                    ),
-                  ),
-                ),
-              ),
+              // Role Badge removed per design update
             ],
           ),
           const SizedBox(height: 16),
@@ -573,25 +555,6 @@ class _HeroSection extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _roleLabel(String rel) {
-    switch (rel.toLowerCase()) {
-      case 'self':
-        return 'Family Head';
-      case 'spouse':
-        return 'Spouse';
-      case 'son':
-        return 'Son';
-      case 'daughter':
-        return 'Daughter';
-      case 'father':
-        return 'Father';
-      case 'mother':
-        return 'Mother';
-      default:
-        return rel.replaceAll('_', ' ').toUpperCase();
-    }
   }
 }
 

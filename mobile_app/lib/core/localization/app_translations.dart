@@ -4,11 +4,11 @@ class AppTranslations {
   static const Map<String, Map<AppLanguage, String>> _keys = {
     'app_name': {
       AppLanguage.en: 'Akhil Bhartiya Rander Parivar Samaj',
-      AppLanguage.hi: 'अखिल भारतीय रांदेर परिवार समाज',
+      AppLanguage.hi: 'अखिल भारतीय रांदड़ परिवार समाज',
     },
     'login_title': {
       AppLanguage.en: 'Welcome to Rander Parivar',
-      AppLanguage.hi: 'रांदेर परिवार में आपका स्वागत है',
+      AppLanguage.hi: 'रांदड़ परिवार में आपका स्वागत है',
     },
     'login_subtitle': {
       AppLanguage.en: 'Connect with our community, receive alerts, and stay updated.',

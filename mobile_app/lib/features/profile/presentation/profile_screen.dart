@@ -191,6 +191,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const Divider(),
                     ListTile(
+                      leading: const Icon(Icons.phone_outlined),
+                      title: const Text('Registered Mobile'),
+                      subtitle: Text(
+                        (user?.mobile != null && user!.mobile!.isNotEmpty)
+                            ? user.mobile!
+                            : 'Not available',
+                        style: TextStyle(
+                          color: (user?.mobile != null && user!.mobile!.isNotEmpty)
+                              ? null
+                              : colorScheme.onSurface.withValues(alpha: 0.4),
+                        ),
+                      ),
+                    ),
+                    const Divider(),
+                    ListTile(
                       leading: const Icon(Icons.badge_outlined),
                       title: const Text('Role'),
                       subtitle: Text(user?.role.toUpperCase() ?? ''),

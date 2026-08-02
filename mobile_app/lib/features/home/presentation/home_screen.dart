@@ -37,7 +37,7 @@ class HomeScreen extends ConsumerWidget {
           },
         ),
         title: Text(
-          'Rander Parivar Samaj',
+          'ABRP',
           style: GoogleFonts.inter(
             color: primaryColor,
             fontWeight: FontWeight.bold,
@@ -384,11 +384,11 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 _buildQuickLinkItem(
                   context: context,
-                  icon: Icons.photo_library_rounded,
-                  label: 'Sammelan Gallery',
+                  icon: Icons.groups_rounded,
+                  label: 'Committee',
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Sammelan Gallery will be available soon.')),
+                      const SnackBar(content: Text('Committee details will be available soon.')),
                     );
                   },
                   theme: theme,

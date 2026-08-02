@@ -37,7 +37,7 @@ class AppDrawer extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Rander Samaj',
+                  'ABRP',
                   style: GoogleFonts.inter(
                     fontSize: 28,
                     fontWeight: FontWeight.w600,
@@ -46,7 +46,7 @@ class AppDrawer extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Connecting Our Heritage',
+                  'Akhil Bharat Rander Parivar',
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -149,6 +149,43 @@ class AppDrawer extends ConsumerWidget {
                     );
                   },
                   primaryColor: primaryColor,
+                ),
+                const SizedBox(height: 8),
+                // Donate Now Button
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                  child: Material(
+                    color: theme.colorScheme.secondary,
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        context.pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Donate feature coming soon. Thank you for your generosity!')),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.volunteer_activism_rounded, color: Colors.white, size: 22),
+                            const SizedBox(width: 14),
+                            Text(
+                              'Donate Now',
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const Spacer(),
+                            const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

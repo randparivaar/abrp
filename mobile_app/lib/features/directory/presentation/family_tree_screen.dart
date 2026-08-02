@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/network/api_client.dart';
 import 'package:mobile_app/core/utils/app_avatar.dart';
@@ -83,16 +84,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
     final family = treeAsync.value?.family;
     final theme = Theme.of(context);
 
-    return PopScope(
-      canPop: _focusedRootMemberId == null,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _focusedRootMemberId != null) {
-          setState(() {
-            _focusedRootMemberId = null;
-          });
-        }
-      },
-      child: Scaffold(
+    return Scaffold(
         backgroundColor: _showPremiumUI ? null : const Color(0xFFF9F6F0),
         drawer: const AppDrawer(),
         appBar: AppBar(
@@ -102,12 +94,17 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
             icon: Icon(Icons.arrow_back, color: theme.colorScheme.primary),
             onPressed: () {
               if (_focusedRootMemberId != null) {
+                // If viewing a sub-tree, go back to root tree
                 setState(() {
                   _focusedRootMemberId = null;
                 });
               } else {
-                if (Navigator.canPop(context)) {
-                  Navigator.pop(context);
+                // context.canPop() is true when opened via context.push (from home card, directory FAB, etc.)
+                // context.canPop() is false when opened via bottom nav (context.go replaces the stack)
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/'); // Bottom nav → back goes to Home
                 }
               }
             },
@@ -243,9 +240,8 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
             )
           : null,
       bottomNavigationBar: const AppBottomNavigation(currentIndex: 2),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildTreeContent(BuildContext context, FamilyTreeData data, ThemeData theme) {
     // Determine the root member (either Main Head or Focused Sub-Tree Root)
@@ -432,7 +428,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                         final hasChildSpouse = data.members.any(
                           (m) => (child.spouseId != null && m.id == child.spouseId) || m.spouseId == child.id,
                         );
-                        return hasChildSpouse ? 290.0 : 160.0;
+                        return hasChildSpouse ? 232.0 : 152.0;
                       }).toList();
                       final totalWidth = branchWidths.fold(0.0, (a, b) => a + b);
 
@@ -517,13 +513,13 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                 child: AppAvatar(
                   name: member.fullName,
                   imageUrl: member.avatarUrl,
-                  radius: 58,
+                  radius: 46,
                 ),
               ),
             ),
             const SizedBox(height: 10),
             SizedBox(
-              width: 140,
+              width: 112,
               child: Text(
                 member.fullName,
                 textAlign: TextAlign.center,
@@ -606,12 +602,12 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                 border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.5), width: 2),
               ),
               child: CircleAvatar(
-                radius: 58,
+                radius: 46,
                 backgroundColor: const Color(0xFFF0ECE1),
                 child: const Icon(
                   Icons.person_add_alt_1_outlined,
                   color: Color(0xFFAA771C),
-                  size: 32,
+                  size: 26,
                 ),
               ),
             ),
@@ -765,8 +761,8 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
       return a.id.compareTo(b.id);
     });
 
-    // Branch width: 290 for couple card pair, 160 for single child
-    final double branchWidth = hasSpouse ? 290.0 : 160.0;
+    // Branch width: 232 for couple card pair, 152 for single child
+    final double branchWidth = hasSpouse ? 232.0 : 152.0;
 
     // ----------- Member photo column (used inside unified card) ----------
     Widget memberPhotoColumn(MemberNode m, {required String roleTag, bool isPrimary = true}) {
@@ -801,13 +797,13 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                 child: AppAvatar(
                   name: m.fullName,
                   imageUrl: m.avatarUrl,
-                  radius: 52,
+                  radius: 44,
                 ),
               ),
             ),
             const SizedBox(height: 6),
             SizedBox(
-              width: 120,
+              width: 104,
               child: Text(
                 m.fullName,
                 textAlign: TextAlign.center,
@@ -888,13 +884,13 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                 ],
               ),
             ),
-            memberPhotoColumn(spouseNode, roleTag: 'SPOUSE', isPrimary: false),
+            memberPhotoColumn(spouseNode, roleTag: (member.gender == 'male' ? 'Daughter-in-law' : 'Son-in-law'), isPrimary: false),
           ],
         ),
       );
     } else {
       coupleHeader = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(22),
@@ -924,7 +920,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
         final hasSubSpouse = allMembers.any(
           (m) => (sc.spouseId != null && m.id == sc.spouseId) || m.spouseId == sc.id,
         );
-        return hasSubSpouse ? 290.0 : 160.0;
+        return hasSubSpouse ? 232.0 : 152.0;
       }).toList();
       subTotalWidth = subBranchWidths.fold(0.0, (a, b) => a + b);
 
@@ -2307,7 +2303,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           premiumCard,
-          if (childrenSection != null) childrenSection,
+          ?childrenSection,
         ],
       ),
     );

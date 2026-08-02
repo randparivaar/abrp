@@ -459,7 +459,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             end: Alignment.bottomCenter,
           ).createShader(bounds),
           child: Text(
-            'रेन्डर परिवार',
+            'रांदड़ परिवार',
             textAlign: TextAlign.center,
             style: GoogleFonts.notoSansDevanagari(
               fontSize: 22,
