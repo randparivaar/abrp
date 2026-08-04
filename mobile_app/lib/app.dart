@@ -16,8 +16,7 @@ class MyApp extends ConsumerWidget {
       title: 'Akhil Bhartiya Rander Parivar Samaj',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.buildTheme(themeConfig, isDark: false),
-      darkTheme: AppTheme.buildTheme(themeConfig, isDark: true),
-      themeMode: ThemeMode.system, // Dynamically toggle light/dark based on system OS settings
+      themeMode: ThemeMode.light, // Locked to light mode so device dark mode on Android/iOS does not alter the app UI
       routerConfig: router,
     );
   }

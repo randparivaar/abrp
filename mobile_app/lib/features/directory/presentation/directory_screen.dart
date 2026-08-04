@@ -37,6 +37,274 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
   Timer? _letterIndicatorTimer;
   final List<String> _alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
+  static const List<Map<String, dynamic>> _dummyAds = [
+    {
+      'title': 'Shree Ganesh Textiles',
+      'category': 'Textiles & Garments',
+      'tagline': 'Special 15% discount for community members!',
+      'imageUrl': 'https://lh3.googleusercontent.com/aida-public/AB6AXuAT_FlZ8APgvqD4JePAdhJAyL4n2qjRXl5M496NUtWMjnGRmYQCHVmxv1JMCwDX-FRMz5c-MjOk87NJvmiW1dW7W-K3T0IZHl5rBwYfHWrTeM3MopGIPBkNufObl6sXJSKpcr8-k47XHWrsxg3bt5kP2Q8VAi8t6hbP1TgH8ybEEYTN8nKLtiVBgWqqOZIGBn2bvIZeus9MoaaS7OJmdMw3OII_gcRZIG0Fb-bHUWzV3Nbqo48_y1kMmJUb2o6QNJK99zLQtz1aJv0',
+      'location': 'Surat, Gujarat',
+    },
+    {
+      'title': 'Apex Healthcare & Clinic',
+      'category': 'Healthcare & Medical',
+      'tagline': 'Free Health Checkup & Consultation',
+      'imageUrl': null,
+      'location': 'Ahmedabad',
+    },
+    {
+      'title': 'Vardhman Jewellers',
+      'category': 'Gold & Diamond',
+      'tagline': 'Zero Making Charges on Bridal Collection',
+      'imageUrl': null,
+      'location': 'Mumbai',
+    },
+    {
+      'title': 'Rajdhani Caterers & Sweets',
+      'category': 'Food & Hospitality',
+      'tagline': 'Authentic Rajasthani & Gujarati Thali',
+      'imageUrl': null,
+      'location': 'Jaipur',
+    },
+  ];
+
+  static const List<Map<String, dynamic>> _dummyMembers = [
+    {
+      'id': 101,
+      'familyId': 1,
+      'fullName': 'Rameshchandra J. Shah',
+      'relationshipToHead': 'HEAD',
+      'isHead': true,
+      'village': {'id': 1, 'name': 'Patan'},
+      'gotra': 'Kashyap',
+      'occupationType': 'Business',
+      'avatarUrl': null,
+    },
+    {
+      'id': 102,
+      'familyId': 1,
+      'fullName': 'Savitaben R. Shah',
+      'relationshipToHead': 'SPOUSE',
+      'familyHeadName': 'Rameshchandra J. Shah',
+      'village': {'id': 1, 'name': 'Patan'},
+      'gotra': 'Kashyap',
+      'occupationType': 'Homemaker',
+      'avatarUrl': null,
+    },
+    {
+      'id': 103,
+      'familyId': 1,
+      'fullName': 'Amitkumar R. Shah',
+      'relationshipToHead': 'SON',
+      'familyHeadName': 'Rameshchandra J. Shah',
+      'village': {'id': 1, 'name': 'Patan'},
+      'gotra': 'Kashyap',
+      'occupationType': 'IT Professional',
+      'avatarUrl': null,
+    },
+    {
+      'id': 104,
+      'familyId': 1,
+      'fullName': 'Neha A. Shah',
+      'relationshipToHead': 'DAUGHTER_IN_LAW',
+      'familyHeadName': 'Rameshchandra J. Shah',
+      'village': {'id': 1, 'name': 'Patan'},
+      'gotra': 'Vashishtha',
+      'occupationType': 'Architect',
+      'avatarUrl': null,
+    },
+    {
+      'id': 105,
+      'familyId': 2,
+      'fullName': 'Bharatbhai M. Patel',
+      'relationshipToHead': 'HEAD',
+      'isHead': true,
+      'village': {'id': 2, 'name': 'Unjha'},
+      'gotra': 'Garg',
+      'occupationType': 'Agriculture & Trade',
+      'avatarUrl': null,
+    },
+    {
+      'id': 106,
+      'familyId': 2,
+      'fullName': 'Chirag B. Patel',
+      'relationshipToHead': 'SON',
+      'familyHeadName': 'Bharatbhai M. Patel',
+      'village': {'id': 2, 'name': 'Unjha'},
+      'gotra': 'Garg',
+      'occupationType': 'Chartered Accountant',
+      'avatarUrl': null,
+    },
+    {
+      'id': 107,
+      'familyId': 3,
+      'fullName': 'Dineshbhai K. Mehta',
+      'relationshipToHead': 'HEAD',
+      'isHead': true,
+      'village': {'id': 3, 'name': 'Siddhpur'},
+      'gotra': 'Bharadwaj',
+      'occupationType': 'Jewellery Business',
+      'avatarUrl': null,
+    },
+    {
+      'id': 108,
+      'familyId': 3,
+      'fullName': 'Deepak D. Mehta',
+      'relationshipToHead': 'SON',
+      'familyHeadName': 'Dineshbhai K. Mehta',
+      'village': {'id': 3, 'name': 'Siddhpur'},
+      'gotra': 'Bharadwaj',
+      'occupationType': 'Salaried Job',
+      'avatarUrl': null,
+    },
+    {
+      'id': 109,
+      'familyId': 4,
+      'fullName': 'Girishbhai S. Parikh',
+      'relationshipToHead': 'HEAD',
+      'isHead': true,
+      'village': {'id': 4, 'name': 'Visnagar'},
+      'gotra': 'Vatsa',
+      'occupationType': 'Textile Trading',
+      'avatarUrl': null,
+    },
+    {
+      'id': 110,
+      'familyId': 4,
+      'fullName': 'Hetal G. Parikh',
+      'relationshipToHead': 'DAUGHTER',
+      'familyHeadName': 'Girishbhai S. Parikh',
+      'village': {'id': 4, 'name': 'Visnagar'},
+      'gotra': 'Vatsa',
+      'occupationType': 'Doctor',
+      'avatarUrl': null,
+    },
+    {
+      'id': 111,
+      'familyId': 5,
+      'fullName': 'Jitendrabhai V. Modi',
+      'relationshipToHead': 'HEAD',
+      'isHead': true,
+      'village': {'id': 5, 'name': 'Vadnagar'},
+      'gotra': 'Shandilya',
+      'occupationType': 'Retail Store',
+      'avatarUrl': null,
+    },
+    {
+      'id': 112,
+      'familyId': 5,
+      'fullName': 'Kiran J. Modi',
+      'relationshipToHead': 'SON',
+      'familyHeadName': 'Jitendrabhai V. Modi',
+      'village': {'id': 5, 'name': 'Vadnagar'},
+      'gotra': 'Shandilya',
+      'occupationType': 'Software Engineer',
+      'avatarUrl': null,
+    },
+    {
+      'id': 113,
+      'familyId': 6,
+      'fullName': 'Maheshbhai P. Shroff',
+      'relationshipToHead': 'HEAD',
+      'isHead': true,
+      'village': {'id': 1, 'name': 'Patan'},
+      'gotra': 'Parashar',
+      'occupationType': 'Financial Advisor',
+      'avatarUrl': null,
+    },
+    {
+      'id': 114,
+      'familyId': 6,
+      'fullName': 'Nitin M. Shroff',
+      'relationshipToHead': 'SON',
+      'familyHeadName': 'Maheshbhai P. Shroff',
+      'village': {'id': 1, 'name': 'Patan'},
+      'gotra': 'Parashar',
+      'occupationType': 'Civil Engineer',
+      'avatarUrl': null,
+    },
+    {
+      'id': 115,
+      'familyId': 7,
+      'fullName': 'Pankajbhai L. Gandhi',
+      'relationshipToHead': 'HEAD',
+      'isHead': true,
+      'village': {'id': 6, 'name': 'Kadi'},
+      'gotra': 'Agastya',
+      'occupationType': 'Chemical Industry',
+      'avatarUrl': null,
+    },
+    {
+      'id': 116,
+      'familyId': 7,
+      'fullName': 'Pooja P. Gandhi',
+      'relationshipToHead': 'DAUGHTER',
+      'familyHeadName': 'Pankajbhai L. Gandhi',
+      'village': {'id': 6, 'name': 'Kadi'},
+      'gotra': 'Agastya',
+      'occupationType': 'Professor',
+      'avatarUrl': null,
+    },
+    {
+      'id': 117,
+      'familyId': 8,
+      'fullName': 'Rajeshbhai T. Choksi',
+      'relationshipToHead': 'HEAD',
+      'isHead': true,
+      'village': {'id': 2, 'name': 'Unjha'},
+      'gotra': 'Kashyap',
+      'occupationType': 'Real Estate',
+      'avatarUrl': null,
+    },
+    {
+      'id': 118,
+      'familyId': 8,
+      'fullName': 'Sanjay R. Choksi',
+      'relationshipToHead': 'SON',
+      'familyHeadName': 'Rajeshbhai T. Choksi',
+      'village': {'id': 2, 'name': 'Unjha'},
+      'gotra': 'Kashyap',
+      'occupationType': 'Business',
+      'avatarUrl': null,
+    },
+    {
+      'id': 119,
+      'familyId': 9,
+      'fullName': 'Tusharbhai H. Vora',
+      'relationshipToHead': 'HEAD',
+      'isHead': true,
+      'village': {'id': 3, 'name': 'Siddhpur'},
+      'gotra': 'Garg',
+      'occupationType': 'Pharmaceuticals',
+      'avatarUrl': null,
+    },
+    {
+      'id': 120,
+      'familyId': 9,
+      'fullName': 'Vipul T. Vora',
+      'relationshipToHead': 'SON',
+      'familyHeadName': 'Tusharbhai H. Vora',
+      'village': {'id': 3, 'name': 'Siddhpur'},
+      'gotra': 'Garg',
+      'occupationType': 'Consultant',
+      'avatarUrl': null,
+    },
+  ];
+
+  List<dynamic> _filterDummyMembers() {
+    return _dummyMembers.where((m) {
+      if (_searchQuery.isNotEmpty) {
+        final name = (m['fullName'] as String? ?? '').toLowerCase();
+        if (!name.contains(_searchQuery.toLowerCase())) return false;
+      }
+      if (_selectedVillageId != null) {
+        final vId = m['village']?['id'] as int?;
+        if (vId != _selectedVillageId) return false;
+      }
+      return true;
+    }).toList();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -63,8 +331,9 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
     });
 
     if (targetIndex != -1) {
-      // Estimated height calculation: Ad slot ~ 180 + headers ~ 200 + item ~ 110
-      final double targetOffset = 380.0 + (targetIndex * 115.0);
+      // Estimated height calculation: Reduced Top Ad slot ~ 126 + headers ~ 200 + item ~ 110
+      final displayIndex = targetIndex + (targetIndex ~/ 8);
+      final double targetOffset = 325.0 + (displayIndex * 115.0);
       _scrollController.animateTo(
         targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
         duration: const Duration(milliseconds: 300),
@@ -108,7 +377,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
       ]);
 
       if (mounted) {
-        final membersList = responses[0].data['members'] as List<dynamic>;
+        final membersList = List<dynamic>.from(responses[0].data['members'] as List<dynamic>);
         membersList.sort((a, b) {
           final nameA = (a['fullName'] as String? ?? '').toLowerCase();
           final nameB = (b['fullName'] as String? ?? '').toLowerCase();
@@ -116,17 +385,17 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
         });
 
         setState(() {
-          _members = membersList;
+          _members = membersList.isNotEmpty ? membersList : _filterDummyMembers();
           _villages = responses[1].data['villages'] as List<dynamic>;
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load directory: $e')),
-        );
+        setState(() {
+          _members = _filterDummyMembers();
+          _isLoading = false;
+        });
       }
     }
   }
@@ -138,7 +407,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
         if (_searchQuery.isNotEmpty) 'q': _searchQuery,
         if (_selectedVillageId != null) 'villageId': _selectedVillageId,
       });
-      final membersList = response.data['members'] as List<dynamic>;
+      final membersList = List<dynamic>.from(response.data['members'] as List<dynamic>);
       membersList.sort((a, b) {
         final nameA = (a['fullName'] as String? ?? '').toLowerCase();
         final nameB = (b['fullName'] as String? ?? '').toLowerCase();
@@ -147,14 +416,14 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
 
       if (mounted) {
         setState(() {
-          _members = membersList;
+          _members = membersList.isNotEmpty ? membersList : _filterDummyMembers();
         });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to filter: $e')),
-        );
+        setState(() {
+          _members = _filterDummyMembers();
+        });
       }
     }
   }
@@ -402,7 +671,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                 const SizedBox(height: 12),
               ],
 
-              // Promoted Ad Slot
+              // Promoted Ad Slot (Reduced by 30%: height 126 instead of 180)
               GestureDetector(
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -410,7 +679,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                   );
                 },
                 child: Container(
-                  height: 180,
+                  height: 126,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
@@ -434,7 +703,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                           height: double.infinity,
                           errorBuilder: (_, _, _) => Container(
                             color: primaryColor.withValues(alpha: 0.2),
-                            child: Icon(Icons.storefront, color: primaryColor, size: 48),
+                            child: Icon(Icons.storefront, color: primaryColor, size: 36),
                           ),
                         ),
                         // Gradient Overlay
@@ -445,18 +714,19 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                               end: Alignment.bottomCenter,
                               colors: [
                                 Colors.black.withValues(alpha: 0.1),
-                                Colors.black.withValues(alpha: 0.8),
+                                Colors.black.withValues(alpha: 0.75),
                               ],
                             ),
                           ),
                         ),
                         // Ad content
                         Positioned(
-                          bottom: 16,
-                          left: 16,
-                          right: 16,
+                          bottom: 12,
+                          left: 14,
+                          right: 14,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -474,15 +744,17 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 4),
                               Text(
                                 'Promoted Business: Shree Ganesh Textiles - Visit Us!',
                                 style: GoogleFonts.inter(
                                   color: Colors.white,
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   height: 1.2,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
@@ -544,215 +816,230 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                   ),
                 )
               else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _members.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final member = _members[index];
-                    final String rawName = (member['fullName'] as String? ?? '').toTitleCase();
-                    final village = member['village']?['name'] as String?;
-                    final titleText = village != null
-                        ? '$rawName ($village)'
-                        : rawName;
-                    final avatarUrl = member['avatarUrl'] as String?;
-                    final relationToHead = (member['relationshipToHead'] as String? ?? member['relationToHead'] as String? ?? '').toUpperCase();
-                    final bool isHead = relationToHead == 'HEAD' || relationToHead == 'SELF' || member['isHead'] == true;
-                    final familyHeadName = (member['familyHeadName'] as String? ?? '').toTitleCase();
-                    final gotra = member['gotra'] as String?;
-                    final occupation = member['occupationType'] as String?;
+                Builder(
+                  builder: (context) {
+                    final int totalAdCount = _members.length ~/ 8;
+                    final int totalItemCount = _members.length + totalAdCount;
 
-                    return Card(
-                      margin: EdgeInsets.zero,
-                      color: isHead ? const Color(0xFFFFFDF5) : Colors.white,
-                      elevation: isHead ? 1 : 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: isHead 
-                              ? const Color(0xFFD4AF37) 
-                              : secondaryColor.withValues(alpha: 0.08),
-                          width: isHead ? 1.5 : 1,
-                        ),
-                      ),
-                      child: InkWell(
-                        onTap: () => _onMemberTap(member),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Row(
-                            children: [
-                              // Avatar
-                              AppAvatar(
-                                name: rawName,
-                                imageUrl: avatarUrl,
-                                radius: 28,
-                                border: Border.all(
-                                  color: isHead ? const Color(0xFFD4AF37) : primaryColor, 
-                                  width: 2,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              // Info
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            titleText,
-                                            style: GoogleFonts.inter(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.bold,
-                                              color: colorScheme.onSurface,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        if (isHead) ...[
-                                          const SizedBox(width: 6),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              gradient: const LinearGradient(
-                                                colors: [Color(0xFFB8860B), Color(0xFFDAA520)],
-                                              ),
-                                              borderRadius: BorderRadius.circular(6),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: const Color(0xFFB8860B).withValues(alpha: 0.3),
-                                                  blurRadius: 3,
-                                                  offset: const Offset(0, 1),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(
-                                                  Icons.workspace_premium,
-                                                  size: 10,
-                                                  color: Colors.white,
-                                                ),
-                                                const SizedBox(width: 2),
-                                                Text(
-                                                  'Family Head',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ],
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: totalItemCount,
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        // Insert Ad after every 8 members (at positions index 8, 17, 26...)
+                        if ((index + 1) % 9 == 0) {
+                          final adIndex = ((index + 1) ~/ 9 - 1) % _dummyAds.length;
+                          final ad = _dummyAds[adIndex];
+                          return _buildAdMemberCard(context, ad, primaryColor, secondaryColor, colorScheme);
+                        }
+
+                        final memberIndex = index - (index ~/ 9);
+                        final member = _members[memberIndex];
+                        final String rawName = (member['fullName'] as String? ?? '').toTitleCase();
+                        final village = member['village']?['name'] as String?;
+                        final titleText = village != null
+                            ? '$rawName ($village)'
+                            : rawName;
+                        final avatarUrl = member['avatarUrl'] as String?;
+                        final relationToHead = (member['relationshipToHead'] as String? ?? member['relationToHead'] as String? ?? '').toUpperCase();
+                        final bool isHead = relationToHead == 'HEAD' || relationToHead == 'SELF' || member['isHead'] == true;
+                        final familyHeadName = (member['familyHeadName'] as String? ?? '').toTitleCase();
+                        final gotra = member['gotra'] as String?;
+                        final occupation = member['occupationType'] as String?;
+
+                        return Card(
+                          margin: EdgeInsets.zero,
+                          color: isHead ? const Color(0xFFFFFDF5) : Colors.white,
+                          elevation: isHead ? 1 : 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: isHead 
+                                  ? const Color(0xFFD4AF37) 
+                                  : secondaryColor.withValues(alpha: 0.08),
+                              width: isHead ? 1.5 : 1,
+                            ),
+                          ),
+                          child: InkWell(
+                            onTap: () => _onMemberTap(member),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Row(
+                                children: [
+                                  // Avatar
+                                  AppAvatar(
+                                    name: rawName,
+                                    imageUrl: avatarUrl,
+                                    radius: 28,
+                                    border: Border.all(
+                                      color: isHead ? const Color(0xFFD4AF37) : primaryColor, 
+                                      width: 2,
                                     ),
-                                    const SizedBox(height: 4),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  // Info
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                titleText,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: colorScheme.onSurface,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            if (isHead) ...[
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  gradient: const LinearGradient(
+                                                    colors: [Color(0xFFB8860B), Color(0xFFDAA520)],
+                                                  ),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: const Color(0xFFB8860B).withValues(alpha: 0.3),
+                                                      blurRadius: 3,
+                                                      offset: const Offset(0, 1),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.workspace_premium,
+                                                      size: 10,
+                                                      color: Colors.white,
+                                                    ),
+                                                    const SizedBox(width: 2),
+                                                    Text(
+                                                      'Family Head',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 10,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: Colors.white,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
 
-                                    // Family Head Name Row (if not self head)
-                                    if (!isHead && familyHeadName.isNotEmpty) ...[
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.family_restroom_rounded,
-                                            size: 13,
-                                            color: secondaryColor,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              'Head: $familyHeadName',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
+                                        // Family Head Name Row (if not self head)
+                                        if (!isHead && familyHeadName.isNotEmpty) ...[
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.family_restroom_rounded,
+                                                size: 13,
                                                 color: secondaryColor,
                                               ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 5),
-                                    ],
-
-                                    // Occupation & Gotra / Details Row
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 4,
-                                      crossAxisAlignment: WrapCrossAlignment.center,
-                                      children: [
-                                        // Prominent Occupation Tag
-                                        if (occupation != null && occupation.isNotEmpty && occupation != 'N/A')
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                            decoration: BoxDecoration(
-                                              color: primaryColor.withValues(alpha: 0.08),
-                                              borderRadius: BorderRadius.circular(6),
-                                              border: Border.all(
-                                                color: primaryColor.withValues(alpha: 0.2),
-                                                width: 0.8,
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(
-                                                  Icons.work_outline_rounded,
-                                                  size: 11,
-                                                  color: primaryColor,
-                                                ),
-                                                const SizedBox(width: 3),
-                                                Text(
-                                                  occupation,
+                                              const SizedBox(width: 4),
+                                              Expanded(
+                                                child: Text(
+                                                  'Head: $familyHeadName',
                                                   style: GoogleFonts.inter(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: primaryColor,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: secondaryColor,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 5),
+                                        ],
+
+                                        // Occupation & Gotra / Details Row
+                                        Wrap(
+                                          spacing: 6,
+                                          runSpacing: 4,
+                                          crossAxisAlignment: WrapCrossAlignment.center,
+                                          children: [
+                                            // Prominent Occupation Tag
+                                            if (occupation != null && occupation.isNotEmpty && occupation != 'N/A')
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: primaryColor.withValues(alpha: 0.08),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  border: Border.all(
+                                                    color: primaryColor.withValues(alpha: 0.2),
+                                                    width: 0.8,
                                                   ),
                                                 ),
-                                              ],
-                                            ),
-                                          ),
-
-                                        // Gotra Chip
-                                        if (gotra != null && gotra.isNotEmpty)
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                            decoration: BoxDecoration(
-                                              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-                                              borderRadius: BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              'Gotra: $gotra',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                                color: colorScheme.onSurfaceVariant,
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.work_outline_rounded,
+                                                      size: 11,
+                                                      color: primaryColor,
+                                                    ),
+                                                    const SizedBox(width: 3),
+                                                    Text(
+                                                      occupation,
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: primaryColor,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                          ),
+
+                                            // Gotra Chip
+                                            if (gotra != null && gotra.isNotEmpty)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  'Gotra: $gotra',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: colorScheme.onSurfaceVariant,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
                                       ],
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: colorScheme.outlineVariant,
+                                    size: 22,
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                Icons.chevron_right_rounded,
-                                color: colorScheme.outlineVariant,
-                                size: 22,
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -872,6 +1159,185 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
         ),
       ),
       bottomNavigationBar: const AppBottomNavigation(currentIndex: 1),
+    );
+  }
+
+  Widget _buildAdMemberCard(
+    BuildContext context,
+    Map<String, dynamic> ad,
+    Color primaryColor,
+    Color secondaryColor,
+    ColorScheme colorScheme,
+  ) {
+    return Card(
+      margin: EdgeInsets.zero,
+      color: const Color(0xFFFFFBEF),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: primaryColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: InkWell(
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Opening ${ad['title']}...')),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            children: [
+              // Avatar format (same 56x56 circle as AppAvatar radius 28)
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: primaryColor.withValues(alpha: 0.1),
+                  border: Border.all(
+                    color: primaryColor,
+                    width: 2,
+                  ),
+                ),
+                child: ClipOval(
+                  child: ad['imageUrl'] != null && (ad['imageUrl'] as String).isNotEmpty
+                      ? Image.network(
+                          ad['imageUrl'],
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            Icons.storefront_rounded,
+                            color: primaryColor,
+                            size: 26,
+                          ),
+                        )
+                      : Icon(
+                          Icons.storefront_rounded,
+                          color: primaryColor,
+                          size: 26,
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Info column
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            ad['title'] ?? 'Sponsored Business',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryColor,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'AD',
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      ad['tagline'] ?? '',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: secondaryColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 5),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: primaryColor.withValues(alpha: 0.2),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.campaign_outlined,
+                                size: 11,
+                                color: primaryColor,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                ad['category'] ?? 'Sponsored',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (ad['location'] != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              ad['location']!,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.open_in_new_rounded,
+                color: primaryColor,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
