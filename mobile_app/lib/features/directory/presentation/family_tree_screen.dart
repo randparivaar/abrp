@@ -884,7 +884,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                 ],
               ),
             ),
-            memberPhotoColumn(spouseNode, roleTag: (member.gender == 'male' ? 'Daughter-in-law' : 'Son-in-law'), isPrimary: false),
+            memberPhotoColumn(spouseNode, roleTag: spouseNode.relationshipToHead, isPrimary: false),
           ],
         ),
       );
@@ -2148,7 +2148,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                 _buildPremiumMemberPhotoColumn(
                   context,
                   spouseNode,
-                  roleTag: 'SPOUSE',
+                  roleTag: spouseNode.relationshipToHead,
                   isPrimary: false,
                   generation: generation,
                 ),

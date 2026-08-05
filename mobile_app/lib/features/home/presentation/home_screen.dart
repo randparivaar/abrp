@@ -110,34 +110,6 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // Search Bar
-            Container(
-              height: 48,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-                ),
-              ),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search members, businesses...',
-                  hintStyle: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
             // Carousel Section
             SizedBox(
               height: 260,

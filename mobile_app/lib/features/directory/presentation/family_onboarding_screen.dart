@@ -8,6 +8,7 @@ import 'package:mobile_app/core/network/api_client.dart';
 import 'package:mobile_app/features/auth/presentation/auth_controller.dart';
 import 'my_family_provider.dart';
 import 'directory_constants.dart';
+import 'app_bottom_navigation.dart';
 // To reuse CommunityEmblem if needed
 import 'package:mobile_app/core/utils/income_parser.dart';
 
@@ -1001,6 +1002,20 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('New Family Registration'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (_currentStep > 0) {
+              _prevStep();
+            } else {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/directory');
+              }
+            }
+          },
+        ),
       ),
       body: SafeArea(
         child: Column(
@@ -1044,16 +1059,26 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
               padding: const EdgeInsets.all(24.0),
               child: Row(
                 children: [
-                  // Back button
-                  if (_currentStep > 0) ...[
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _isLoading ? null : _prevStep,
-                        child: const Text('BACK'),
-                      ),
+                  // Back / Cancel button
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              if (_currentStep > 0) {
+                                _prevStep();
+                              } else {
+                                if (context.canPop()) {
+                                  context.pop();
+                                } else {
+                                  context.go('/directory');
+                                }
+                              }
+                            },
+                      child: Text(_currentStep > 0 ? 'BACK' : 'CANCEL'),
                     ),
-                    const SizedBox(width: 16),
-                  ],
+                  ),
+                  const SizedBox(width: 16),
 
                   // Next / Submit button
                   Expanded(
@@ -1070,6 +1095,7 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
           ],
         ),
       ),
+      bottomNavigationBar: const AppBottomNavigation(currentIndex: 2),
     );
   }
 }

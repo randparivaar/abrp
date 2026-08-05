@@ -171,7 +171,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     const Color deityPink = Color(0xFFE91E8C);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF050000),
+      backgroundColor: bgDark,
       body: AnimatedBuilder(
         animation: Listenable.merge([
           _mainController,
@@ -511,7 +511,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             Image.asset(
               imagePath,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (context, error, stackTrace) => Container(
                 color: const Color(0xFF1A0505),
                 child: const Center(
                   child: Icon(Icons.image, color: Colors.white24, size: 48),

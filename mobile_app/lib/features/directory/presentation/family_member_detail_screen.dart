@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile_app/core/utils/app_avatar.dart';
+import 'package:go_router/go_router.dart';
 import 'family_tree_screen.dart';
 import 'business_profile_detail_screen.dart';
 
@@ -72,7 +73,13 @@ class FamilyMemberDetailScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: cs.primary),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/directory');
+            }
+          },
         ),
         title: Text(
           'Member Profile',

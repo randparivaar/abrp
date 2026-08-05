@@ -5,9 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/network/api_client.dart';
 import 'package:mobile_app/core/utils/app_avatar.dart';
 import 'package:mobile_app/core/utils/name_formatter.dart';
+import 'package:go_router/go_router.dart';
 import 'business_profile_detail_screen.dart';
 import 'directory_models.dart';
 import 'directory_constants.dart';
+import 'app_bottom_navigation.dart';
 
 class BusinessDirectoryScreen extends ConsumerStatefulWidget {
   const BusinessDirectoryScreen({super.key});
@@ -103,7 +105,13 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: primaryColor),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/directory');
+            }
+          },
         ),
         title: Text(
           'Business Directory / व्यापार निर्देशिका',
@@ -413,6 +421,7 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
           ),
         ),
       ),
+      bottomNavigationBar: const AppBottomNavigation(currentIndex: 1),
     );
   }
 }

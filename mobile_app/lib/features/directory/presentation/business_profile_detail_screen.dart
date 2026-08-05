@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile_app/core/network/api_client.dart';
 import 'package:mobile_app/core/utils/app_avatar.dart';
+import 'package:go_router/go_router.dart';
 import 'family_tree_screen.dart';
 import 'family_member_detail_screen.dart';
 
@@ -226,7 +227,13 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1B1C1C)),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/business-directory');
+            }
+          },
         ),
         title: Text(
           widget.business.businessName,
