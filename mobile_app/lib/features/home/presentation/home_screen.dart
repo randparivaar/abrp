@@ -625,12 +625,27 @@ class _MyFamilyCardState extends ConsumerState<_MyFamilyCard> {
         ..clearSnackBars()
         ..showSnackBar(
           SnackBar(
-            content: const Text('Something went wrong. Please try again.'),
+            duration: const Duration(seconds: 8),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
+            ),
+            content: Row(
+              children: [
+                const Expanded(
+                  child: Text('Something went wrong. Please try again.'),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                  onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  tooltip: 'Dismiss',
+                ),
+                const SizedBox(width: 8),
+              ],
             ),
             action: SnackBarAction(
               label: 'Retry',

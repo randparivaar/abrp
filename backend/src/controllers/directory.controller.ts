@@ -22,6 +22,7 @@ import {
   getBusinessMembersList,
   addMemberToBusiness,
   removeMemberFromBusiness,
+  getBusinessEligiblePartners,
   getMembersList,
   getBusinessProfilesList
 } from '../services/directory.service.js';
@@ -337,6 +338,22 @@ export async function handleGetBusinessMembers(c: Context) {
     return c.json({ members });
   } catch (error: any) {
     console.error('Error in handleGetBusinessMembers:', error);
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
+}
+
+/**
+ * Handle getting eligible family members for business partner assignment
+ */
+export async function handleGetEligibleBusinessPartners(c: Context) {
+  try {
+    const businessId = parseInt(c.req.param('businessId') || '', 10);
+    if (isNaN(businessId)) return c.json({ error: 'Invalid business ID' }, 400);
+
+    const eligible = await getBusinessEligiblePartners(businessId);
+    return c.json({ eligibleMembers: eligible });
+  } catch (error: any) {
+    console.error('Error in handleGetEligibleBusinessPartners:', error);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }

@@ -1178,38 +1178,72 @@ class _AssignMemberBottomSheet extends ConsumerStatefulWidget {
 class _AssignMemberBottomSheetState extends ConsumerState<_AssignMemberBottomSheet> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _roleController = TextEditingController();
-  List<dynamic> _searchResults = [];
-  bool _isSearching = false;
+  
+  List<dynamic> _eligibleMembers = [];
+  List<dynamic> _filteredMembers = [];
+  bool _isLoadingEligible = true;
+  String? _eligibleError;
   Map<String, dynamic>? _selectedMember;
   String _selectedRole = 'Partner';
 
   final List<String> _roles = ['Owner', 'Partner', 'Manager', 'Employee', 'Consultant'];
 
-  Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty) {
-      setState(() => _searchResults = []);
-      return;
-    }
-    setState(() => _isSearching = true);
+  @override
+  void initState() {
+    super.initState();
+    _fetchEligiblePartners();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _roleController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchEligiblePartners() async {
+    setState(() {
+      _isLoadingEligible = true;
+      _eligibleError = null;
+    });
     try {
       final dio = ref.read(apiClientProvider);
-      final response = await dio.get('/api/v1/directory/members/search', queryParameters: {'q': query});
+      final response = await dio.get('/api/v1/directory/business/${widget.businessId}/eligible-partners');
       if (response.statusCode == 200 && response.data != null) {
+        final list = response.data['eligibleMembers'] as List<dynamic>? ?? [];
         setState(() {
-          _searchResults = response.data['members'] as List<dynamic>;
+          _eligibleMembers = list;
+          _filteredMembers = list;
+          _isLoadingEligible = false;
         });
       }
     } catch (e) {
-      debugPrint('Error searching members: $e');
-    } finally {
-      if (mounted) setState(() => _isSearching = false);
+      setState(() {
+        _eligibleError = 'Failed to load family members: $e';
+        _isLoadingEligible = false;
+      });
+    }
+  }
+
+  void _filterMembers(String query) {
+    if (query.trim().isEmpty) {
+      setState(() => _filteredMembers = _eligibleMembers);
+    } else {
+      final q = query.trim().toLowerCase();
+      setState(() {
+        _filteredMembers = _eligibleMembers.where((m) {
+          final name = (m['fullName'] as String? ?? '').toLowerCase();
+          final relation = (m['relationshipToHead'] as String? ?? '').toLowerCase();
+          return name.contains(q) || relation.contains(q);
+        }).toList();
+      });
     }
   }
 
   Future<void> _submitAssignment() async {
     if (_selectedMember == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a member to assign / कृपया जोड़ने के लिए सदस्य का चयन करें')),
+        const SnackBar(content: Text('Please select a family member to assign / कृपया जोड़ने के लिए सदस्य का चयन करें')),
       );
       return;
     }
@@ -1286,7 +1320,7 @@ class _AssignMemberBottomSheetState extends ConsumerState<_AssignMemberBottomShe
             ),
             const SizedBox(height: 16),
             Text(
-              'Assign Partner / Owner\nसाझेदार/स्वामी को जोड़ें',
+              'Assign Family Partner / Owner\nपारिवारिक साझेदार/स्वामी को जोड़ें',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.bold,
@@ -1294,153 +1328,177 @@ class _AssignMemberBottomSheetState extends ConsumerState<_AssignMemberBottomShe
                 color: cs.primary,
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Search input field
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                labelText: 'Search member by name / नाम से खोजें',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _isSearching
-                    ? const Padding(
-                        padding: EdgeInsets.all(12.0),
-                        child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                      )
-                    : null,
-                border: const OutlineInputBorder(),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                color: cs.primaryContainer.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
               ),
-              onChanged: _performSearch,
-            ),
-            const SizedBox(height: 12),
-
-            // Selected member card or results list
-            if (_selectedMember != null) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: cs.primaryContainer.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: cs.primary, width: 1),
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundImage: _selectedMember!['avatarUrl'] != null
-                          ? NetworkImage(_selectedMember!['avatarUrl'])
-                          : null,
-                      child: _selectedMember!['avatarUrl'] != null
-                          ? null
-                          : Icon(_selectedMember!['gender'] == 'male' ? Icons.face : Icons.face_3),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _selectedMember!['fullName'] ?? 'Unknown',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            'Relation: ${_selectedMember!['relationshipToHead'] ?? 'Member'}',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.clear, color: Colors.red),
-                      onPressed: () {
-                        setState(() {
-                          _selectedMember = null;
-                        });
-                      },
-                    ),
-                  ],
-                ),
+              child: Text(
+                '🔒 Restricted to Business Owner & Family Members only',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11, color: cs.primary, fontWeight: FontWeight.w600),
               ),
-              const SizedBox(height: 16),
-            ] else if (_searchResults.isNotEmpty) ...[
-              Container(
-                constraints: const BoxConstraints(maxHeight: 180),
-                decoration: BoxDecoration(
-                  border: Border.all(color: cs.outlineVariant),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _searchResults.length,
-                  itemBuilder: (context, index) {
-                    final m = _searchResults[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        radius: 16,
-                        backgroundImage: m['avatarUrl'] != null ? NetworkImage(m['avatarUrl']) : null,
-                        child: m['avatarUrl'] != null ? null : Icon(m['gender'] == 'male' ? Icons.face : Icons.face_3, size: 16),
-                      ),
-                      title: Text(m['fullName'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                      subtitle: Text('Relation: ${m['relationshipToHead'] ?? ""}', style: const TextStyle(fontSize: 11)),
-                      onTap: () {
-                        setState(() {
-                          _selectedMember = m;
-                          _searchResults = [];
-                          _searchController.clear();
-                        });
-                      },
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-            ] else if (_searchController.text.isNotEmpty && !_isSearching) ...[
-              const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Text('No members found / कोई सदस्य नहीं मिला', textAlign: TextAlign.center, style: TextStyle(fontStyle: FontStyle.italic)),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Role selection
-            DropdownButtonFormField<String>(
-              initialValue: _selectedRole,
-              decoration: const InputDecoration(
-                labelText: 'Role in Business / व्यवसाय में भूमिका',
-                border: OutlineInputBorder(),
-              ),
-              items: [..._roles, 'Other'].map((r) {
-                return DropdownMenuItem<String>(
-                  value: r,
-                  child: Text(r),
-                );
-              }).toList(),
-              onChanged: (val) {
-                setState(() {
-                  _selectedRole = val ?? 'Partner';
-                });
-              },
             ),
             const SizedBox(height: 16),
 
-            if (_selectedRole == 'Other') ...[
-              TextField(
-                controller: _roleController,
+            if (_isLoadingEligible)
+              const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+            else if (_eligibleError != null)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(_eligibleError!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+              )
+            else ...[
+              // Search input field for filtering family members
+              if (_eligibleMembers.length > 3)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      labelText: 'Search family member / परिवार सदस्य खोजें',
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: _filterMembers,
+                  ),
+                ),
+
+              // Selected member card or results list
+              if (_selectedMember != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: cs.primary, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundImage: _selectedMember!['avatarUrl'] != null
+                            ? NetworkImage(_selectedMember!['avatarUrl'])
+                            : null,
+                        child: _selectedMember!['avatarUrl'] != null
+                            ? null
+                            : Icon(_selectedMember!['gender'] == 'male' ? Icons.face : Icons.face_3),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _selectedMember!['fullName'] ?? 'Unknown',
+                              style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              'Relation: ${_selectedMember!['relationshipToHead'] ?? 'Family Member'}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.red),
+                        onPressed: () {
+                          setState(() {
+                            _selectedMember = null;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ] else if (_filteredMembers.isNotEmpty) ...[
+                const Text('Select Family Member to Add:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 220),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: cs.outlineVariant),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: _filteredMembers.length,
+                    separatorBuilder: (context, index) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final m = _filteredMembers[index];
+                      return ListTile(
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 16,
+                          backgroundImage: m['avatarUrl'] != null ? NetworkImage(m['avatarUrl']) : null,
+                          child: m['avatarUrl'] != null ? null : Icon(m['gender'] == 'male' ? Icons.face : Icons.face_3, size: 16),
+                        ),
+                        title: Text(m['fullName'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        subtitle: Text('Family Relation: ${m['relationshipToHead'] ?? "Member"}', style: const TextStyle(fontSize: 11)),
+                        trailing: const Icon(Icons.add_circle_outline, color: Colors.teal),
+                        onTap: () {
+                          setState(() {
+                            _selectedMember = m;
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ] else ...[
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text('All family members are already assigned or no eligible family members found.', textAlign: TextAlign.center, style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Role selection
+              DropdownButtonFormField<String>(
+                initialValue: _selectedRole,
+                isExpanded: true,
                 decoration: const InputDecoration(
-                  labelText: 'Enter Custom Role / कस्टम भूमिका दर्ज करें',
+                  labelText: 'Role in Business / व्यवसाय में भूमिका',
                   border: OutlineInputBorder(),
                 ),
+                items: [..._roles, 'Other'].map((r) {
+                  return DropdownMenuItem<String>(
+                    value: r,
+                    child: Text(r, overflow: TextOverflow.ellipsis),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  setState(() {
+                    _selectedRole = val ?? 'Partner';
+                  });
+                },
               ),
               const SizedBox(height: 16),
-            ],
 
-            ElevatedButton(
-              onPressed: _submitAssignment,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              if (_selectedRole == 'Other') ...[
+                TextField(
+                  controller: _roleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Enter Custom Role / कस्टम भूमिका दर्ज करें',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              ElevatedButton(
+                onPressed: _selectedMember != null ? _submitAssignment : null,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Add Family Partner / सदस्य को शामिल करें'),
               ),
-              child: const Text('Add Member / सदस्य को शामिल करें'),
-            ),
+            ],
           ],
         ),
       ),

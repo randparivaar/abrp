@@ -20,6 +20,7 @@ import {
   handleRejectBusiness,
   handleSearchMembers,
   handleGetBusinessMembers,
+  handleGetEligibleBusinessPartners,
   handleAddBusinessMember,
   handleDeleteBusinessMember,
   handleGetMembers,
@@ -47,6 +48,7 @@ directoryRouter.get('/businesses', handleGetBusinesses);
 
 // Business member assignments
 directoryRouter.get('/business/:businessId/members', handleGetBusinessMembers);
+directoryRouter.get('/business/:businessId/eligible-partners', handleGetEligibleBusinessPartners);
 directoryRouter.post('/business/:businessId/member', handleAddBusinessMember);
 directoryRouter.delete('/business/:businessId/member/:memberId', handleDeleteBusinessMember);
 

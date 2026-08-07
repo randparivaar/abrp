@@ -252,6 +252,10 @@ class Auth extends _$Auth {
     }
   }
 
+  void clearError() {
+    state = state.copyWith(errorMessage: null);
+  }
+
   String _getErrorMessage(dynamic e) {
     if (e is DioException) {
       final data = e.response?.data;

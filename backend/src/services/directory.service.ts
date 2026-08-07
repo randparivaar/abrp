@@ -1113,6 +1113,41 @@ export async function getBusinessMembersList(businessId: number) {
 }
 
 /**
+ * Get eligible family members for a business profile (Business Owner / Family Head / Family Members)
+ */
+export async function getBusinessEligiblePartners(businessId: number) {
+  const bizMembers = await db.query.businessMembers.findMany({
+    where: eq(businessMembers.businessId, businessId),
+    with: { member: true }
+  });
+
+  const existingMemberIds = new Set(bizMembers.map(bm => bm.memberId));
+  const familyIds = new Set<number>();
+
+  for (const bm of bizMembers) {
+    if (bm.member?.familyId) {
+      familyIds.add(bm.member.familyId);
+    }
+  }
+
+  if (familyIds.size === 0) {
+    return [];
+  }
+
+  const eligible = await db.query.familyMembers.findMany({
+    where: and(
+      inArray(familyMembers.familyId, Array.from(familyIds)),
+      eq(familyMembers.status, 'approved')
+    ),
+    with: {
+      family: true
+    }
+  });
+
+  return eligible.filter(m => !existingMemberIds.has(m.id));
+}
+
+/**
  * Link a family member to a business profile
  */
 export async function addMemberToBusiness(sessionUserId: string, businessId: number, targetMemberId: number, role: string) {
@@ -1121,6 +1156,31 @@ export async function addMemberToBusiness(sessionUserId: string, businessId: num
     where: eq(businessProfiles.id, businessId),
   });
   if (!biz) throw new Error('Business not found');
+
+  const sessionUserRecord = await db.query.users.findFirst({ where: eq(users.id, sessionUserId) });
+  const isAdminOrMod = sessionUserRecord?.role === 'admin' || sessionUserRecord?.role === 'moderator';
+
+  // Get current business members
+  const existingBizMembers = await db.query.businessMembers.findMany({
+    where: eq(businessMembers.businessId, businessId),
+    with: { member: true }
+  });
+
+  const familyIds = new Set<number>();
+  for (const bm of existingBizMembers) {
+    if (bm.member?.familyId) {
+      familyIds.add(bm.member.familyId);
+    }
+  }
+
+  const targetMember = await db.query.familyMembers.findFirst({
+    where: eq(familyMembers.id, targetMemberId)
+  });
+  if (!targetMember) throw new Error('Target member not found');
+
+  if (!isAdminOrMod && familyIds.size > 0 && !familyIds.has(targetMember.familyId)) {
+    throw new Error('Only family members or family head of the business owner can be added as partners.');
+  }
 
   // Insert link
   const [newLink] = await db.insert(businessMembers).values({
