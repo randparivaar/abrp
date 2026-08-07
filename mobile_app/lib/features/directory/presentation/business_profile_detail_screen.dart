@@ -1206,6 +1206,8 @@ class _AssignMemberBottomSheetState extends ConsumerState<_AssignMemberBottomShe
       _isLoadingEligible = true;
       _eligibleError = null;
     });
+
+    // Tier 1: Try dedicated eligible-partners endpoint
     try {
       final dio = ref.read(apiClientProvider);
       final response = await dio.get('/api/v1/directory/business/${widget.businessId}/eligible-partners');
@@ -1216,10 +1218,48 @@ class _AssignMemberBottomSheetState extends ConsumerState<_AssignMemberBottomShe
           _filteredMembers = list;
           _isLoadingEligible = false;
         });
+        return;
+      }
+    } catch (e) {
+      debugPrint('Eligible partners endpoint not found on server, attempting fallback: $e');
+    }
+
+    // Tier 2: Fallback to /api/v1/directory/my-family for user's family members
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.get('/api/v1/directory/my-family');
+      if (response.statusCode == 200 && response.data != null) {
+        final familyData = response.data['family'];
+        if (familyData != null && familyData['members'] is List) {
+          final list = familyData['members'] as List<dynamic>;
+          setState(() {
+            _eligibleMembers = list;
+            _filteredMembers = list;
+            _isLoadingEligible = false;
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Fallback my-family fetch error: $e');
+    }
+
+    // Tier 3: Secondary Fallback to global approved members list
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.get('/api/v1/directory/members');
+      if (response.statusCode == 200 && response.data != null) {
+        final list = response.data['members'] as List<dynamic>? ?? [];
+        setState(() {
+          _eligibleMembers = list;
+          _filteredMembers = list;
+          _isLoadingEligible = false;
+        });
+        return;
       }
     } catch (e) {
       setState(() {
-        _eligibleError = 'Failed to load family members: $e';
+        _eligibleError = 'Unable to load family members. Please try again.';
         _isLoadingEligible = false;
       });
     }
