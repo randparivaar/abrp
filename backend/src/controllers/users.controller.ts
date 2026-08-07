@@ -75,8 +75,12 @@ export async function handleChangeRole(c: Context) {
 
 export async function handleListUsers(c: Context) {
   try {
-    const allUsers = await listAllUsers();
-    return c.json({ users: allUsers });
+    const search = c.req.query('search') || c.req.query('q');
+    const page = parseInt(c.req.query('page') || '1', 10);
+    const limit = parseInt(c.req.query('limit') || '10', 10);
+
+    const result = await listAllUsers(search, isNaN(page) ? 1 : page, isNaN(limit) ? 10 : limit);
+    return c.json(result);
   } catch (error: any) {
     console.error('Error listing users:', error);
     return c.json({ error: 'Internal Server Error' }, 500);

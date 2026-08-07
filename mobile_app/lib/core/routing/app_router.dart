@@ -63,11 +63,11 @@ GoRouter appRouter(Ref ref) {
         return '/';
       }
 
-      // 3. Admin guard: restrict access to /admin
+      // 3. Admin & Moderator guard: restrict access to /admin
       if (state.matchedLocation.startsWith('/admin')) {
         final role = authState.user?.role;
-        if (role != 'admin') {
-          return '/'; // Redirect non-admins to Home
+        if (role != 'admin' && role != 'moderator') {
+          return '/'; // Redirect unauthorized users to Home
         }
       }
 

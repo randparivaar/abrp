@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, ilike, or, count, desc } from 'drizzle-orm';
 import { UpdateUserProfileRequest } from '../types/users.types.js';
 
 export async function getUserById(userId: string) {
@@ -68,10 +68,35 @@ export async function updateUserRole(userId: string, newRole: 'admin' | 'member'
   return updatedUser;
 }
 
-export async function listAllUsers() {
+export async function listAllUsers(search?: string, page: number = 1, limit: number = 10) {
   const { coordinatorRegions, regions } = await import('../db/schema.js');
   
-  const userList = await db.select().from(users);
+  const offset = (page - 1) * limit;
+  let whereClause = undefined;
+  
+  if (search && search.trim().length > 0) {
+    const q = `%${search.trim()}%`;
+    whereClause = or(
+      ilike(users.fullName, q),
+      ilike(users.email, q),
+      ilike(users.mobile, q)
+    );
+  }
+
+  // Get total count
+  const [{ value: totalCount }] = await db
+    .select({ value: count() })
+    .from(users)
+    .where(whereClause);
+
+  // Get paginated users
+  const userList = await db
+    .select()
+    .from(users)
+    .where(whereClause)
+    .orderBy(desc(users.createdAt))
+    .limit(limit)
+    .offset(offset);
 
   // Fetch assigned regions for moderators
   const assignments = await db
@@ -91,9 +116,19 @@ export async function listAllUsers() {
     userRegionMap[a.userId].push({ id: a.regionId, name: a.regionName });
   }
 
-  return userList.map(u => ({
+  const mappedUsers = userList.map(u => ({
     ...u,
     assignedRegions: userRegionMap[u.id] || [],
   }));
+
+  const totalPages = Math.ceil(Number(totalCount) / limit);
+
+  return {
+    users: mappedUsers,
+    totalCount: Number(totalCount),
+    page,
+    limit,
+    totalPages: totalPages > 0 ? totalPages : 1,
+  };
 }
 

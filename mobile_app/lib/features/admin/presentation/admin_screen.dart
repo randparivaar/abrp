@@ -7,6 +7,7 @@ import '../../../core/utils/name_formatter.dart';
 import '../../directory/presentation/family_member_detail_screen.dart';
 import '../../directory/presentation/business_profile_detail_screen.dart';
 import '../../directory/presentation/family_tree_screen.dart';
+import '../../auth/presentation/auth_controller.dart';
 import 'family_approval_detail_screen.dart';
 
 class AdminScreen extends ConsumerStatefulWidget {
@@ -19,8 +20,16 @@ class AdminScreen extends ConsumerStatefulWidget {
 class _AdminScreenState extends ConsumerState<AdminScreen> {
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
+  final _userSearchController = TextEditingController();
+
   List<dynamic> _usersList = [];
   bool _isLoadingUsers = true;
+  String? _usersError;
+  int _userPage = 1;
+  int _totalUserPages = 1;
+  int _totalUsersCount = 0;
+  String _userSearchQuery = '';
+
   String? _selectedUserId;
   bool _isSendingNotification = false;
   String? _statusMessage;
@@ -43,7 +52,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchUsers();
+    final authState = ref.read(authProvider);
+    if (authState.user?.role == 'admin') {
+      _fetchUsers();
+    }
     _fetchRegions();
     _fetchPendingFamilies();
     _fetchPendingMembers();
@@ -54,6 +66,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   void dispose() {
     _titleController.dispose();
     _bodyController.dispose();
+    _userSearchController.dispose();
     super.dispose();
   }
 
@@ -71,107 +84,206 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     }
   }
 
-  Future<void> _showChangeRoleDialog(Map<String, dynamic> userItem) async {
-    String selectedRole = userItem['role'] as String? ?? 'member';
-    final existingAssigned = (userItem['assignedRegions'] as List<dynamic>?) ?? [];
-    final Set<int> selectedRegionIds = existingAssigned.map<int>((r) => r['id'] as int).toSet();
+  Future<void> _showChangeRoleModal(Map<String, dynamic> userItem) async {
+    if (_regionsList.isEmpty && !_isLoadingRegions) {
+      await _fetchRegions();
+    }
 
-    await showDialog(
+    String roleVal = (userItem['role'] as String? ?? 'member').toLowerCase();
+    if (!['member', 'moderator', 'admin'].contains(roleVal)) {
+      roleVal = 'member';
+    }
+    String selectedRole = roleVal;
+
+    final existingAssigned = (userItem['assignedRegions'] as List<dynamic>?) ?? [];
+    final Set<int> selectedRegionIds = existingAssigned
+        .map<int?>((r) {
+          if (r is Map && r['id'] != null) {
+            return r['id'] is int ? r['id'] as int : int.tryParse(r['id'].toString());
+          }
+          return null;
+        })
+        .whereType<int>()
+        .toSet();
+
+    if (!mounted) return;
+
+    await showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text('Change Role: ${userItem['fullName']}'),
-              content: SingleChildScrollView(
+          builder: (context, setModalState) {
+            final theme = Theme.of(context);
+            final userName = (userItem['fullName'] as String? ?? 'User').toTitleCase();
+            final userEmail = userItem['email'] as String? ?? userItem['mobile'] as String? ?? '';
+
+            return Container(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              padding: EdgeInsets.only(
+                top: 16,
+                left: 20,
+                right: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Select User Role:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedRole,
-                      items: const [
-                        DropdownMenuItem(value: 'member', child: Text('Member')),
-                        DropdownMenuItem(value: 'moderator', child: Text('Moderator (Area Coordinator)')),
-                        DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          setDialogState(() => selectedRole = val);
-                        }
-                      },
-                    ),
-                    if (selectedRole == 'moderator') ...[
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Assign Regions / Zones to Moderate:',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                      const SizedBox(height: 6),
-                      if (_isLoadingRegions)
-                        const Center(child: CircularProgressIndicator())
-                      else if (_regionsList.isEmpty)
-                        const Text('No regions available in system.', style: TextStyle(color: Colors.grey, fontSize: 12))
-                      else
-                        Container(
-                          constraints: const BoxConstraints(maxHeight: 180),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: _regionsList.length,
-                            itemBuilder: (context, idx) {
-                              final reg = _regionsList[idx];
-                              final regId = reg['id'] as int;
-                              final regName = reg['name'] as String;
-                              final isChecked = selectedRegionIds.contains(regId);
-
-                              return CheckboxListTile(
-                                dense: true,
-                                title: Text(regName, style: const TextStyle(fontSize: 13)),
-                                value: isChecked,
-                                onChanged: (val) {
-                                  setDialogState(() {
-                                    if (val == true) {
-                                      selectedRegionIds.add(regId);
-                                    } else {
-                                      selectedRegionIds.remove(regId);
-                                    }
-                                  });
-                                },
-                              );
-                            },
+                    // Sheet Header
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: theme.colorScheme.primaryContainer,
+                          child: Text(
+                            userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                            style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
                           ),
                         ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(userName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              Text(userEmail, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 24),
+
+                    // Role Selector Header
+                    const Text('Select User Role / रोल चुनें:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _buildRoleChip('Member', 'member', selectedRole, (r) => setModalState(() => selectedRole = r)),
+                        const SizedBox(width: 8),
+                        _buildRoleChip('Moderator', 'moderator', selectedRole, (r) => setModalState(() => selectedRole = r)),
+                        const SizedBox(width: 8),
+                        _buildRoleChip('Admin', 'admin', selectedRole, (r) => setModalState(() => selectedRole = r)),
+                      ],
+                    ),
+
+                    // Zones / Regions Selector (if moderator selected)
+                    if (selectedRole == 'moderator') ...[
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Assign Regions / Zones to Moderate', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          Text('${selectedRegionIds.length} Selected', style: const TextStyle(fontSize: 12, color: Colors.indigo, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      if (_isLoadingRegions)
+                        const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
+                      else if (_regionsList.isEmpty)
+                        const Text('No regions available in system.', style: TextStyle(color: Colors.grey))
+                      else
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _regionsList.map((reg) {
+                            final regId = reg['id'] is int ? reg['id'] as int : int.parse(reg['id'].toString());
+                            final regName = reg['name'] as String? ?? 'Zone $regId';
+                            final isSelected = selectedRegionIds.contains(regId);
+
+                            return FilterChip(
+                              label: Text(regName),
+                              selected: isSelected,
+                              selectedColor: Colors.indigo.shade100,
+                              checkmarkColor: Colors.indigo.shade900,
+                              labelStyle: TextStyle(
+                                color: isSelected ? Colors.indigo.shade900 : theme.colorScheme.onSurface,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (val) {
+                                setModalState(() {
+                                  if (val) {
+                                    selectedRegionIds.add(regId);
+                                  } else {
+                                    selectedRegionIds.remove(regId);
+                                  }
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
                     ],
+
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          await _updateUserRole(
+                            userItem['id'] as String,
+                            selectedRole,
+                            selectedRole == 'moderator' ? selectedRegionIds.toList() : null,
+                          );
+                        },
+                        icon: const Icon(Icons.check, color: Colors.white),
+                        label: const Text('Save User Role & Permissions', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('CANCEL'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    await _updateUserRole(
-                      userItem['id'] as String,
-                      selectedRole,
-                      selectedRole == 'moderator' ? selectedRegionIds.toList() : null,
-                    );
-                  },
-                  child: const Text('SAVE ROLE'),
-                ),
-              ],
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildRoleChip(String label, String value, String currentSelected, ValueChanged<String> onSelect) {
+    final isSelected = value == currentSelected;
+    final color = value == 'admin' ? Colors.red : value == 'moderator' ? Colors.indigo : Colors.teal;
+
+    return Expanded(
+      child: InkWell(
+        onTap: () => onSelect(value),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withValues(alpha: 0.15) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: isSelected ? color : Colors.grey.shade300, width: isSelected ? 2 : 1),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? color : Colors.grey.shade800,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -181,7 +293,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       final response = await dio.patch('/users/change-role', data: {
         'userId': userId,
         'newRole': newRole,
-        'regionIds': ?regionIds,
+        'regionIds': regionIds,
       });
 
       if (response.statusCode == 200 && mounted) {
@@ -199,19 +311,39 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     }
   }
 
-  Future<void> _fetchUsers() async {
+  Future<void> _fetchUsers({String? query, int? page}) async {
+    final search = query ?? _userSearchQuery;
+    final currentPage = page ?? _userPage;
 
-    setState(() => _isLoadingUsers = true);
+    setState(() {
+      _isLoadingUsers = true;
+      _usersError = null;
+    });
     try {
       final dio = ref.read(apiClientProvider);
-      final response = await dio.get('/users');
+      final response = await dio.get('/users', queryParameters: {
+        if (search.trim().isNotEmpty) 'search': search.trim(),
+        'page': currentPage,
+        'limit': 10,
+      });
+
+      final data = response.data;
       setState(() {
-        _usersList = response.data['users'] as List<dynamic>;
+        if (data['users'] is List) {
+          _usersList = data['users'] as List<dynamic>;
+        } else {
+          _usersList = [];
+        }
+        _totalUsersCount = data['totalCount'] as int? ?? _usersList.length;
+        _totalUserPages = data['totalPages'] as int? ?? 1;
+        _userPage = currentPage;
+        _userSearchQuery = search;
         _isLoadingUsers = false;
+        _usersError = null;
       });
     } catch (e) {
       setState(() {
-        _statusMessage = 'Failed to load users: $e';
+        _usersError = 'Failed to load users: $e';
         _isLoadingUsers = false;
       });
     }
@@ -532,8 +664,262 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     }
   }
 
-  Widget _buildNotificationsTab(AppLanguage lang) {
+  Widget _buildUsersTab() {
     final theme = Theme.of(context);
+
+    return Column(
+      children: [
+        // Search Bar & Stats Header
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: TextField(
+            controller: _userSearchController,
+            decoration: InputDecoration(
+              hintText: 'Search by Name, Email, or Mobile...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _userSearchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _userSearchController.clear();
+                        _fetchUsers(query: '', page: 1);
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            onChanged: (val) {
+              _fetchUsers(query: val, page: 1);
+            },
+          ),
+        ),
+
+        // Summary Bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total Registered: $_totalUsersCount',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              Text(
+                'Page $_userPage of $_totalUserPages',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+
+        // Users List Content
+        Expanded(
+          child: _isLoadingUsers
+              ? const Center(child: CircularProgressIndicator())
+              : _usersError != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(_usersError!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () => _fetchUsers(page: _userPage),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : _usersList.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.person_search_outlined, size: 64, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+                          const SizedBox(height: 12),
+                          Text('No registered members found.', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _usersList.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final item = _usersList[index] as Map<String, dynamic>;
+                        final role = (item['role'] as String? ?? 'member').toLowerCase();
+                        final assignedRegs = (item['assignedRegions'] as List<dynamic>?) ?? [];
+                        final regNames = assignedRegs.map((r) => r['name'] as String).toList();
+
+                        final roleColor = role == 'admin'
+                            ? Colors.red
+                            : role == 'moderator'
+                                ? Colors.indigo
+                                : theme.colorScheme.primary;
+
+                        return Card(
+                          elevation: 1.5,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(14.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 22,
+                                      backgroundImage: item['avatarUrl'] != null ? NetworkImage(item['avatarUrl'] as String) : null,
+                                      backgroundColor: roleColor.withValues(alpha: 0.1),
+                                      child: item['avatarUrl'] == null
+                                          ? Text(
+                                              (item['fullName'] as String? ?? 'U')[0].toUpperCase(),
+                                              style: TextStyle(fontWeight: FontWeight.bold, color: roleColor),
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            (item['fullName'] as String? ?? '').toTitleCase(),
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            item['email'] as String? ?? item['mobile'] as String? ?? 'No contact info',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: theme.colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: roleColor.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: roleColor.withValues(alpha: 0.3)),
+                                      ),
+                                      child: Text(
+                                        role.toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: roleColor,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (role == 'moderator') ...[
+                                  const SizedBox(height: 10),
+                                  const Divider(height: 1),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(Icons.location_on_outlined, size: 16, color: Colors.indigo.shade700),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: regNames.isNotEmpty
+                                            ? Wrap(
+                                                spacing: 6,
+                                                runSpacing: 4,
+                                                children: regNames
+                                                    .map((name) => Chip(
+                                                          label: Text(name, style: const TextStyle(fontSize: 11, color: Colors.indigo)),
+                                                          backgroundColor: Colors.indigo.shade50,
+                                                          visualDensity: VisualDensity.compact,
+                                                          padding: EdgeInsets.zero,
+                                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                        ))
+                                                    .toList(),
+                                              )
+                                            : const Text(
+                                                '⚠️ No Area/Zone Assigned',
+                                                style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.w600),
+                                              ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => _showChangeRoleModal(item),
+                                    icon: const Icon(Icons.edit_outlined, size: 16),
+                                    label: const Text('Edit Role & Assigned Zones'),
+                                    style: OutlinedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+        ),
+
+        // Pagination Controls
+        if (_totalUserPages > 1)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, -2)),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _userPage > 1 ? () => _fetchUsers(page: _userPage - 1) : null,
+                  icon: const Icon(Icons.arrow_back_ios, size: 14),
+                  label: const Text('Previous'),
+                ),
+                Text('Page $_userPage / $_totalUserPages', style: const TextStyle(fontWeight: FontWeight.bold)),
+                ElevatedButton.icon(
+                  onPressed: _userPage < _totalUserPages ? () => _fetchUsers(page: _userPage + 1) : null,
+                  icon: const Icon(Icons.arrow_forward_ios, size: 14),
+                  label: const Text('Next'),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNotificationsTab(AppLanguage lang) {
     if (_isLoadingUsers) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -552,6 +938,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           
           // Target User Dropdown
           DropdownButtonFormField<String>(
+            isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Select Recipient Member',
             ),
@@ -559,7 +946,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
             items: _usersList.map<DropdownMenuItem<String>>((user) {
               return DropdownMenuItem<String>(
                 value: user['id'] as String,
-                child: Text('${user['fullName'] ?? ''} (${user['role']})'),
+                child: Text(
+                  '${user['fullName'] ?? ''} (${user['role']})',
+                  overflow: TextOverflow.ellipsis,
+                ),
               );
             }).toList(),
             onChanged: (val) {
@@ -617,80 +1007,6 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               ),
             ),
           ],
-          const SizedBox(height: 40),
-          
-          // Users List section
-          const Text(
-            'Registered Members List',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _usersList.length,
-            separatorBuilder: (context, index) => const Divider(),
-            itemBuilder: (context, index) {
-              final item = _usersList[index] as Map<String, dynamic>;
-              final role = (item['role'] as String? ?? 'member').toLowerCase();
-              final assignedRegs = (item['assignedRegions'] as List<dynamic>?) ?? [];
-              final regNames = assignedRegs.map((r) => r['name'] as String).join(', ');
-
-              return ListTile(
-                onTap: () => _showChangeRoleDialog(item),
-                leading: CircleAvatar(
-                  backgroundImage: item['avatarUrl'] != null ? NetworkImage(item['avatarUrl'] as String) : null,
-                  child: item['avatarUrl'] == null ? const Icon(Icons.person) : null,
-                ),
-                title: Text(item['fullName'] as String? ?? ''),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(item['email'] as String? ?? item['mobile'] as String? ?? ''),
-                    if (role == 'moderator')
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2.0),
-                        child: Text(
-                          regNames.isNotEmpty ? 'Zones: $regNames' : '⚠️ No Area Assigned',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: regNames.isNotEmpty ? Colors.indigo : Colors.orange.shade800,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: role == 'admin' 
-                            ? Colors.red.withValues(alpha: 0.1) 
-                            : role == 'moderator' 
-                                ? Colors.indigo.withValues(alpha: 0.1) 
-                                : theme.colorScheme.secondary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        role.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 11, 
-                          color: role == 'admin' ? Colors.red : role == 'moderator' ? Colors.indigo : theme.colorScheme.secondary, 
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.edit_outlined, size: 18, color: Colors.grey),
-                  ],
-                ),
-              );
-            },
-
-          ),
         ],
       ),
     );
@@ -1214,12 +1530,42 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       );
     }
 
-    return ListView.separated(
+    final isModerator = ref.watch(authProvider).user?.role == 'moderator';
+
+    return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _pendingFamiliesList.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemCount: _pendingFamiliesList.length + (isModerator ? 1 : 0),
       itemBuilder: (context, index) {
-        final family = _pendingFamiliesList[index] as Map<String, dynamic>;
+        if (isModerator && index == 0) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.indigo.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.indigo.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.verified_user_outlined, color: Colors.indigo.shade700, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Moderator View: Showing pending approvals only for families in your assigned area/zone.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Colors.indigo.shade900,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final realIndex = isModerator ? index - 1 : index;
+        final family = _pendingFamiliesList[realIndex] as Map<String, dynamic>;
         final familyId = family['familyId'] as int;
         final familyCode = family['familyCode'] as String;
         final headName = (family['headName'] as String? ?? '').toTitleCase();
@@ -1376,31 +1722,42 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   @override
   Widget build(BuildContext context) {
     final lang = ref.watch(languageStateProvider);
+    final authState = ref.watch(authProvider);
+    final isAdmin = authState.user?.role == 'admin';
+    final isModerator = authState.user?.role == 'moderator';
     final theme = Theme.of(context);
 
+    final title = isModerator ? 'Moderator Panel' : AppTranslations.get('admin_dashboard', lang);
+
+    final List<Widget> tabs = [
+      if (isAdmin) const Tab(icon: Icon(Icons.manage_accounts_outlined), text: 'User Roles'),
+      const Tab(icon: Icon(Icons.groups_outlined), text: 'Family Approvals'),
+      const Tab(icon: Icon(Icons.business_center_outlined), text: 'Business Approvals'),
+      const Tab(icon: Icon(Icons.notifications_outlined), text: 'Notifications'),
+    ];
+
+    final List<Widget> tabViews = [
+      if (isAdmin) _buildUsersTab(),
+      _buildFamilyApprovalsTab(),
+      _buildBusinessApprovalsTab(),
+      _buildNotificationsTab(lang),
+    ];
+
     return DefaultTabController(
-      length: 3,
+      length: tabs.length,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(AppTranslations.get('admin_dashboard', lang)),
+          title: Text(title),
           bottom: TabBar(
             isScrollable: true,
             labelColor: theme.colorScheme.primary,
             indicatorColor: theme.colorScheme.primary,
             unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
-            tabs: const [
-              Tab(icon: Icon(Icons.notifications_outlined), text: 'Notifications'),
-              Tab(icon: Icon(Icons.groups_outlined), text: 'Family Approvals'),
-              Tab(icon: Icon(Icons.business_center_outlined), text: 'Business Approvals'),
-            ],
+            tabs: tabs,
           ),
         ),
         body: TabBarView(
-          children: [
-            _buildNotificationsTab(lang),
-            _buildFamilyApprovalsTab(),
-            _buildBusinessApprovalsTab(),
-          ],
+          children: tabViews,
         ),
       ),
     );

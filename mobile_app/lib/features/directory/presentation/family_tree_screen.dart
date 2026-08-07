@@ -84,6 +84,28 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
     final family = treeAsync.value?.family;
     final theme = Theme.of(context);
 
+    // Show snackbar whenever the API fails (including 500 errors)
+    ref.listen<AsyncValue<FamilyTreeData>>(familyTreeProvider(widget.familyId), (previous, next) {
+      if (next is AsyncError && previous is! AsyncError) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(
+              content: const Text('Something went wrong. Please try again.'),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              action: SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: () => ref.read(familyTreeProvider(widget.familyId).notifier).fetchTree(),
+              ),
+            ),
+          );
+      }
+    });
+
     return Scaffold(
         backgroundColor: _showPremiumUI ? null : const Color(0xFFF9F6F0),
         drawer: const AppDrawer(),
@@ -201,16 +223,42 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
             : _buildTreeContent(context, data, theme),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('Failed to load tree: $err', style: const TextStyle(color: Colors.red)),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.read(familyTreeProvider(widget.familyId).notifier).fetchTree(),
-                child: const Text('Retry'),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.cloud_off_rounded, size: 64, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+                const SizedBox(height: 16),
+                Text(
+                  'Something went wrong',
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Could not load the family tree. Please check your connection and try again.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => ref.read(familyTreeProvider(widget.familyId).notifier).fetchTree(),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Try Again'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

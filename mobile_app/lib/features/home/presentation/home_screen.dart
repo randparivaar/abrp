@@ -47,10 +47,15 @@ class HomeScreen extends ConsumerWidget {
         centerTitle: false,
         actions: [
           IconButton(
-            icon: Icon(Icons.notifications_outlined, color: theme.colorScheme.onSurfaceVariant),
+            icon: Icon(
+              Icons.notifications_outlined,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Notifications will be available soon.')),
+                const SnackBar(
+                  content: Text('Notifications will be available soon.'),
+                ),
               );
             },
           ),
@@ -71,7 +76,11 @@ class HomeScreen extends ConsumerWidget {
                     : null,
               ),
               child: user?.avatarUrl == null
-                  ? Icon(Icons.person, size: 18, color: theme.colorScheme.onPrimaryContainer)
+                  ? Icon(
+                      Icons.person,
+                      size: 18,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    )
                   : null,
             ),
           ),
@@ -101,7 +110,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '${user?.fullName ?? 'Vinod Rander'}!',
+              '${user?.fullName ?? 'Basant Rander'}!',
               style: GoogleFonts.inter(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -112,7 +121,7 @@ class HomeScreen extends ConsumerWidget {
 
             // Carousel Section
             SizedBox(
-              height: 260,
+              height: 270,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
@@ -125,7 +134,9 @@ class HomeScreen extends ConsumerWidget {
                       color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: theme.colorScheme.secondary.withValues(alpha: 0.05),
+                        color: theme.colorScheme.secondary.withValues(
+                          alpha: 0.05,
+                        ),
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -143,27 +154,35 @@ class HomeScreen extends ConsumerWidget {
                           Stack(
                             children: [
                               Image.network(
-                                'https://lh3.googleusercontent.com/aida-public/AB6AXuDHhiIO5qj0bxuEqj0mQKLTPOn4qGyyp-l2VCLOtOb_4KWZgoMPpmqPYcXtcAjNV3VSAut2Cx10R3rIZxJpVzpEza7gw3yngQ3RU3-jFtyBBWIixivravA90W7Ia_qWvIeIPSGN1g0O1D7vzSN9rReY7xcfQUwWRzx4lK0k4F6QdyuaVwFpLNEF-96I0nLfSFqOiIeqFyD2z1-hz0Ac4sxOTrW-KgMMAiaXZwPgqaz_juxcM4dqZeZ5HpsvdSDCMKILcMoh4LCNr3A',
+                                'https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkmefiChBJ0IIWUeFtuJJ-dvjed_XzRjOCYr0RauyP0pL-556MAyDLh5a4rZAMXnhNyOjSaAcM6w-GMr7kt8G62KykrX4zAxgKW0k5px8T2S4MYd5DhWWtngvWO-8Raw4FaaIjfOjhqf9yI=s1360-w1360-h1020-rw',
                                 height: 130,
                                 width: double.infinity,
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Container(
-                                  height: 130,
-                                  color: theme.colorScheme.primaryContainer,
-                                  child: Icon(Icons.image_outlined, color: primaryColor),
-                                ),
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                      height: 130,
+                                      color: theme.colorScheme.primaryContainer,
+                                      child: Icon(
+                                        Icons.temple_hindu_outlined,
+                                        color: primaryColor,
+                                        size: 48,
+                                      ),
+                                    ),
                               ),
                               Positioned(
                                 top: 12,
                                 left: 12,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: primaryColor,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    'UPCOMING',
+                                    'LATEST',
                                     style: GoogleFonts.inter(
                                       color: Colors.white,
                                       fontSize: 10,
@@ -180,7 +199,7 @@ class HomeScreen extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Annual Milan 2024',
+                                  '6th Sammelan, 2026 at Ayodhya',
                                   style: GoogleFonts.inter(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -190,27 +209,48 @@ class HomeScreen extends ConsumerWidget {
                                 const SizedBox(height: 6),
                                 Row(
                                   children: [
-                                    Icon(Icons.calendar_today_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                                    Icon(
+                                      Icons.calendar_today_outlined,
+                                      size: 14,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
                                     const SizedBox(width: 6),
-                                    Text(
-                                      'Dec 15, 2024',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        color: theme.colorScheme.onSurfaceVariant,
+                                    Expanded(
+                                      child: Text(
+                                        'June 19 - 21, 2026',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          color:
+                                              theme.colorScheme.onSurfaceVariant,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 4),
                                 Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2.0),
+                                      child: Icon(
+                                        Icons.location_on_outlined,
+                                        size: 14,
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
                                     const SizedBox(width: 6),
-                                    Text(
-                                      'Community Center, Ahmedabad',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        color: theme.colorScheme.onSurfaceVariant,
+                                    Expanded(
+                                      child: Text(
+                                        'Asharfi Bhawan Chauraha Rd, Tulsi Nagar, Ayodhya, Uttar Pradesh 224123',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 13,
+                                          color:
+                                              theme.colorScheme.onSurfaceVariant,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -230,7 +270,9 @@ class HomeScreen extends ConsumerWidget {
                       color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: theme.colorScheme.secondary.withValues(alpha: 0.05),
+                        color: theme.colorScheme.secondary.withValues(
+                          alpha: 0.05,
+                        ),
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -249,7 +291,11 @@ class HomeScreen extends ConsumerWidget {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.campaign_outlined, color: secondaryColor, size: 20),
+                                Icon(
+                                  Icons.campaign_outlined,
+                                  color: secondaryColor,
+                                  size: 20,
+                                ),
                                 const SizedBox(width: 6),
                                 Text(
                                   'COMMUNITY NEWS',
@@ -264,7 +310,7 @@ class HomeScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'New Mahila Mandal Committee Announced for 2025',
+                              'New Mahila Mandal Committee Announced for 2026',
                               style: GoogleFonts.inter(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -289,7 +335,11 @@ class HomeScreen extends ConsumerWidget {
                         InkWell(
                           onTap: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('News details will be available soon.')),
+                              const SnackBar(
+                                content: Text(
+                                  'News details will be available soon.',
+                                ),
+                              ),
                             );
                           },
                           child: Row(
@@ -304,7 +354,11 @@ class HomeScreen extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(width: 4),
-                              Icon(Icons.arrow_forward, size: 14, color: primaryColor),
+                              Icon(
+                                Icons.arrow_forward,
+                                size: 14,
+                                color: primaryColor,
+                              ),
                             ],
                           ),
                         ),
@@ -340,7 +394,9 @@ class HomeScreen extends ConsumerWidget {
                   label: 'Events',
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Events will be available soon.')),
+                      const SnackBar(
+                        content: Text('Events will be available soon.'),
+                      ),
                     );
                   },
                   theme: theme,
@@ -360,7 +416,11 @@ class HomeScreen extends ConsumerWidget {
                   label: 'Committee',
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Committee details will be available soon.')),
+                      const SnackBar(
+                        content: Text(
+                          'Committee details will be available soon.',
+                        ),
+                      ),
                     );
                   },
                   theme: theme,
@@ -371,7 +431,9 @@ class HomeScreen extends ConsumerWidget {
                   label: 'News Board',
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('News Board will be available soon.')),
+                      const SnackBar(
+                        content: Text('News Board will be available soon.'),
+                      ),
                     );
                   },
                   theme: theme,
@@ -384,8 +446,8 @@ class HomeScreen extends ConsumerWidget {
             _MyFamilyCard(lang: lang),
             const SizedBox(height: 24),
 
-            // Admin Panel Quick Link
-            if (user?.role == 'admin') ...[
+            // Admin/Moderator Panel Quick Link
+            if (user?.role == 'admin' || user?.role == 'moderator') ...[
               Container(
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primary.withValues(alpha: 0.05),
@@ -402,10 +464,15 @@ class HomeScreen extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.security, color: theme.colorScheme.primary),
+                          Icon(
+                            Icons.security,
+                            color: theme.colorScheme.primary,
+                          ),
                           const SizedBox(width: 8),
                           Text(
-                            AppTranslations.get('admin_features', lang),
+                            user?.role == 'admin'
+                                ? AppTranslations.get('admin_features', lang)
+                                : 'Moderator Panel',
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -416,7 +483,9 @@ class HomeScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'You have administrator access. Open the admin panel to manage members and dispatch notifications.',
+                        user?.role == 'admin'
+                            ? 'You have administrator access. Open the admin panel to manage members and dispatch notifications.'
+                            : 'You have area moderator access. Open the panel to review and approve/reject family members in your assigned area.',
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           color: theme.colorScheme.onSurfaceVariant,
@@ -425,7 +494,11 @@ class HomeScreen extends ConsumerWidget {
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: () => context.push('/admin'),
-                        child: Text(AppTranslations.get('admin_dashboard', lang)),
+                        child: Text(
+                          user?.role == 'admin'
+                              ? AppTranslations.get('admin_dashboard', lang)
+                              : 'Moderator Panel',
+                        ),
                       ),
                     ],
                   ),
@@ -439,8 +512,6 @@ class HomeScreen extends ConsumerWidget {
       bottomNavigationBar: const AppBottomNavigation(currentIndex: 0),
     );
   }
-
-
 
   Widget _buildQuickLinkItem({
     required BuildContext context,
@@ -478,11 +549,7 @@ class HomeScreen extends ConsumerWidget {
                 shape: BoxShape.circle,
                 color: theme.colorScheme.primary.withValues(alpha: 0.1),
               ),
-              child: Icon(
-                icon,
-                color: theme.colorScheme.primary,
-                size: 28,
-              ),
+              child: Icon(icon, color: theme.colorScheme.primary, size: 28),
             ),
             const SizedBox(height: 8),
             Text(
@@ -551,9 +618,27 @@ class _MyFamilyCardState extends ConsumerState<_MyFamilyCard> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Could not load family info.';
+        _error = 'error'; // triggers error UI
         _loading = false;
       });
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: const Text('Something went wrong. Please try again.'),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: _loadFamily,
+            ),
+          ),
+        );
     }
   }
 
@@ -586,20 +671,27 @@ class _MyFamilyCardState extends ConsumerState<_MyFamilyCard> {
           color: colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: colorScheme.error.withValues(alpha: 0.2),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
           children: [
-            const Icon(Icons.family_restroom, color: Colors.grey, size: 32),
+            Icon(
+              Icons.cloud_off_rounded,
+              color: colorScheme.onSurfaceVariant,
+              size: 28,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                _error!,
-                style: GoogleFonts.inter(color: Colors.red, fontSize: 13),
+                'Could not load family info.',
+                style: GoogleFonts.inter(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                ),
               ),
             ),
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _loadFamily),
+            TextButton(onPressed: _loadFamily, child: const Text('Retry')),
           ],
         ),
       );
@@ -628,7 +720,11 @@ class _MyFamilyCardState extends ConsumerState<_MyFamilyCard> {
                     color: colorScheme.error.withValues(alpha: 0.08),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.family_restroom, color: colorScheme.error, size: 26),
+                  child: Icon(
+                    Icons.family_restroom,
+                    color: colorScheme.error,
+                    size: 26,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -674,12 +770,16 @@ class _MyFamilyCardState extends ConsumerState<_MyFamilyCard> {
                   _loadFamily();
                 },
                 icon: const Icon(Icons.add_home_work_outlined),
-                label: Text(isHindi ? 'परिवार पंजीकृत करें' : 'Register Your Family'),
+                label: Text(
+                  isHindi ? 'परिवार पंजीकृत करें' : 'Register Your Family',
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colorScheme.primary,
                   foregroundColor: colorScheme.onPrimary,
                   minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ),

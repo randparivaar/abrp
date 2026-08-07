@@ -15,8 +15,10 @@ usersRouter.use('*', authMiddleware);
 usersRouter.get('/me', handleGetMyProfile);
 usersRouter.patch('/me', handleUpdateMyProfile);
 
+// Admin & Moderator routes
+usersRouter.get('/', roleGuard(['admin', 'moderator']), handleListUsers);
+
 // Admin only routes
 usersRouter.patch('/change-role', roleGuard(['admin']), handleChangeRole);
-usersRouter.get('/', roleGuard(['admin']), handleListUsers);
 
 export { usersRouter };

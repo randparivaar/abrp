@@ -12,6 +12,8 @@ class AppDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
+    final user = ref.watch(authProvider).user;
+    final isStaff = user?.role == 'admin' || user?.role == 'moderator';
 
     return Drawer(
       width: 280,
@@ -72,6 +74,16 @@ class AppDrawer extends ConsumerWidget {
                   },
                   primaryColor: primaryColor,
                 ),
+                if (isStaff)
+                  _buildDrawerItem(
+                    icon: Icons.admin_panel_settings_outlined,
+                    title: user?.role == 'admin' ? 'Admin Dashboard' : 'Moderator Panel',
+                    onTap: () {
+                      context.pop();
+                      context.push('/admin');
+                    },
+                    primaryColor: primaryColor,
+                  ),
                 _buildDrawerItem(
                   icon: Icons.calendar_month_outlined,
                   title: 'Events',

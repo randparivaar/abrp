@@ -1,5 +1,5 @@
-import { db } from '../db/index.js';
-import { users, families, familyMembers, villages, regions, businessProfiles, businessMembers, businessLocations } from '../db/schema.js';
+import { db, dbRetry } from '../db/index.js';
+import { users, families, familyMembers, villages, regions, businessProfiles, businessMembers, businessLocations, coordinatorRegions } from '../db/schema.js';
 import { eq, sql, and, inArray, desc } from 'drizzle-orm';
 import { OnboardFamilyRequest, AddFamilyMemberRequest } from '../types/directory.types.js';
 import { getUserDevices, sendPushNotification } from './notifications.service.js';
@@ -238,34 +238,39 @@ export async function addMemberToFamily(sessionUserId: string, payload: AddFamil
  * Get family unit and all its member nodes
  */
 export async function getFamilyTreeData(familyId: number, currentUserId: string) {
-  // 1. Fetch family record
-  const family = await db.query.families.findFirst({
+  // 1. Fetch family record — flat query, avoids double-nested lateral join
+  const familyRaw = await dbRetry(() => db.query.families.findFirst({
     where: eq(families.id, familyId),
-    with: {
-      village: {
-        with: {
-          region: true
-        }
-      }
-    }
-  });
+  }));
 
-  if (!family) return null;
+  if (!familyRaw) return null;
+
+  // 1b. Separately fetch village + region (avoids nested lateral join)
+  let villageWithRegion: any = null;
+  if (familyRaw.villageId) {
+    const villageRaw = await dbRetry(() => db.query.villages.findFirst({
+      where: eq(villages.id, familyRaw.villageId!),
+      with: { region: true },
+    }));
+    villageWithRegion = villageRaw ?? null;
+  }
+
+  const family: any = { ...familyRaw, village: villageWithRegion };
 
   // 2. Fetch family members
-  const members = await db.select().from(familyMembers).where(eq(familyMembers.familyId, familyId));
+  const members = await dbRetry(() => db.select().from(familyMembers).where(eq(familyMembers.familyId, familyId)));
 
   // 3. Filter members based on authorization status
   // Policy: Members of the SAME family or Admins/Moderators can see pending nodes.
   // Others can only see approved nodes.
-  const userRec = await db.query.users.findFirst({
+  const userRec = await dbRetry(() => db.query.users.findFirst({
     where: eq(users.id, currentUserId),
-  });
+  }));
   const isAdminOrMod = userRec?.role === 'admin' || userRec?.role === 'moderator';
   const isMemberOfFamily = members.some((m: any) => m.userId === currentUserId || m.createdBy === currentUserId);
 
   const filteredMembers = (isMemberOfFamily || isAdminOrMod)
-    ? members 
+    ? members
     : members.filter((m: any) => m.status === 'approved');
 
   let membersWithBiz = filteredMembers.map((m: any) => ({ ...m, businessProfile: null }));
@@ -273,19 +278,19 @@ export async function getFamilyTreeData(familyId: number, currentUserId: string)
   try {
     const memberIds = filteredMembers.map((m: any) => m.id);
     if (memberIds.length > 0) {
-      const bizLinks = await db.select().from(businessMembers).where(inArray(businessMembers.memberId, memberIds));
+      const bizLinks = await dbRetry(() => db.select().from(businessMembers).where(inArray(businessMembers.memberId, memberIds)));
 
       if (bizLinks.length > 0) {
         const bizIds = Array.from(new Set(bizLinks.map((b: any) => b.businessId)));
 
         const [profiles, locations] = await Promise.all([
-          db.select().from(businessProfiles).where(inArray(businessProfiles.id, bizIds)),
-          db.select().from(businessLocations).where(
+          dbRetry(() => db.select().from(businessProfiles).where(inArray(businessProfiles.id, bizIds))),
+          dbRetry(() => db.select().from(businessLocations).where(
             and(
               inArray(businessLocations.businessId, bizIds),
               eq(businessLocations.isPrimary, true)
             )
-          ),
+          )),
         ]);
 
         const profileMap = new Map(profiles.map((p: any) => [p.id, p]));
@@ -309,10 +314,7 @@ export async function getFamilyTreeData(familyId: number, currentUserId: string)
               };
             }
           }
-          return {
-            ...m,
-            businessProfile,
-          };
+          return { ...m, businessProfile };
         });
       }
     }
@@ -322,13 +324,13 @@ export async function getFamilyTreeData(familyId: number, currentUserId: string)
   }
 
   const myMemberInFamily = members.find((m: any) => m.userId === currentUserId || m.createdBy === currentUserId);
-  const canEdit = myMemberInFamily ? (myMemberInFamily.createdBy === currentUserId || myMemberInFamily.relationshipToHead === 'self' || family.familyHeadId === myMemberInFamily.id) : false;
+  const canEdit = myMemberInFamily
+    ? (myMemberInFamily.createdBy === currentUserId ||
+       myMemberInFamily.relationshipToHead === 'self' ||
+       family.familyHeadId === myMemberInFamily.id)
+    : false;
 
-  return {
-    family,
-    members: membersWithBiz,
-    canEdit,
-  };
+  return { family, members: membersWithBiz, canEdit };
 }
 
 /**
@@ -336,44 +338,50 @@ export async function getFamilyTreeData(familyId: number, currentUserId: string)
  */
 export async function getMyFamily(sessionUserId: string) {
   // Find a member node where userId == sessionUserId
-  let myMember = await db.query.familyMembers.findFirst({
+  let myMember = await dbRetry(() => db.query.familyMembers.findFirst({
     where: (m: any, { eq }: any) => eq(m.userId, sessionUserId),
-  });
+  }));
 
   // If not found by userId directly, check if sessionUserId created any member
   if (!myMember) {
-    myMember = await db.query.familyMembers.findFirst({
+    myMember = await dbRetry(() => db.query.familyMembers.findFirst({
       where: (m: any, { eq }: any) => eq(m.createdBy, sessionUserId),
-    });
+    }));
   }
 
   if (!myMember) return null;
 
-  // Fetch the family
-  const family = await db.query.families.findFirst({
-    where: (f: any, { eq }: any) => eq(f.id, myMember.familyId),
-    with: {
-      village: {
-        with: { region: true },
-      },
-    },
-  });
+  // Fetch the family (flat query + separate village fetch to avoid nested lateral join)
+  const familyRaw = await dbRetry(() => db.query.families.findFirst({
+    where: (f: any, { eq }: any) => eq(f.id, myMember!.familyId),
+  }));
+
+  let villageWithRegion: any = null;
+  if (familyRaw?.villageId) {
+    const villageRaw = await dbRetry(() => db.query.villages.findFirst({
+      where: eq(villages.id, familyRaw.villageId!),
+      with: { region: true },
+    }));
+    villageWithRegion = villageRaw ?? null;
+  }
+
+  const family: any = familyRaw ? { ...familyRaw, village: villageWithRegion } : null;
 
   let businessProfile: any = null;
-  const bizLink = await db.query.businessMembers.findFirst({
-    where: eq(businessMembers.memberId, myMember.id),
-  });
+  const bizLink = await dbRetry(() => db.query.businessMembers.findFirst({
+    where: eq(businessMembers.memberId, myMember!.id),
+  }));
   if (bizLink) {
-    const bp = await db.query.businessProfiles.findFirst({
+    const bp = await dbRetry(() => db.query.businessProfiles.findFirst({
       where: eq(businessProfiles.id, bizLink.businessId),
-    });
+    }));
     if (bp) {
-      const loc = await db.query.businessLocations.findFirst({
+      const loc = await dbRetry(() => db.query.businessLocations.findFirst({
         where: and(
           eq(businessLocations.businessId, bp.id),
           eq(businessLocations.isPrimary, true)
         ),
-      });
+      }));
       businessProfile = {
         ...bp,
         address: loc?.address || '',
@@ -385,14 +393,11 @@ export async function getMyFamily(sessionUserId: string) {
     }
   }
 
-  const memberWithBiz = {
-    ...myMember,
-    businessProfile,
-  };
+  const memberWithBiz = { ...myMember, businessProfile };
 
-  const isHeadOrCreator = 
-    myMember.createdBy === sessionUserId || 
-    myMember.relationshipToHead === 'self' || 
+  const isHeadOrCreator =
+    myMember.createdBy === sessionUserId ||
+    myMember.relationshipToHead === 'self' ||
     family?.familyHeadId === myMember.id;
 
   return family ? { family, member: memberWithBiz, canEdit: isHeadOrCreator } : null;
@@ -637,10 +642,45 @@ export async function deleteFamilyMember(sessionUserId: string, memberId: number
 }
 
 /**
+ * Helper to check moderator region permission
+ */
+async function checkModeratorAreaPermission(moderatorId: string, familyId: number) {
+  const modUser = await db.query.users.findFirst({ where: eq(users.id, moderatorId) });
+  if (!modUser) return;
+  if (modUser.role === 'admin') return;
+  if (modUser.role === 'moderator') {
+    const userRegions = await db.select({ regionId: coordinatorRegions.regionId })
+      .from(coordinatorRegions)
+      .where(eq(coordinatorRegions.userId, moderatorId));
+    const assignedRegionIds = userRegions.map((r: any) => r.regionId);
+
+    const fam = await db.query.families.findFirst({
+      where: eq(families.id, familyId),
+      with: { village: true }
+    });
+    if (!fam || !fam.village?.regionId || !assignedRegionIds.includes(fam.village.regionId)) {
+      throw new Error('Unauthorized: You can only moderate family members in your assigned area/zone');
+    }
+  }
+}
+
+/**
  * Get all pending family members for moderation
  */
-export async function getPendingFamilyMembers() {
-  return await db.select({
+export async function getPendingFamilyMembers(sessionUser?: any) {
+  let assignedRegionIds: number[] | null = null;
+  if (sessionUser && sessionUser.role === 'moderator') {
+    const userRegions = await db
+      .select({ regionId: coordinatorRegions.regionId })
+      .from(coordinatorRegions)
+      .where(eq(coordinatorRegions.userId, sessionUser.id));
+    assignedRegionIds = userRegions.map((r: any) => r.regionId);
+    if (assignedRegionIds.length === 0) {
+      return [];
+    }
+  }
+
+  const rows = await db.select({
     id: familyMembers.id,
     fullName: familyMembers.fullName,
     gender: familyMembers.gender,
@@ -671,10 +711,17 @@ export async function getPendingFamilyMembers() {
     familyId: familyMembers.familyId,
     familyCode: families.familyCode,
     address: families.address,
+    regionId: villages.regionId,
   })
   .from(familyMembers)
   .innerJoin(families, eq(familyMembers.familyId, families.id))
+  .leftJoin(villages, eq(families.villageId, villages.id))
   .where(eq(familyMembers.status, 'pending'));
+
+  if (assignedRegionIds !== null) {
+    return rows.filter((r: any) => r.regionId && assignedRegionIds!.includes(r.regionId));
+  }
+  return rows;
 }
 
 /**
@@ -685,6 +732,8 @@ export async function approveFamilyMember(memberId: number, moderatorId: string)
     where: eq(familyMembers.id, memberId),
   });
   if (!member) throw new Error('Member not found');
+
+  await checkModeratorAreaPermission(moderatorId, member.familyId);
 
   await db.update(familyMembers)
     .set({
@@ -735,6 +784,8 @@ export async function rejectFamilyMember(memberId: number, moderatorId: string, 
   });
   if (!member) throw new Error('Member not found');
 
+  await checkModeratorAreaPermission(moderatorId, member.familyId);
+
   try {
     const devicesList = await getUserDevices(member.createdBy);
     if (devicesList.length > 0) {
@@ -765,7 +816,17 @@ export async function rejectFamilyMember(memberId: number, moderatorId: string, 
 /**
  * Get all pending families (families with at least 1 pending or rejected member)
  */
-export async function getPendingFamilies() {
+export async function getPendingFamilies(sessionUser?: any) {
+  let assignedRegionIds: number[] | null = null;
+  if (sessionUser && sessionUser.role === 'moderator') {
+    const userRegions = await db
+      .select({ regionId: coordinatorRegions.regionId })
+      .from(coordinatorRegions)
+      .where(eq(coordinatorRegions.userId, sessionUser.id));
+    assignedRegionIds = userRegions.map((r: any) => r.regionId);
+    if (assignedRegionIds.length === 0) return [];
+  }
+
   // 1. Find all familyIds that have members with status 'pending' or 'rejected'
   const pendingMemberRows = await db
     .select({ familyId: familyMembers.familyId })
@@ -788,8 +849,12 @@ export async function getPendingFamilies() {
     },
   });
 
+  const filteredFamilyList = assignedRegionIds !== null
+    ? familyList.filter((fam: any) => fam.village?.regionId && assignedRegionIds!.includes(fam.village.regionId))
+    : familyList;
+
   // Map to structured output
-  return familyList.map((fam: any) => {
+  return filteredFamilyList.map((fam: any) => {
     const head = fam.members.find((m: any) => m.relationshipToHead === 'self' || m.id === fam.familyHeadId) || fam.members[0];
     const pendingCount = fam.members.filter((m: any) => m.status === 'pending').length;
     const rejectedCount = fam.members.filter((m: any) => m.status === 'rejected').length;
@@ -821,6 +886,8 @@ export async function getPendingFamilies() {
 export async function approveEntireFamily(familyId: number, moderatorId: string) {
   const members = await db.select().from(familyMembers).where(eq(familyMembers.familyId, familyId));
   if (members.length === 0) throw new Error('Family not found or has no members');
+
+  await checkModeratorAreaPermission(moderatorId, familyId);
 
   await db.update(familyMembers)
     .set({
@@ -874,6 +941,8 @@ export async function approveEntireFamily(familyId: number, moderatorId: string)
 export async function rejectEntireFamily(familyId: number, moderatorId: string, reason?: string) {
   const members = await db.select().from(familyMembers).where(eq(familyMembers.familyId, familyId));
   if (members.length === 0) throw new Error('Family not found or has no members');
+
+  await checkModeratorAreaPermission(moderatorId, familyId);
 
   await db.update(familyMembers)
     .set({

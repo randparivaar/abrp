@@ -212,7 +212,8 @@ export async function handleDeleteFamilyMember(c: Context) {
  */
 export async function handleGetPendingMembers(c: Context) {
   try {
-    const list = await getPendingFamilyMembers();
+    const sessionUser = c.get('user') as UserSession;
+    const list = await getPendingFamilyMembers(sessionUser);
     return c.json({ pendingMembers: list });
   } catch (error: any) {
     console.error('Error in handleGetPendingMembers:', error);
@@ -234,6 +235,7 @@ export async function handleApproveMember(c: Context) {
   } catch (error: any) {
     console.error('Error in handleApproveMember:', error);
     if (error.message === 'Member not found') return c.json({ error: error.message }, 404);
+    if (error.message?.includes('Unauthorized')) return c.json({ error: error.message }, 403);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }
@@ -253,6 +255,7 @@ export async function handleRejectMember(c: Context) {
   } catch (error: any) {
     console.error('Error in handleRejectMember:', error);
     if (error.message === 'Member not found') return c.json({ error: error.message }, 404);
+    if (error.message?.includes('Unauthorized')) return c.json({ error: error.message }, 403);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }
@@ -262,7 +265,8 @@ export async function handleRejectMember(c: Context) {
  */
 export async function handleGetPendingFamilies(c: Context) {
   try {
-    const families = await getPendingFamilies();
+    const sessionUser = c.get('user') as UserSession;
+    const families = await getPendingFamilies(sessionUser);
     return c.json({ pendingFamilies: families });
   } catch (error: any) {
     console.error('Error in handleGetPendingFamilies:', error);
