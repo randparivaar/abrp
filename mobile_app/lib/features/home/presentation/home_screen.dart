@@ -472,7 +472,7 @@ class HomeScreen extends ConsumerWidget {
                           Text(
                             user?.role == 'admin'
                                 ? AppTranslations.get('admin_features', lang)
-                                : 'Moderator Panel',
+                                : AppTranslations.get('zone_coordinator_panel', lang),
                             style: GoogleFonts.inter(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -484,8 +484,8 @@ class HomeScreen extends ConsumerWidget {
                       const SizedBox(height: 12),
                       Text(
                         user?.role == 'admin'
-                            ? 'You have administrator access. Open the admin panel to manage members and dispatch notifications.'
-                            : 'You have area moderator access. Open the panel to review and approve/reject family members in your assigned area.',
+                            ? AppTranslations.get('admin_desc', lang)
+                            : AppTranslations.get('zone_coordinator_desc', lang),
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           color: theme.colorScheme.onSurfaceVariant,
@@ -497,7 +497,7 @@ class HomeScreen extends ConsumerWidget {
                         child: Text(
                           user?.role == 'admin'
                               ? AppTranslations.get('admin_dashboard', lang)
-                              : 'Moderator Panel',
+                              : AppTranslations.get('zone_coordinator_panel', lang),
                         ),
                       ),
                     ],

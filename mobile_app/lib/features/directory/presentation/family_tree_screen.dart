@@ -460,12 +460,13 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
               minScale: 0.3,
               maxScale: 2.5,
               boundaryMargin: const EdgeInsets.all(80),
-              child: SingleChildScrollView(
-                controller: _horizontalScrollController,
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-                child: ConstrainedBox(
+              child: RepaintBoundary(
+                child: SingleChildScrollView(
+                  controller: _horizontalScrollController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                  child: ConstrainedBox(
                   constraints: BoxConstraints(
                     minWidth: MediaQuery.of(context).size.width - 48.0,
                   ),
@@ -523,8 +524,9 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
               ),
             ),
           ),
-        );
-      }),
+        ),
+      );
+    }),
           
           const SizedBox(height: 100),
         ],

@@ -430,12 +430,15 @@ class _HeroSection extends StatelessWidget {
                     ),
                   );
                 },
-                child: AppAvatar(
-                  name: member.fullName,
-                  imageUrl: member.avatarUrl,
-                  radius: 64,
-                  fontSize: 48,
-                  border: Border.all(color: cs.primaryContainer, width: 4),
+                child: Hero(
+                  tag: 'avatar_${member.id}',
+                  child: AppAvatar(
+                    name: member.fullName,
+                    imageUrl: member.avatarUrl,
+                    radius: 64,
+                    fontSize: 48,
+                    border: Border.all(color: cs.primaryContainer, width: 4),
+                  ),
                 ),
               ),
               // Role Badge removed per design update

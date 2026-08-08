@@ -868,14 +868,17 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                               padding: const EdgeInsets.all(12.0),
                               child: Row(
                                 children: [
-                                  // Avatar
-                                  AppAvatar(
-                                    name: rawName,
-                                    imageUrl: avatarUrl,
-                                    radius: 28,
-                                    border: Border.all(
-                                      color: isHead ? const Color(0xFFD4AF37) : primaryColor, 
-                                      width: 2,
+                                  // Avatar with Hero Animation for smooth page transitions
+                                  Hero(
+                                    tag: 'avatar_${member['id']}',
+                                    child: AppAvatar(
+                                      name: rawName,
+                                      imageUrl: avatarUrl,
+                                      radius: 28,
+                                      border: Border.all(
+                                        color: isHead ? const Color(0xFFD4AF37) : primaryColor, 
+                                        width: 2,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 12),

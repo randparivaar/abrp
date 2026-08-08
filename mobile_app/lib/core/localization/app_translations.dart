@@ -86,6 +86,38 @@ class AppTranslations {
       AppLanguage.en: 'Upload profile photo',
       AppLanguage.hi: 'प्रोफ़ाइल फ़ोटो अपलोड करें',
     },
+    'zone_coordinator_panel': {
+      AppLanguage.en: 'Zone Coordinator Panel',
+      AppLanguage.hi: 'क्षेत्र संयोजक पैनल',
+    },
+    'zone_coordinator_desc': {
+      AppLanguage.en: 'You have Zone Coordinator access. Open the panel to review and approve/reject family members in your assigned area.',
+      AppLanguage.hi: 'आपके पास क्षेत्र संयोजक अधिकार हैं। अपने आवंटित क्षेत्र के सदस्यों और परिवारों के सत्यापन के लिए पैनल खोलें।',
+    },
+    'coordinator_view_banner': {
+      AppLanguage.en: 'Zone Coordinator View: Showing pending approvals only for families in your assigned area/zone.',
+      AppLanguage.hi: 'क्षेत्र संयोजक दृश्य: केवल आपके आवंटित क्षेत्र के परिवारों के लंबित सत्यापन दिखाए जा रहे हैं।',
+    },
+    'coordinator_reason': {
+      AppLanguage.en: 'Coordinator Feedback',
+      AppLanguage.hi: 'संयोजक की टिप्पणी',
+    },
+    'admin_desc': {
+      AppLanguage.en: 'You have administrator access. Open the admin panel to manage members and dispatch notifications.',
+      AppLanguage.hi: 'आपके पास प्रशासक अधिकार हैं। सदस्यों के प्रबंधन और सूचनाएं भेजने के लिए एडमिन पैनल खोलें।',
+    },
+    'role_coordinator': {
+      AppLanguage.en: 'Zone Coordinator',
+      AppLanguage.hi: 'क्षेत्र संयोजक',
+    },
+    'role_admin': {
+      AppLanguage.en: 'Administrator',
+      AppLanguage.hi: 'प्रशासक',
+    },
+    'role_member': {
+      AppLanguage.en: 'Member',
+      AppLanguage.hi: 'सदस्य',
+    },
   };
 
   static String get(String key, AppLanguage lang) {

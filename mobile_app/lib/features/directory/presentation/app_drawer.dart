@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile_app/core/localization/app_language.dart';
+import 'package:mobile_app/core/localization/app_translations.dart';
 import 'package:mobile_app/features/auth/presentation/auth_controller.dart';
 import 'package:mobile_app/features/directory/presentation/my_family_provider.dart';
 
@@ -12,6 +14,7 @@ class AppDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
+    final lang = ref.watch(languageStateProvider);
     final user = ref.watch(authProvider).user;
     final isStaff = user?.role == 'admin' || user?.role == 'moderator';
 
@@ -77,7 +80,9 @@ class AppDrawer extends ConsumerWidget {
                 if (isStaff)
                   _buildDrawerItem(
                     icon: Icons.admin_panel_settings_outlined,
-                    title: user?.role == 'admin' ? 'Admin Dashboard' : 'Moderator Panel',
+                    title: user?.role == 'admin' 
+                      ? AppTranslations.get('admin_dashboard', lang) 
+                      : AppTranslations.get('zone_coordinator_panel', lang),
                     onTap: () {
                       context.pop();
                       context.push('/admin');

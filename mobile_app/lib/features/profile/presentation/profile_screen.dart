@@ -207,8 +207,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     const Divider(),
                     ListTile(
                       leading: const Icon(Icons.badge_outlined),
-                      title: const Text('Role'),
-                      subtitle: Text(user?.role.toUpperCase() ?? ''),
+                      title: Text(AppTranslations.get('role', lang)),
+                      subtitle: Text(
+                        user?.role == 'moderator'
+                            ? AppTranslations.get('role_coordinator', lang)
+                            : user?.role == 'admin'
+                                ? AppTranslations.get('role_admin', lang)
+                                : AppTranslations.get('role_member', lang),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
                     myFamilyAsync.when(
                       data: (data) {

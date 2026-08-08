@@ -106,6 +106,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         .whereType<int>()
         .toSet();
 
+    final lang = ref.read(languageStateProvider);
+
     if (!mounted) return;
 
     await showModalBottomSheet(
@@ -170,11 +172,11 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        _buildRoleChip('Member', 'member', selectedRole, (r) => setModalState(() => selectedRole = r)),
+                        _buildRoleChip(AppTranslations.get('role_member', lang), 'member', selectedRole, (r) => setModalState(() => selectedRole = r)),
                         const SizedBox(width: 8),
-                        _buildRoleChip('Moderator', 'moderator', selectedRole, (r) => setModalState(() => selectedRole = r)),
+                        _buildRoleChip(AppTranslations.get('role_coordinator', lang), 'moderator', selectedRole, (r) => setModalState(() => selectedRole = r)),
                         const SizedBox(width: 8),
-                        _buildRoleChip('Admin', 'admin', selectedRole, (r) => setModalState(() => selectedRole = r)),
+                        _buildRoleChip(AppTranslations.get('role_admin', lang), 'admin', selectedRole, (r) => setModalState(() => selectedRole = r)),
                       ],
                     ),
 
@@ -1478,6 +1480,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   Widget _buildFamilyApprovalsTab() {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final lang = ref.watch(languageStateProvider);
 
     if (_isLoadingPendingFamilies) {
       return const Center(child: CircularProgressIndicator());
@@ -1551,7 +1554,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Moderator View: Showing pending approvals only for families in your assigned area/zone.',
+                    AppTranslations.get('coordinator_view_banner', lang),
                     style: TextStyle(
                       fontSize: 12.5,
                       color: Colors.indigo.shade900,
@@ -1727,7 +1730,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     final isModerator = authState.user?.role == 'moderator';
     final theme = Theme.of(context);
 
-    final title = isModerator ? 'Moderator Panel' : AppTranslations.get('admin_dashboard', lang);
+    final title = isModerator ? AppTranslations.get('zone_coordinator_panel', lang) : AppTranslations.get('admin_dashboard', lang);
 
     final List<Widget> tabs = [
       if (isAdmin) const Tab(icon: Icon(Icons.manage_accounts_outlined), text: 'User Roles'),
