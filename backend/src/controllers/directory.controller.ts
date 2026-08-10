@@ -1,5 +1,6 @@
 import { Context } from 'hono';
 import { UserSession } from '../middleware/auth.js';
+import { extractErrorDetails } from '../db/index.js';
 import { 
   getVillagesList, 
   getRegionsList,
@@ -36,7 +37,8 @@ export async function handleGetVillages(c: Context) {
     const villages = await getVillagesList();
     return c.json({ villages });
   } catch (error: any) {
-    console.error('Error in handleGetVillages:', error);
+    const details = extractErrorDetails(error);
+    console.error(`[DirectoryController] error in handleGetVillages (reqId: ${c.get('requestId')}):`, details);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }
@@ -49,7 +51,8 @@ export async function handleGetRegions(c: Context) {
     const regions = await getRegionsList();
     return c.json({ regions });
   } catch (error: any) {
-    console.error('Error in handleGetRegions:', error);
+    const details = extractErrorDetails(error);
+    console.error(`[DirectoryController] error in handleGetRegions (reqId: ${c.get('requestId')}):`, details);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }
@@ -73,7 +76,8 @@ export async function handleOnboardFamily(c: Context) {
     const result = await onboardNewFamily(sessionUser.id, payload);
     return c.json(result, 201);
   } catch (error: any) {
-    console.error('Error in handleOnboardFamily:', error);
+    const details = extractErrorDetails(error);
+    console.error(`[DirectoryController] error in handleOnboardFamily (reqId: ${c.get('requestId')}):`, details);
     if (error.message?.includes('already created') || error.message?.includes('already registered')) {
       return c.json({ error: error.message }, 400);
     }
@@ -103,7 +107,8 @@ export async function handleAddFamilyMember(c: Context) {
     const newMember = await addMemberToFamily(sessionUser.id, payload);
     return c.json({ member: newMember }, 201);
   } catch (error: any) {
-    console.error('Error in handleAddFamilyMember:', error);
+    const details = extractErrorDetails(error);
+    console.error(`[DirectoryController] error in handleAddFamilyMember (reqId: ${c.get('requestId')}):`, details);
     if (error.message?.includes('already registered')) {
       return c.json({ error: error.message }, 400);
     }
@@ -115,6 +120,8 @@ export async function handleAddFamilyMember(c: Context) {
  * Handle fetching the current user's own family
  */
 export async function handleGetMyFamily(c: Context) {
+  const startTime = Date.now();
+  const requestId = c.get('requestId') || 'N/A';
   try {
     const sessionUser = c.get('user') as UserSession;
     const result = await getMyFamily(sessionUser.id);
@@ -123,7 +130,15 @@ export async function handleGetMyFamily(c: Context) {
     }
     return c.json(result);
   } catch (error: any) {
-    console.error('Error in handleGetMyFamily:', error);
+    const elapsedMs = Date.now() - startTime;
+    const details = extractErrorDetails(error);
+    console.error('[DirectoryController] Database failure in handleGetMyFamily', {
+      requestId,
+      endpoint: '/api/v1/directory/my-family',
+      operation: 'getMyFamily',
+      elapsedMs,
+      error: details,
+    });
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }

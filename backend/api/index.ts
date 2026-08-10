@@ -1,4 +1,5 @@
 import app from '../src/index.js';
+import { extractErrorDetails } from '../src/db/index.js';
 
 export default async function handler(req: any, res: any) {
   try {
@@ -60,9 +61,10 @@ export default async function handler(req: any, res: any) {
     const arrayBuffer = await response.arrayBuffer();
     res.end(Buffer.from(arrayBuffer));
   } catch (error: any) {
-    console.error('Vercel Serverless Handler Error:', error);
+    const details = extractErrorDetails(error);
+    console.error('Vercel Serverless Handler Error:', details);
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: 'Internal Server Error', details: error?.message }));
+    res.end(JSON.stringify({ error: 'Internal Server Error' }));
   }
 }

@@ -242,169 +242,164 @@ export async function addMemberToFamily(sessionUserId: string, payload: AddFamil
  * Get family unit and all its member nodes
  */
 export async function getFamilyTreeData(familyId: number, currentUserId: string) {
-  // 1. Fetch family record — flat query, avoids double-nested lateral join
-  const familyRaw = await dbRetry(() => db.query.families.findFirst({
-    where: eq(families.id, familyId),
-  }));
+  return await dbRetry(async () => {
+    // 1. Fetch family record
+    const familyRaw = await db.query.families.findFirst({
+      where: eq(families.id, familyId),
+    });
 
-  if (!familyRaw) return null;
+    if (!familyRaw) return null;
 
-  // 1b. Separately fetch village + region (avoids nested lateral join)
-  let villageWithRegion: any = null;
-  if (familyRaw.villageId) {
-    const villageRaw = await dbRetry(() => db.query.villages.findFirst({
-      where: eq(villages.id, familyRaw.villageId!),
-      with: { region: true },
-    }));
-    villageWithRegion = villageRaw ?? null;
-  }
-
-  const family: any = { ...familyRaw, village: villageWithRegion };
-
-  // 2. Fetch family members
-  const members = await dbRetry(() => db.select().from(familyMembers).where(eq(familyMembers.familyId, familyId)));
-
-  // 3. Filter members based on authorization status
-  // Policy: Members of the SAME family or Admins/Moderators can see pending nodes.
-  // Others can only see approved nodes.
-  const userRec = await dbRetry(() => db.query.users.findFirst({
-    where: eq(users.id, currentUserId),
-  }));
-  const isAdminOrMod = userRec?.role === 'admin' || userRec?.role === 'moderator';
-  const isMemberOfFamily = members.some((m: any) => m.userId === currentUserId || m.createdBy === currentUserId);
-
-  const filteredMembers = (isMemberOfFamily || isAdminOrMod)
-    ? members
-    : members.filter((m: any) => m.status === 'approved');
-
-  let membersWithBiz = filteredMembers.map((m: any) => ({ ...m, businessProfile: null }));
-
-  try {
-    const memberIds = filteredMembers.map((m: any) => m.id);
-    if (memberIds.length > 0) {
-      const bizLinks = await dbRetry(() => db.select().from(businessMembers).where(inArray(businessMembers.memberId, memberIds)));
-
-      if (bizLinks.length > 0) {
-        const bizIds = Array.from(new Set(bizLinks.map((b: any) => b.businessId)));
-
-        const [profiles, locations] = await Promise.all([
-          dbRetry(() => db.select().from(businessProfiles).where(inArray(businessProfiles.id, bizIds))),
-          dbRetry(() => db.select().from(businessLocations).where(
-            and(
-              inArray(businessLocations.businessId, bizIds),
-              eq(businessLocations.isPrimary, true)
-            )
-          )),
-        ]);
-
-        const profileMap = new Map(profiles.map((p: any) => [p.id, p]));
-        const locationMap = new Map(locations.map((l: any) => [l.businessId, l]));
-        const memberBizMap = new Map(bizLinks.map((b: any) => [b.memberId, b.businessId]));
-
-        membersWithBiz = filteredMembers.map((m: any) => {
-          const bizId = memberBizMap.get(m.id);
-          let businessProfile: any = null;
-          if (bizId) {
-            const bp = profileMap.get(bizId);
-            if (bp) {
-              const loc = locationMap.get(bp.id);
-              businessProfile = {
-                ...bp,
-                address: loc?.address || '',
-                city: loc?.city || '',
-                state: loc?.state || '',
-                pincode: loc?.pincode || '',
-                googleMapsLink: loc?.googleMapsLink || '',
-              };
-            }
-          }
-          return { ...m, businessProfile };
-        });
-      }
+    // 1b. Separately fetch village + region
+    let villageWithRegion: any = null;
+    if (familyRaw.villageId) {
+      const villageRaw = await db.query.villages.findFirst({
+        where: eq(villages.id, familyRaw.villageId!),
+        with: { region: true },
+      });
+      villageWithRegion = villageRaw ?? null;
     }
-  } catch (err) {
-    console.error('Error fetching business profiles for family tree:', err);
-    // Fallback: return members without business profile if DB glitch occurs
-  }
 
-  const myMemberInFamily = members.find((m: any) => m.userId === currentUserId || m.createdBy === currentUserId);
-  const canEdit = myMemberInFamily
-    ? (myMemberInFamily.createdBy === currentUserId ||
-       myMemberInFamily.relationshipToHead === 'self' ||
-       family.familyHeadId === myMemberInFamily.id)
-    : false;
+    const family: any = { ...familyRaw, village: villageWithRegion };
 
-  return { family, members: membersWithBiz, canEdit };
+    // 2. Fetch family members
+    const members = await db.select().from(familyMembers).where(eq(familyMembers.familyId, familyId));
+
+    // 3. Filter members based on authorization status
+    const userRec = await db.query.users.findFirst({
+      where: eq(users.id, currentUserId),
+    });
+    const isAdminOrMod = userRec?.role === 'admin' || userRec?.role === 'moderator';
+    const isMemberOfFamily = members.some((m: any) => m.userId === currentUserId || m.createdBy === currentUserId);
+
+    const filteredMembers = (isMemberOfFamily || isAdminOrMod)
+      ? members
+      : members.filter((m: any) => m.status === 'approved');
+
+    let membersWithBiz = filteredMembers.map((m: any) => ({ ...m, businessProfile: null }));
+
+    try {
+      const memberIds = filteredMembers.map((m: any) => m.id);
+      if (memberIds.length > 0) {
+        const bizLinks = await db.select().from(businessMembers).where(inArray(businessMembers.memberId, memberIds));
+
+        if (bizLinks.length > 0) {
+          const bizIds = Array.from(new Set(bizLinks.map((b: any) => b.businessId)));
+
+          const [profiles, locations] = await Promise.all([
+            db.select().from(businessProfiles).where(inArray(businessProfiles.id, bizIds)),
+            db.select().from(businessLocations).where(
+              and(
+                inArray(businessLocations.businessId, bizIds),
+                eq(businessLocations.isPrimary, true)
+              )
+            ),
+          ]);
+
+          const profileMap = new Map(profiles.map((p: any) => [p.id, p]));
+          const locationMap = new Map(locations.map((l: any) => [l.businessId, l]));
+          const memberBizMap = new Map(bizLinks.map((b: any) => [b.memberId, b.businessId]));
+
+          membersWithBiz = filteredMembers.map((m: any) => {
+            const bizId = memberBizMap.get(m.id);
+            let businessProfile: any = null;
+            if (bizId) {
+              const bp = profileMap.get(bizId);
+              if (bp) {
+                const loc = locationMap.get(bp.id);
+                businessProfile = {
+                  ...bp,
+                  address: loc?.address || '',
+                  city: loc?.city || '',
+                  state: loc?.state || '',
+                  pincode: loc?.pincode || '',
+                  googleMapsLink: loc?.googleMapsLink || '',
+                };
+              }
+            }
+            return { ...m, businessProfile };
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching business profiles for family tree:', err);
+    }
+
+    const myMemberInFamily = members.find((m: any) => m.userId === currentUserId || m.createdBy === currentUserId);
+    const canEdit = myMemberInFamily
+      ? (myMemberInFamily.createdBy === currentUserId ||
+         myMemberInFamily.relationshipToHead === 'self' ||
+         family.familyHeadId === myMemberInFamily.id)
+      : false;
+
+    return { family, members: membersWithBiz, canEdit };
+  });
 }
 
 /**
  * Get the family that belongs to the logged-in user (where they are a member with userId set)
  */
 export async function getMyFamily(sessionUserId: string) {
-  // Find a member node where userId == sessionUserId
-  let myMember = await dbRetry(() => db.query.familyMembers.findFirst({
-    where: (m: any, { eq }: any) => eq(m.userId, sessionUserId),
-  }));
+  return await dbRetry(async () => {
+    // Find a member node where userId == sessionUserId or createdBy == sessionUserId
+    let myMember = await db.query.familyMembers.findFirst({
+      where: (m: any, { or, eq }: any) => or(eq(m.userId, sessionUserId), eq(m.createdBy, sessionUserId)),
+    });
 
-  // If not found by userId directly, check if sessionUserId created any member
-  if (!myMember) {
-    myMember = await dbRetry(() => db.query.familyMembers.findFirst({
-      where: (m: any, { eq }: any) => eq(m.createdBy, sessionUserId),
-    }));
-  }
+    if (!myMember) return null;
 
-  if (!myMember) return null;
+    // Fetch the family
+    const familyRaw = await db.query.families.findFirst({
+      where: (f: any, { eq }: any) => eq(f.id, myMember!.familyId),
+    });
 
-  // Fetch the family (flat query + separate village fetch to avoid nested lateral join)
-  const familyRaw = await dbRetry(() => db.query.families.findFirst({
-    where: (f: any, { eq }: any) => eq(f.id, myMember!.familyId),
-  }));
-
-  let villageWithRegion: any = null;
-  if (familyRaw?.villageId) {
-    const villageRaw = await dbRetry(() => db.query.villages.findFirst({
-      where: eq(villages.id, familyRaw.villageId!),
-      with: { region: true },
-    }));
-    villageWithRegion = villageRaw ?? null;
-  }
-
-  const family: any = familyRaw ? { ...familyRaw, village: villageWithRegion } : null;
-
-  let businessProfile: any = null;
-  const bizLink = await dbRetry(() => db.query.businessMembers.findFirst({
-    where: eq(businessMembers.memberId, myMember!.id),
-  }));
-  if (bizLink) {
-    const bp = await dbRetry(() => db.query.businessProfiles.findFirst({
-      where: eq(businessProfiles.id, bizLink.businessId),
-    }));
-    if (bp) {
-      const loc = await dbRetry(() => db.query.businessLocations.findFirst({
-        where: and(
-          eq(businessLocations.businessId, bp.id),
-          eq(businessLocations.isPrimary, true)
-        ),
-      }));
-      businessProfile = {
-        ...bp,
-        address: loc?.address || '',
-        city: loc?.city || '',
-        state: loc?.state || '',
-        pincode: loc?.pincode || '',
-        googleMapsLink: loc?.googleMapsLink || '',
-      };
+    let villageWithRegion: any = null;
+    if (familyRaw?.villageId) {
+      const villageRaw = await db.query.villages.findFirst({
+        where: eq(villages.id, familyRaw.villageId!),
+        with: { region: true },
+      });
+      villageWithRegion = villageRaw ?? null;
     }
-  }
 
-  const memberWithBiz = { ...myMember, businessProfile };
+    const family: any = familyRaw ? { ...familyRaw, village: villageWithRegion } : null;
 
-  const isHeadOrCreator =
-    myMember.createdBy === sessionUserId ||
-    myMember.relationshipToHead === 'self' ||
-    family?.familyHeadId === myMember.id;
+    let businessProfile: any = null;
+    const bizLink = await db.query.businessMembers.findFirst({
+      where: eq(businessMembers.memberId, myMember.id),
+    });
 
-  return family ? { family, member: memberWithBiz, canEdit: isHeadOrCreator } : null;
+    if (bizLink) {
+      const bp = await db.query.businessProfiles.findFirst({
+        where: eq(businessProfiles.id, bizLink.businessId),
+      });
+      if (bp) {
+        const loc = await db.query.businessLocations.findFirst({
+          where: and(
+            eq(businessLocations.businessId, bp.id),
+            eq(businessLocations.isPrimary, true)
+          ),
+        });
+        businessProfile = {
+          ...bp,
+          address: loc?.address || '',
+          city: loc?.city || '',
+          state: loc?.state || '',
+          pincode: loc?.pincode || '',
+          googleMapsLink: loc?.googleMapsLink || '',
+        };
+      }
+    }
+
+    const memberWithBiz = { ...myMember, businessProfile };
+
+    const isHeadOrCreator =
+      myMember.createdBy === sessionUserId ||
+      myMember.relationshipToHead === 'self' ||
+      family?.familyHeadId === myMember.id;
+
+    return family ? { family, member: memberWithBiz, canEdit: isHeadOrCreator } : null;
+  });
 }
 
 /**
