@@ -77,18 +77,77 @@ class AppDrawer extends ConsumerWidget {
                   },
                   primaryColor: primaryColor,
                 ),
-                if (isStaff)
-                  _buildDrawerItem(
-                    icon: Icons.admin_panel_settings_outlined,
-                    title: user?.role == 'admin' 
-                      ? AppTranslations.get('admin_dashboard', lang) 
-                      : AppTranslations.get('zone_coordinator_panel', lang),
-                    onTap: () {
-                      context.pop();
-                      context.push('/admin');
-                    },
-                    primaryColor: primaryColor,
+                if (isStaff) ...[
+                  ExpansionTile(
+                    leading: Icon(Icons.admin_panel_settings_outlined, color: primaryColor),
+                    title: Text(
+                      user?.role == 'admin' 
+                        ? AppTranslations.get('admin_dashboard', lang) 
+                        : AppTranslations.get('zone_coordinator_panel', lang),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                    childrenPadding: const EdgeInsets.only(left: 16),
+                    children: [
+                      _buildDrawerSubItem(
+                        icon: Icons.dashboard_outlined,
+                        title: 'Dashboard Overview',
+                        onTap: () {
+                          context.pop();
+                          context.push('/admin?section=-1');
+                        },
+                        primaryColor: primaryColor,
+                      ),
+                      _buildDrawerSubItem(
+                        icon: Icons.groups_outlined,
+                        title: 'Family Approvals',
+                        onTap: () {
+                          context.pop();
+                          context.push('/admin?section=0');
+                        },
+                        primaryColor: primaryColor,
+                      ),
+                      _buildDrawerSubItem(
+                        icon: Icons.business_center_outlined,
+                        title: 'Business Approvals',
+                        onTap: () {
+                          context.pop();
+                          context.push('/admin?section=1');
+                        },
+                        primaryColor: primaryColor,
+                      ),
+                      if (user?.role == 'admin') ...[
+                        _buildDrawerSubItem(
+                          icon: Icons.campaign_outlined,
+                          title: 'Ad Campaigns',
+                          onTap: () {
+                            context.pop();
+                            context.push('/admin?section=2');
+                          },
+                          primaryColor: primaryColor,
+                        ),
+                        _buildDrawerSubItem(
+                          icon: Icons.manage_accounts_outlined,
+                          title: 'User & Coordinator Roles',
+                          onTap: () {
+                            context.pop();
+                            context.push('/admin?section=3');
+                          },
+                          primaryColor: primaryColor,
+                        ),
+                      ],
+                      _buildDrawerSubItem(
+                        icon: Icons.notifications_outlined,
+                        title: 'Dispatch Notifications',
+                        onTap: () {
+                          context.pop();
+                          final notifIndex = user?.role == 'admin' ? 4 : 2;
+                          context.push('/admin?section=$notifIndex');
+                        },
+                        primaryColor: primaryColor,
+                      ),
+                    ],
                   ),
+                ],
                 _buildDrawerItem(
                   icon: Icons.calendar_month_outlined,
                   title: 'Events',
@@ -242,6 +301,29 @@ class AppDrawer extends ConsumerWidget {
         ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildDrawerSubItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    required Color primaryColor,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 1),
+      child: ListTile(
+        visualDensity: VisualDensity.compact,
+        leading: Icon(icon, color: primaryColor.withValues(alpha: 0.8), size: 20),
+        title: Text(
+          title,
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         onTap: onTap,
       ),

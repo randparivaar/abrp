@@ -100,7 +100,11 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
         path: '/admin',
-        builder: (context, state) => const AdminScreen(),
+        builder: (context, state) {
+          final secParam = state.uri.queryParameters['section'];
+          final initialSection = secParam != null ? int.tryParse(secParam) ?? -1 : -1;
+          return AdminScreen(initialSection: initialSection);
+        },
       ),
       GoRoute(
         path: '/onboard-family',

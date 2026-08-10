@@ -1,4 +1,4 @@
-import { db } from '../db/index.js';
+import { db, dbRetry } from '../db/index.js';
 import { users } from '../db/schema.js';
 import { eq, ilike, or, count, desc } from 'drizzle-orm';
 import { UpdateUserProfileRequest } from '../types/users.types.js';
@@ -54,7 +54,7 @@ export async function updateUserRole(userId: string, newRole: 'admin' | 'member'
   const { coordinatorRegions } = await import('../db/schema.js');
   
   // Clear existing region assignments for this user
-  await db.delete(coordinatorRegions).where(eq(coordinatorRegions.userId, userId));
+  await dbRetry(() => db.delete(coordinatorRegions).where(eq(coordinatorRegions.userId, userId)));
 
   // If role is moderator and regionIds are provided, insert new assignments
   if (newRole === 'moderator' && regionIds && regionIds.length > 0) {
@@ -62,7 +62,7 @@ export async function updateUserRole(userId: string, newRole: 'admin' | 'member'
       userId,
       regionId: rId,
     }));
-    await db.insert(coordinatorRegions).values(recordsToInsert);
+    await dbRetry(() => db.insert(coordinatorRegions).values(recordsToInsert));
   }
 
   return updatedUser;
@@ -84,29 +84,31 @@ export async function listAllUsers(search?: string, page: number = 1, limit: num
   }
 
   // Get total count
-  const [{ value: totalCount }] = await db
+  const [{ value: totalCount }] = await dbRetry(() => db
     .select({ value: count() })
     .from(users)
-    .where(whereClause);
+    .where(whereClause));
 
   // Get paginated users
-  const userList = await db
+  const userList = await dbRetry(() => db
     .select()
     .from(users)
     .where(whereClause)
     .orderBy(desc(users.createdAt))
     .limit(limit)
-    .offset(offset);
+    .offset(offset));
 
   // Fetch assigned regions for moderators
-  const assignments = await db
-    .select({
-      userId: coordinatorRegions.userId,
-      regionId: coordinatorRegions.regionId,
-      regionName: regions.name,
-    })
-    .from(coordinatorRegions)
-    .innerJoin(regions, eq(coordinatorRegions.regionId, regions.id));
+  const assignments = await dbRetry(() =>
+    db
+      .select({
+        userId: coordinatorRegions.userId,
+        regionId: coordinatorRegions.regionId,
+        regionName: regions.name,
+      })
+      .from(coordinatorRegions)
+      .innerJoin(regions, eq(coordinatorRegions.regionId, regions.id))
+  );
 
   const userRegionMap: Record<string, { id: number; name: string }[]> = {};
   for (const a of assignments) {

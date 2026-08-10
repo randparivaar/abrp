@@ -80,6 +80,7 @@ export async function handleGoogleLogin(c: Context) {
         role: user.role,
         preferredLanguage: user.preferredLanguage,
         status: user.status,
+        mobile: user.mobile,
       },
     });
   } catch (error: any) {
@@ -141,6 +142,7 @@ export async function handleRegister(c: Context) {
         role: newUser.role,
         preferredLanguage: newUser.preferredLanguage,
         status: newUser.status,
+        mobile: newUser.mobile,
       },
     });
   } catch (error: any) {
@@ -190,6 +192,7 @@ export async function handleLogin(c: Context) {
         role: user.role,
         preferredLanguage: user.preferredLanguage,
         status: user.status,
+        mobile: user.mobile,
       },
     });
   } catch (error: any) {

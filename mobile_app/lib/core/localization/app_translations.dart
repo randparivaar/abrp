@@ -118,6 +118,30 @@ class AppTranslations {
       AppLanguage.en: 'Member',
       AppLanguage.hi: 'सदस्य',
     },
+    'active_ads_title': {
+      AppLanguage.en: 'Business Offers & Ads',
+      AppLanguage.hi: 'व्यापारिक विज्ञापन और ऑफ़र',
+    },
+    'active_ads_subtitle': {
+      AppLanguage.en: 'Explore exclusive offers and promotions from Rander Parivar members.',
+      AppLanguage.hi: 'रांदड़ परिवार के सदस्यों के विशेष प्रस्ताव और विज्ञापन देखें।',
+    },
+    'sponsored': {
+      AppLanguage.en: 'Sponsored',
+      AppLanguage.hi: 'प्रायोजित',
+    },
+    'call_now': {
+      AppLanguage.en: 'Call',
+      AppLanguage.hi: 'कॉल करें',
+    },
+    'whatsapp': {
+      AppLanguage.en: 'WhatsApp',
+      AppLanguage.hi: 'व्हाट्सएप',
+    },
+    'create_ad': {
+      AppLanguage.en: 'Create Advertisement',
+      AppLanguage.hi: 'विज्ञापन बनाएं',
+    },
   };
 
   static String get(String key, AppLanguage lang) {

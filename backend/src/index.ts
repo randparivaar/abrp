@@ -6,6 +6,7 @@ import { uploadRouter } from './routes/upload.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { usersRouter } from './routes/users.js';
 import { directoryRouter } from './routes/directory.js';
+import adsRouter from './routes/ads.js';
 import dotenv from 'dotenv';
 
 dotenv.config({ override: true });
@@ -37,6 +38,7 @@ app.route('/api/v1/upload', uploadRouter);
 app.route('/api/v1/notifications', notificationsRouter);
 app.route('/api/v1/users', usersRouter);
 app.route('/api/v1/directory', directoryRouter);
+app.route('/api/v1/ads', adsRouter);
 
 // Start native Node.js HTTP server if running locally (not in Vercel)
 if (!process.env.VERCEL) {

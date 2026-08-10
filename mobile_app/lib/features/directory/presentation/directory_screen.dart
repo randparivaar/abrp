@@ -13,6 +13,7 @@ import 'family_tree_screen.dart';
 import 'my_family_provider.dart';
 import 'business_directory_screen.dart';
 import 'app_drawer.dart';
+import 'ads_provider.dart';
 
 class DirectoryScreen extends ConsumerStatefulWidget {
   const DirectoryScreen({super.key});
@@ -37,36 +38,6 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
   Timer? _letterIndicatorTimer;
   final List<String> _alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-  static const List<Map<String, dynamic>> _dummyAds = [
-    {
-      'title': 'Shree Ganesh Textiles',
-      'category': 'Textiles & Garments',
-      'tagline': 'Special 15% discount for community members!',
-      'imageUrl': 'https://lh3.googleusercontent.com/aida-public/AB6AXuAT_FlZ8APgvqD4JePAdhJAyL4n2qjRXl5M496NUtWMjnGRmYQCHVmxv1JMCwDX-FRMz5c-MjOk87NJvmiW1dW7W-K3T0IZHl5rBwYfHWrTeM3MopGIPBkNufObl6sXJSKpcr8-k47XHWrsxg3bt5kP2Q8VAi8t6hbP1TgH8ybEEYTN8nKLtiVBgWqqOZIGBn2bvIZeus9MoaaS7OJmdMw3OII_gcRZIG0Fb-bHUWzV3Nbqo48_y1kMmJUb2o6QNJK99zLQtz1aJv0',
-      'location': 'Surat, Gujarat',
-    },
-    {
-      'title': 'Apex Healthcare & Clinic',
-      'category': 'Healthcare & Medical',
-      'tagline': 'Free Health Checkup & Consultation',
-      'imageUrl': null,
-      'location': 'Ahmedabad',
-    },
-    {
-      'title': 'Vardhman Jewellers',
-      'category': 'Gold & Diamond',
-      'tagline': 'Zero Making Charges on Bridal Collection',
-      'imageUrl': null,
-      'location': 'Mumbai',
-    },
-    {
-      'title': 'Rajdhani Caterers & Sweets',
-      'category': 'Food & Hospitality',
-      'tagline': 'Authentic Rajasthani & Gujarati Thali',
-      'imageUrl': null,
-      'location': 'Jaipur',
-    },
-  ];
 
   static const List<Map<String, dynamic>> _dummyMembers = [
     {
@@ -643,6 +614,47 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Dynamic Directory Header Ad Banner
+              Consumer(
+                builder: (context, ref, _) {
+                  final headerAds = ref.watch(adsByPlacementProvider('directory_header')).value ?? [];
+                  if (headerAds.isEmpty) return const SizedBox.shrink();
+                  final ad = headerAds.first;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFDF5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amber.shade400, width: 1.2),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.campaign, color: Color(0xFF795900), size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text('FEATURED PROMOTION', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.amber.shade900)),
+                                  const SizedBox(width: 6),
+                                  Text(ad.category, style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant)),
+                                ],
+                              ),
+                              Text(ad.title, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
+                              if (ad.tagline != null)
+                                Text(ad.tagline!, style: GoogleFonts.inter(fontSize: 12, color: Colors.green.shade800)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
               // Active filter badge if selected
               if (_selectedVillageId != null) ...[
                 Row(
@@ -671,100 +683,124 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                 const SizedBox(height: 12),
               ],
 
-              // Promoted Ad Slot (Reduced by 30%: height 126 instead of 180)
-              GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Opening sponsored business profile...')),
+              // Dynamic Top Sponsored Banner (directory_feed placement)
+              Consumer(
+                builder: (context, ref, _) {
+                  final feedAds = ref.watch(adsByPlacementProvider('directory_feed')).value ?? [];
+                  if (feedAds.isEmpty) return const SizedBox.shrink();
+                  final ad = feedAds.first;
+                  return GestureDetector(
+                    onTap: () {
+                      if (ad.targetUrl != null && ad.targetUrl!.isNotEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Opening ${ad.title}...')),
+                        );
+                      }
+                    },
+                    child: Container(
+                      height: 126,
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 0),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Stack(
+                          children: [
+                            if (ad.imageUrl != null && ad.imageUrl!.isNotEmpty)
+                              Image.network(
+                                ad.imageUrl!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: primaryColor.withValues(alpha: 0.2),
+                                  child: Icon(Icons.storefront, color: primaryColor, size: 36),
+                                ),
+                              )
+                            else
+                              Container(
+                                color: primaryColor.withValues(alpha: 0.15),
+                                child: Icon(Icons.storefront, color: primaryColor, size: 36),
+                              ),
+                            // Gradient overlay
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.1),
+                                    Colors.black.withValues(alpha: 0.75),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // Ad content
+                            Positioned(
+                              bottom: 12,
+                              left: 14,
+                              right: 14,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: primaryColor,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'SPONSORED',
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    ad.title,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      height: 1.2,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (ad.tagline != null && ad.tagline!.isNotEmpty)
+                                    Text(
+                                      ad.tagline!,
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   );
                 },
-                child: Container(
-                  height: 126,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Stack(
-                      children: [
-                        // Background Image
-                        Image.network(
-                          'https://lh3.googleusercontent.com/aida-public/AB6AXuAT_FlZ8APgvqD4JePAdhJAyL4n2qjRXl5M496NUtWMjnGRmYQCHVmxv1JMCwDX-FRMz5c-MjOk87NJvmiW1dW7W-K3T0IZHl5rBwYfHWrTeM3MopGIPBkNufObl6sXJSKpcr8-k47XHWrsxg3bt5kP2Q8VAi8t6hbP1TgH8ybEEYTN8nKLtiVBgWqqOZIGBn2bvIZeus9MoaaS7OJmdMw3OII_gcRZIG0Fb-bHUWzV3Nbqo48_y1kMmJUb2o6QNJK99zLQtz1aJv0',
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          errorBuilder: (_, _, _) => Container(
-                            color: primaryColor.withValues(alpha: 0.2),
-                            child: Icon(Icons.storefront, color: primaryColor, size: 36),
-                          ),
-                        ),
-                        // Gradient Overlay
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.1),
-                                Colors.black.withValues(alpha: 0.75),
-                              ],
-                            ),
-                          ),
-                        ),
-                        // Ad content
-                        Positioned(
-                          bottom: 12,
-                          left: 14,
-                          right: 14,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: primaryColor,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  'SPONSORED',
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Promoted Business: Shree Ganesh Textiles - Visit Us!',
-                                style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  height: 1.2,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ),
-              const SizedBox(height: 24),
 
               // Directory Header
               Row(
@@ -818,8 +854,11 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
               else
                 Builder(
                   builder: (context) {
-                    final int totalAdCount = _members.length ~/ 8;
-                    final int totalItemCount = _members.length + totalAdCount;
+                    final dynamicAds = ref.watch(adsByPlacementProvider('directory_feed')).value ?? [];
+                    const int adFrequency = 4; // User requested 1 ad after every 4 member cards
+                    final int totalAdCount = _members.length ~/ adFrequency;
+                    final int totalItemCount = _members.length + (dynamicAds.isEmpty ? 0 : totalAdCount);
+                    final int modulus = adFrequency + 1;
 
                     return ListView.separated(
                       shrinkWrap: true,
@@ -827,14 +866,14 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                       itemCount: totalItemCount,
                       separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
-                        // Insert Ad after every 8 members (at positions index 8, 17, 26...)
-                        if ((index + 1) % 9 == 0) {
-                          final adIndex = ((index + 1) ~/ 9 - 1) % _dummyAds.length;
-                          final ad = _dummyAds[adIndex];
-                          return _buildAdMemberCard(context, ad, primaryColor, secondaryColor, colorScheme);
+                        // Insert Ad after every 4 members only if real ads exist
+                        if (dynamicAds.isNotEmpty && (index + 1) % modulus == 0) {
+                          final adIndex = ((index + 1) ~/ modulus - 1) % dynamicAds.length;
+                          final ad = dynamicAds[adIndex];
+                          return _buildDynamicAdCard(context, ad, primaryColor, secondaryColor, colorScheme);
                         }
 
-                        final memberIndex = index - (index ~/ 9);
+                        final memberIndex = index - (index ~/ modulus);
                         final member = _members[memberIndex];
                         final String rawName = (member['fullName'] as String? ?? '').toTitleCase();
                         final village = member['village']?['name'] as String?;
@@ -868,17 +907,14 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                               padding: const EdgeInsets.all(12.0),
                               child: Row(
                                 children: [
-                                  // Avatar with Hero Animation for smooth page transitions
-                                  Hero(
-                                    tag: 'avatar_${member['id']}',
-                                    child: AppAvatar(
-                                      name: rawName,
-                                      imageUrl: avatarUrl,
-                                      radius: 28,
-                                      border: Border.all(
-                                        color: isHead ? const Color(0xFFD4AF37) : primaryColor, 
-                                        width: 2,
-                                      ),
+                                  // Avatar
+                                  AppAvatar(
+                                    name: rawName,
+                                    imageUrl: avatarUrl,
+                                    radius: 28,
+                                    border: Border.all(
+                                      color: isHead ? const Color(0xFFD4AF37) : primaryColor, 
+                                      width: 2,
                                     ),
                                   ),
                                   const SizedBox(width: 12),
@@ -1165,180 +1201,90 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
     );
   }
 
-  Widget _buildAdMemberCard(
-    BuildContext context,
-    Map<String, dynamic> ad,
-    Color primaryColor,
-    Color secondaryColor,
-    ColorScheme colorScheme,
-  ) {
-    return Card(
-      margin: EdgeInsets.zero,
-      color: const Color(0xFFFFFBEF),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+
+  Widget _buildDynamicAdCard(BuildContext context, AdvertisementModel ad, Color primaryColor, Color secondaryColor, ColorScheme colorScheme) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFDF8),
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: primaryColor.withValues(alpha: 0.3),
-          width: 1,
+        border: Border.all(
+          color: Colors.amber.shade400.withValues(alpha: 0.8),
+          width: 1.2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.amber.withValues(alpha: 0.08),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: InkWell(
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Opening ${ad['title']}...')),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            children: [
-              // Avatar format (same 56x56 circle as AppAvatar radius 28)
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: primaryColor.withValues(alpha: 0.1),
-                  border: Border.all(
-                    color: primaryColor,
-                    width: 2,
-                  ),
-                ),
-                child: ClipOval(
-                  child: ad['imageUrl'] != null && (ad['imageUrl'] as String).isNotEmpty
-                      ? Image.network(
-                          ad['imageUrl'],
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Icon(
-                            Icons.storefront_rounded,
-                            color: primaryColor,
-                            size: 26,
-                          ),
-                        )
-                      : Icon(
-                          Icons.storefront_rounded,
-                          color: primaryColor,
-                          size: 26,
-                        ),
-                ),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.amber.shade100,
+                shape: BoxShape.circle,
               ),
-              const SizedBox(width: 12),
-              // Info column
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            ad['title'] ?? 'Sponsored Business',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onSurface,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: primaryColor,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            'AD',
-                            style: GoogleFonts.inter(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ],
+              child: Icon(Icons.campaign, color: Colors.amber.shade900, size: 26),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    ad.title,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface,
                     ),
-                    const SizedBox(height: 4),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (ad.tagline != null && ad.tagline!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
                     Text(
-                      ad['tagline'] ?? '',
+                      ad.tagline!,
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: secondaryColor,
+                        color: Colors.green.shade800,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 5),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: primaryColor.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: primaryColor.withValues(alpha: 0.2),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.campaign_outlined,
-                                size: 11,
-                                color: primaryColor,
-                              ),
-                              const SizedBox(width: 3),
-                              Text(
-                                ad['category'] ?? 'Sponsored',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: primaryColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (ad['location'] != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              ad['location']!,
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
                   ],
-                ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade100,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'SPONSORED',
+                          style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        ad.category,
+                        style: GoogleFonts.inter(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.open_in_new_rounded,
-                color: primaryColor,
-                size: 20,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

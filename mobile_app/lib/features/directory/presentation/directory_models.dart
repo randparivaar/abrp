@@ -218,3 +218,63 @@ class FamilyTreeData {
     this.canEdit = true,
   });
 }
+
+class AdvertisementModel {
+  final int id;
+  final String title;
+  final String? tagline;
+  final String? imageUrl;
+  final String category;
+  final List<String> placements;
+  final String displayStyle;
+  final int? businessId;
+  final String? targetUrl;
+  final String? contactMobile;
+  final String? whatsappMobile;
+  final String? location;
+  final bool isActive;
+  final int priority;
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  AdvertisementModel({
+    required this.id,
+    required this.title,
+    this.tagline,
+    this.imageUrl,
+    required this.category,
+    required this.placements,
+    this.displayStyle = 'banner',
+    this.businessId,
+    this.targetUrl,
+    this.contactMobile,
+    this.whatsappMobile,
+    this.location,
+    this.isActive = true,
+    this.priority = 0,
+    this.startDate,
+    this.endDate,
+  });
+
+  factory AdvertisementModel.fromJson(Map<String, dynamic> json) {
+    return AdvertisementModel(
+      id: json['id'] is int ? json['id'] as int : int.parse(json['id'].toString()),
+      title: json['title'] as String? ?? '',
+      tagline: json['tagline'] as String?,
+      imageUrl: json['imageUrl'] as String?,
+      category: json['category'] as String? ?? 'General',
+      placements: json['placements'] != null ? List<String>.from(json['placements'] as List) : ['directory_feed'],
+      displayStyle: json['displayStyle'] as String? ?? 'banner',
+      businessId: json['businessId'] != null ? (json['businessId'] is int ? json['businessId'] as int : int.tryParse(json['businessId'].toString())) : null,
+      targetUrl: json['targetUrl'] as String?,
+      contactMobile: json['contactMobile'] as String?,
+      whatsappMobile: json['whatsappMobile'] as String?,
+      location: json['location'] as String?,
+      isActive: json['isActive'] as bool? ?? true,
+      priority: json['priority'] is int ? json['priority'] as int : (int.tryParse(json['priority']?.toString() ?? '0') ?? 0),
+      startDate: json['startDate'] != null ? DateTime.tryParse(json['startDate'].toString()) : null,
+      endDate: json['endDate'] != null ? DateTime.tryParse(json['endDate'].toString()) : null,
+    );
+  }
+}
+

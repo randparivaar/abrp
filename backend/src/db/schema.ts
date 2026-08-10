@@ -322,5 +322,44 @@ export const businessLocationsRelations = relations(businessLocations, ({ one })
   }),
 }));
 
+/**
+ * Advertisements Table: Multi-placement community ads & promotional banners
+ */
+export const advertisements = pgTable('advertisements', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  tagline: text('tagline'),
+  imageUrl: text('image_url'),
+  category: varchar('category', { length: 100 }).notNull(),
+  placements: jsonb('placements').notNull(), // JSON array of strings e.g. ["home_carousel", "directory_feed"]
+  displayStyle: varchar('display_style', { length: 50 }).default('banner').notNull(),
+  businessId: integer('business_id').references(() => businessProfiles.id, { onDelete: 'set null' }),
+  targetUrl: text('target_url'),
+  contactMobile: varchar('contact_mobile', { length: 20 }),
+  whatsappMobile: varchar('whatsapp_mobile', { length: 20 }),
+  location: varchar('location', { length: 150 }),
+  isActive: boolean('is_active').default(true).notNull(),
+  priority: integer('priority').default(0).notNull(),
+  startDate: timestamp('start_date').defaultNow().notNull(),
+  endDate: timestamp('end_date'),
+  createdBy: uuid('created_by').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index('ads_is_active_priority_idx').on(table.isActive, table.priority),
+]);
+
+export const advertisementsRelations = relations(advertisements, ({ one }) => ({
+  business: one(businessProfiles, {
+    fields: [advertisements.businessId],
+    references: [businessProfiles.id],
+  }),
+  creator: one(users, {
+    fields: [advertisements.createdBy],
+    references: [users.id],
+  }),
+}));
+
+
 
 

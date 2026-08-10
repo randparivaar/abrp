@@ -8,6 +8,8 @@ import '../../../core/network/api_client.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../../directory/presentation/app_drawer.dart';
 import '../../directory/presentation/app_bottom_navigation.dart';
+import '../../directory/presentation/ads_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -119,254 +121,307 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // Carousel Section
-            SizedBox(
-              height: 270,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                children: [
-                  // Carousel Card 1: Upcoming Event
-                  Container(
-                    width: MediaQuery.of(context).size.width * 0.85,
-                    margin: const EdgeInsets.only(right: 16),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: theme.colorScheme.secondary.withValues(
-                          alpha: 0.05,
+
+            // Carousel Section (Events + Ads together)
+            Consumer(
+              builder: (context, ref, _) {
+                final carouselAds = ref.watch(adsByPlacementProvider('home_carousel')).value ?? [];
+                return SizedBox(
+                  height: 270,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    children: [
+                      // Carousel Card 1: Upcoming Event
+                      Container(
+                        width: MediaQuery.of(context).size.width * 0.85,
+                        margin: const EdgeInsets.only(right: 16),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: theme.colorScheme.secondary.withValues(alpha: 0.05),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 3,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                         ),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 3,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Stack(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Image.network(
-                                'https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkmefiChBJ0IIWUeFtuJJ-dvjed_XzRjOCYr0RauyP0pL-556MAyDLh5a4rZAMXnhNyOjSaAcM6w-GMr7kt8G62KykrX4zAxgKW0k5px8T2S4MYd5DhWWtngvWO-8Raw4FaaIjfOjhqf9yI=s1360-w1360-h1020-rw',
-                                height: 130,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Container(
+                              Stack(
+                                children: [
+                                  Image.network(
+                                    'https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkmefiChBJ0IIWUeFtuJJ-dvjed_XzRjOCYr0RauyP0pL-556MAyDLh5a4rZAMXnhNyOjSaAcM6w-GMr7kt8G62KykrX4zAxgKW0k5px8T2S4MYd5DhWWtngvWO-8Raw4FaaIjfOjhqf9yI=s1360-w1360-h1020-rw',
+                                    height: 130,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => Container(
                                       height: 130,
                                       color: theme.colorScheme.primaryContainer,
-                                      child: Icon(
-                                        Icons.temple_hindu_outlined,
+                                      child: Icon(Icons.temple_hindu_outlined, color: primaryColor, size: 48),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 12,
+                                    left: 12,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
                                         color: primaryColor,
-                                        size: 48,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'LATEST',
+                                        style: GoogleFonts.inter(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                                       ),
                                     ),
+                                  ),
+                                ],
                               ),
+                              Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '6th Sammelan, 2026 at Ayodhya',
+                                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: primaryColor),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.calendar_today_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            'June 19 - 21, 2026',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.inter(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 2.0),
+                                          child: Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            'Asharfi Bhawan Chauraha Rd, Tulsi Nagar, Ayodhya, Uttar Pradesh 224123',
+                                            style: GoogleFonts.inter(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Carousel Card 2: Community News
+                      Container(
+                        width: MediaQuery.of(context).size.width * 0.85,
+                        margin: const EdgeInsets.only(right: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: theme.colorScheme.secondary.withValues(alpha: 0.05),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 3,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.campaign_outlined, color: secondaryColor, size: 20),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'COMMUNITY NEWS',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: secondaryColor,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'New Mahila Mandal Committee Announced for 2026',
+                                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface, height: 1.2),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'The Rander Parivar Samaj is proud to introduce the newly elected members of the Mahila Mandal...',
+                                  style: GoogleFonts.inter(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                            InkWell(
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('News details will be available soon.')),
+                                );
+                              },
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('Read More', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: primaryColor)),
+                                  const SizedBox(width: 4),
+                                  Icon(Icons.arrow_forward, size: 14, color: primaryColor),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Dynamic Ad Cards from home_carousel placement
+                      ...carouselAds.map((ad) => Container(
+                        width: MediaQuery.of(context).size.width * 0.85,
+                        margin: const EdgeInsets.only(right: 16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              // Full image background
+                              if (ad.imageUrl != null && ad.imageUrl!.isNotEmpty)
+                                CachedNetworkImage(
+                                  imageUrl: ad.imageUrl!,
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, __) => Container(color: theme.colorScheme.primaryContainer),
+                                  errorWidget: (_, __, ___) => Container(
+                                    color: theme.colorScheme.primaryContainer,
+                                    child: Icon(Icons.storefront_rounded, color: primaryColor, size: 48),
+                                  ),
+                                )
+                              else
+                                Container(
+                                  color: theme.colorScheme.primaryContainer,
+                                  child: Icon(Icons.storefront_rounded, color: primaryColor, size: 48),
+                                ),
+                              // Gradient overlay from bottom
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.black.withValues(alpha: 0.75),
+                                      Colors.black.withValues(alpha: 0.1),
+                                    ],
+                                    begin: Alignment.bottomCenter,
+                                    end: Alignment.topCenter,
+                                  ),
+                                ),
+                              ),
+                              // SPONSORED badge top-left
                               Positioned(
                                 top: 12,
                                 left: 12,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: primaryColor,
+                                    color: Colors.amber,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
-                                  child: Text(
-                                    'LATEST',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  child: const Text(
+                                    'SPONSORED',
+                                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black),
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '6th Sammelan, 2026 at Ayodhya',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: primaryColor,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Row(
+                              // Title + tagline bottom
+                              Positioned(
+                                bottom: 16,
+                                left: 14,
+                                right: 14,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(
-                                      Icons.calendar_today_outlined,
-                                      size: 14,
-                                      color: theme.colorScheme.onSurfaceVariant,
+                                    Text(
+                                      ad.title,
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 17,
+                                        height: 1.2,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        'June 19 - 21, 2026',
+                                    if (ad.tagline != null && ad.tagline!.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        ad.tagline!,
+                                        style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13,
-                                          color:
-                                              theme.colorScheme.onSurfaceVariant,
-                                        ),
                                       ),
-                                    ),
+                                    ],
+                                    if (ad.location != null && ad.location!.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.location_on_outlined, size: 13, color: Colors.white70),
+                                          const SizedBox(width: 3),
+                                          Text(ad.location!, style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+                                        ],
+                                      ),
+                                    ],
                                   ],
                                 ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 2.0),
-                                      child: Icon(
-                                        Icons.location_on_outlined,
-                                        size: 14,
-                                        color:
-                                            theme.colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        'Asharfi Bhawan Chauraha Rd, Tulsi Nagar, Ayodhya, Uttar Pradesh 224123',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13,
-                                          color:
-                                              theme.colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Carousel Card 2: Community News
-                  Container(
-                    width: MediaQuery.of(context).size.width * 0.85,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: theme.colorScheme.secondary.withValues(
-                          alpha: 0.05,
-                        ),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 3,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.campaign_outlined,
-                                  color: secondaryColor,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'COMMUNITY NEWS',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: secondaryColor,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'New Mahila Mandal Committee Announced for 2026',
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                                height: 1.2,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'The Rander Parivar Samaj is proud to introduce the newly elected members of the Mahila Mandal...',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                        InkWell(
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'News details will be available soon.',
-                                ),
-                              ),
-                            );
-                          },
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Read More',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: primaryColor,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.arrow_forward,
-                                size: 14,
-                                color: primaryColor,
                               ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
+                      )),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
             const SizedBox(height: 24),
 
@@ -506,6 +561,104 @@ class HomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
             ],
+
+            // Dynamic Home Bottom Ad Banner — with image
+            Consumer(
+              builder: (context, ref, _) {
+                final bottomAds = ref.watch(adsByPlacementProvider('home_bottom_banner')).value ?? [];
+                if (bottomAds.isEmpty) return const SizedBox.shrink();
+                final ad = bottomAds.first;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 24),
+                  height: 120,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Full image
+                        if (ad.imageUrl != null && ad.imageUrl!.isNotEmpty)
+                          CachedNetworkImage(
+                            imageUrl: ad.imageUrl!,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(color: theme.colorScheme.primaryContainer),
+                            errorWidget: (_, __, ___) => Container(
+                              color: const Color(0xFFFFFDF5),
+                              child: const Icon(Icons.campaign, color: Color(0xFF795900), size: 36),
+                            ),
+                          )
+                        else
+                          Container(
+                            color: const Color(0xFFFFFDF5),
+                            child: const Icon(Icons.campaign, color: Color(0xFF795900), size: 36),
+                          ),
+                        // Gradient overlay
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.black.withValues(alpha: 0.72),
+                                Colors.black.withValues(alpha: 0.08),
+                              ],
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                            ),
+                          ),
+                        ),
+                        // SPONSORED badge + text
+                        Positioned(
+                          left: 14,
+                          right: 14,
+                          bottom: 12,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'SPONSORED · ${ad.category}',
+                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                ad.title,
+                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (ad.tagline != null && ad.tagline!.isNotEmpty)
+                                Text(
+                                  ad.tagline!,
+                                  style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ],
         ),
       ),

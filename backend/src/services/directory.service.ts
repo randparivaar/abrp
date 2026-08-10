@@ -21,21 +21,25 @@ async function generateUniqueFamilyCode(): Promise<string> {
  * Get all available villages with their region/zone name
  */
 export async function getVillagesList() {
-  return await db.query.villages.findMany({
-    with: {
-      region: true
-    },
-    orderBy: (v: any, { asc }: any) => [asc(v.name)]
-  });
+  return await dbRetry(() =>
+    db.query.villages.findMany({
+      with: {
+        region: true
+      },
+      orderBy: (v: any, { asc }: any) => [asc(v.name)]
+    })
+  );
 }
 
 /**
  * Get all administrative regions/zones
  */
 export async function getRegionsList() {
-  return await db.query.regions.findMany({
-    orderBy: (r: any, { asc }: any) => [asc(r.name)]
-  });
+  return await dbRetry(() =>
+    db.query.regions.findMany({
+      orderBy: (r: any, { asc }: any) => [asc(r.name)]
+    })
+  );
 }
 
 
