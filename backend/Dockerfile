@@ -1,7 +1,12 @@
 FROM node:24-alpine
 
+# Set CI environment variable to bypass interactive TTY prompts for pnpm
+ENV CI=true
+ENV confirmModulesPurge=false
+
 # Install pnpm inside the container
 RUN npm install -g pnpm
+
 
 WORKDIR /app
 
@@ -9,7 +14,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml* ./
 
 # Install dependencies (including devDependencies for tsx/typescript watch mode)
-RUN pnpm install --ignore-scripts
+RUN pnpm install --no-frozen-lockfile --ignore-scripts
 
 # Copy source code
 COPY . .

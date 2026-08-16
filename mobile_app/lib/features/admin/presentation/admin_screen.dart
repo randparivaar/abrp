@@ -22,6 +22,15 @@ class AdminScreen extends ConsumerStatefulWidget {
   ConsumerState<AdminScreen> createState() => _AdminScreenState();
 }
 
+String _formatHumanDate(DateTime? dt) {
+  if (dt == null) return '';
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+  return '${dt.day} ${months[dt.month - 1]}, ${dt.year}';
+}
+
 class _AdminScreenState extends ConsumerState<AdminScreen> {
   late int _selectedAdminSectionIndex;
 
@@ -1827,6 +1836,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                   final contactMobile = adItem['contactMobile'] as String?;
                   final whatsappMobile = adItem['whatsappMobile'] as String?;
                   final targetUrl = adItem['targetUrl'] as String?;
+                  final startDate = adItem['startDate'] != null ? DateTime.tryParse(adItem['startDate'].toString()) : null;
+                  final endDate = adItem['endDate'] != null ? DateTime.tryParse(adItem['endDate'].toString()) : null;
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 16),
@@ -1851,7 +1862,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                               child: Image.network(
                                 imageUrl.trim(),
                                 fit: BoxFit.cover,
-                                errorBuilder: (ctx, _, __) => Container(
+                                errorBuilder: (c, e, s) => Container(
                                   color: Colors.grey.shade200,
                                   child: Center(
                                     child: Column(
@@ -1983,12 +1994,23 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
 
                                 if ((contactMobile != null && contactMobile.isNotEmpty) ||
                                     (whatsappMobile != null && whatsappMobile.isNotEmpty) ||
-                                    (targetUrl != null && targetUrl.isNotEmpty)) ...[
+                                    (targetUrl != null && targetUrl.isNotEmpty) ||
+                                    startDate != null || endDate != null) ...[
                                   const SizedBox(height: 12),
                                   Wrap(
                                     spacing: 8,
                                     runSpacing: 6,
                                     children: [
+                                      if (startDate != null || endDate != null)
+                                        Chip(
+                                          avatar: const Icon(Icons.date_range, size: 14, color: Colors.deepOrange),
+                                          label: Text(
+                                            'Period: ${startDate != null ? _formatHumanDate(startDate) : 'Immediate'} - ${endDate != null ? _formatHumanDate(endDate) : 'Indefinite'}',
+                                            style: const TextStyle(fontSize: 11),
+                                          ),
+                                          visualDensity: VisualDensity.compact,
+                                          padding: EdgeInsets.zero,
+                                        ),
                                       if (contactMobile != null && contactMobile.isNotEmpty)
                                         Chip(
                                           avatar: const Icon(Icons.phone, size: 14, color: Colors.blue),
@@ -2116,6 +2138,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     final imageUrlCtrl = TextEditingController(text: ad?['imageUrl'] as String? ?? '');
     int priority = ad?['priority'] as int? ?? 0;
     bool isActive = ad?['isActive'] as bool? ?? true;
+    DateTime? startDate = ad?['startDate'] != null ? DateTime.tryParse(ad!['startDate'].toString()) : null;
+    DateTime? endDate = ad?['endDate'] != null ? DateTime.tryParse(ad!['endDate'].toString()) : null;
 
     final availablePlacements = [
       'home_carousel',
@@ -2204,7 +2228,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                           child: Image.network(
                             imageUrlCtrl.text.trim(),
                             fit: BoxFit.cover,
-                            errorBuilder: (c, _, __) => const Center(child: Text('Invalid image URL')),
+                            errorBuilder: (c, e, s) => const Center(child: Text('Invalid image URL')),
                           ),
                         ),
                       ),
@@ -2339,6 +2363,69 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    const Text('Time Period / Active Duration (Optional):', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.calendar_today, size: 16),
+                            label: Text(
+                              startDate != null
+                                  ? 'Start: ${_formatHumanDate(startDate)}'
+                                  : 'Start Date',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: modalCtx,
+                                initialDate: startDate ?? DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2035),
+                              );
+                              if (picked != null) {
+                                setModalState(() => startDate = picked);
+                              }
+                            },
+                          ),
+                        ),
+                        if (startDate != null)
+                          IconButton(
+                            icon: const Icon(Icons.clear, size: 16),
+                            onPressed: () => setModalState(() => startDate = null),
+                          ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.event, size: 16),
+                            label: Text(
+                              endDate != null
+                                  ? 'End: ${_formatHumanDate(endDate)}'
+                                  : 'End Date',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: modalCtx,
+                                initialDate: endDate ?? DateTime.now().add(const Duration(days: 30)),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2035),
+                              );
+                              if (picked != null) {
+                                setModalState(() => endDate = picked);
+                              }
+                            },
+                          ),
+                        ),
+                        if (endDate != null)
+                          IconButton(
+                            icon: const Icon(Icons.clear, size: 16),
+                            onPressed: () => setModalState(() => endDate = null),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
                     Row(
                       children: [
                         const Text('Active Status: ', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -2374,6 +2461,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                             'targetUrl': targetUrlCtrl.text.trim(),
                             'isActive': isActive,
                             'priority': priority,
+                            'startDate': startDate?.toIso8601String(),
+                            'endDate': endDate?.toIso8601String(),
                           };
 
                           try {

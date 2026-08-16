@@ -14,6 +14,7 @@ import 'my_family_provider.dart';
 import 'business_directory_screen.dart';
 import 'app_drawer.dart';
 import 'ads_provider.dart';
+import 'ad_banner_card.dart';
 
 class DirectoryScreen extends ConsumerStatefulWidget {
   const DirectoryScreen({super.key});
@@ -614,43 +615,17 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Dynamic Directory Header Ad Banner
+              // Dynamic Directory Header Image Banner (Prioritizes directory_header, falls back to directory_feed)
               Consumer(
                 builder: (context, ref, _) {
                   final headerAds = ref.watch(adsByPlacementProvider('directory_header')).value ?? [];
-                  if (headerAds.isEmpty) return const SizedBox.shrink();
-                  final ad = headerAds.first;
-                  return Container(
+                  final feedAds = ref.watch(adsByPlacementProvider('directory_feed')).value ?? [];
+                  final adList = headerAds.isNotEmpty ? headerAds : feedAds;
+                  if (adList.isEmpty) return const SizedBox.shrink();
+                  return AdBannerCarousel(
+                    ads: adList,
+                    height: 120,
                     margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFFDF5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.amber.shade400, width: 1.2),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.campaign, color: Color(0xFF795900), size: 28),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text('FEATURED PROMOTION', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.amber.shade900)),
-                                  const SizedBox(width: 6),
-                                  Text(ad.category, style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant)),
-                                ],
-                              ),
-                              Text(ad.title, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
-                              if (ad.tagline != null)
-                                Text(ad.tagline!, style: GoogleFonts.inter(fontSize: 12, color: Colors.green.shade800)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
                   );
                 },
               ),
@@ -682,125 +657,6 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                 ),
                 const SizedBox(height: 12),
               ],
-
-              // Dynamic Top Sponsored Banner (directory_feed placement)
-              Consumer(
-                builder: (context, ref, _) {
-                  final feedAds = ref.watch(adsByPlacementProvider('directory_feed')).value ?? [];
-                  if (feedAds.isEmpty) return const SizedBox.shrink();
-                  final ad = feedAds.first;
-                  return GestureDetector(
-                    onTap: () {
-                      if (ad.targetUrl != null && ad.targetUrl!.isNotEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Opening ${ad.title}...')),
-                        );
-                      }
-                    },
-                    child: Container(
-                      height: 126,
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 0),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Stack(
-                          children: [
-                            if (ad.imageUrl != null && ad.imageUrl!.isNotEmpty)
-                              Image.network(
-                                ad.imageUrl!,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                                errorBuilder: (_, __, ___) => Container(
-                                  color: primaryColor.withValues(alpha: 0.2),
-                                  child: Icon(Icons.storefront, color: primaryColor, size: 36),
-                                ),
-                              )
-                            else
-                              Container(
-                                color: primaryColor.withValues(alpha: 0.15),
-                                child: Icon(Icons.storefront, color: primaryColor, size: 36),
-                              ),
-                            // Gradient overlay
-                            Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.black.withValues(alpha: 0.1),
-                                    Colors.black.withValues(alpha: 0.75),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            // Ad content
-                            Positioned(
-                              bottom: 12,
-                              left: 14,
-                              right: 14,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: primaryColor,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      'SPONSORED',
-                                      style: GoogleFonts.inter(
-                                        color: Colors.white,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    ad.title,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      height: 1.2,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  if (ad.tagline != null && ad.tagline!.isNotEmpty)
-                                    Text(
-                                      ad.tagline!,
-                                      style: GoogleFonts.inter(
-                                        color: Colors.white70,
-                                        fontSize: 12,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
 
               // Directory Header
               Row(
@@ -1203,90 +1059,10 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
 
 
   Widget _buildDynamicAdCard(BuildContext context, AdvertisementModel ad, Color primaryColor, Color secondaryColor, ColorScheme colorScheme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFDF8),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.amber.shade400.withValues(alpha: 0.8),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.amber.withValues(alpha: 0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: Colors.amber.shade100,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.campaign, color: Colors.amber.shade900, size: 26),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    ad.title,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (ad.tagline != null && ad.tagline!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      ad.tagline!,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.green.shade800,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.shade100,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'SPONSORED',
-                          style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        ad.category,
-                        style: GoogleFonts.inter(fontSize: 11, color: colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+    return AdBannerCard(
+      ad: ad,
+      height: 120,
+      margin: EdgeInsets.zero,
     );
   }
 
