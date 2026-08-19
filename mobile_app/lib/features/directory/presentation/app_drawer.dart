@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_app/core/localization/app_language.dart';
 import 'package:mobile_app/core/localization/app_translations.dart';
+import 'package:mobile_app/core/theme/theme_notifier.dart';
 import 'package:mobile_app/features/auth/presentation/auth_controller.dart';
 import 'package:mobile_app/features/directory/presentation/my_family_provider.dart';
 
@@ -17,6 +18,7 @@ class AppDrawer extends ConsumerWidget {
     final lang = ref.watch(languageStateProvider);
     final user = ref.watch(authProvider).user;
     final isStaff = user?.role == 'admin' || user?.role == 'moderator';
+    final currentThemeMode = ref.watch(themeModeProvider);
 
     return Drawer(
       width: 280,
@@ -169,6 +171,15 @@ class AppDrawer extends ConsumerWidget {
                   primaryColor: primaryColor,
                 ),
                 _buildDrawerItem(
+                  icon: Icons.campaign_outlined,
+                  title: 'Active Ads & Offers',
+                  onTap: () {
+                    context.pop();
+                    context.push('/ads');
+                  },
+                  primaryColor: primaryColor,
+                ),
+                _buildDrawerItem(
                   icon: Icons.account_tree_outlined,
                   title: 'Family Tree',
                   onTap: () async {
@@ -225,6 +236,79 @@ class AppDrawer extends ConsumerWidget {
                     );
                   },
                   primaryColor: primaryColor,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                  child: Divider(
+                    color: theme.colorScheme.secondary.withValues(alpha: 0.1),
+                    height: 1,
+                  ),
+                ),
+
+                // Theme Mode Switcher
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 12, bottom: 6),
+                        child: Text(
+                          'APPEARANCE',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurfaceVariant,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            _buildThemeOption(
+                              context: context,
+                              ref: ref,
+                              mode: ThemeMode.light,
+                              currentMode: currentThemeMode,
+                              icon: Icons.light_mode_outlined,
+                              selectedIcon: Icons.light_mode,
+                              label: 'Light',
+                              activeColor: primaryColor,
+                            ),
+                            _buildThemeOption(
+                              context: context,
+                              ref: ref,
+                              mode: ThemeMode.dark,
+                              currentMode: currentThemeMode,
+                              icon: Icons.dark_mode_outlined,
+                              selectedIcon: Icons.dark_mode,
+                              label: 'Dark',
+                              activeColor: primaryColor,
+                            ),
+                            _buildThemeOption(
+                              context: context,
+                              ref: ref,
+                              mode: ThemeMode.system,
+                              currentMode: currentThemeMode,
+                              icon: Icons.brightness_auto_outlined,
+                              selectedIcon: Icons.brightness_auto,
+                              label: 'Auto',
+                              activeColor: primaryColor,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 8),
                 // Donate Now Button
@@ -326,6 +410,64 @@ class AppDrawer extends ConsumerWidget {
           ),
         ),
         onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildThemeOption({
+    required BuildContext context,
+    required WidgetRef ref,
+    required ThemeMode mode,
+    required ThemeMode currentMode,
+    required IconData icon,
+    required IconData selectedIcon,
+    required String label,
+    required Color activeColor,
+  }) {
+    final isSelected = currentMode == mode;
+    final theme = Theme.of(context);
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          ref.read(themeModeProvider.notifier).setThemeMode(mode);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? theme.colorScheme.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : [],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isSelected ? selectedIcon : icon,
+                size: 20,
+                color: isSelected ? activeColor : theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

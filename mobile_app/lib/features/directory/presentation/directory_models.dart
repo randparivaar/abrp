@@ -257,20 +257,40 @@ class AdvertisementModel {
   });
 
   factory AdvertisementModel.fromJson(Map<String, dynamic> json) {
+    List<String> parsedPlacements = ['directory_feed'];
+    if (json['placements'] != null) {
+      if (json['placements'] is List) {
+        parsedPlacements = (json['placements'] as List).map((e) => e.toString()).toList();
+      } else if (json['placements'] is String) {
+        parsedPlacements = [json['placements'].toString()];
+      }
+    }
+
+    bool parsedIsActive = true;
+    if (json['isActive'] != null) {
+      if (json['isActive'] is bool) {
+        parsedIsActive = json['isActive'] as bool;
+      } else if (json['isActive'] is num) {
+        parsedIsActive = (json['isActive'] as num) != 0;
+      } else if (json['isActive'] is String) {
+        parsedIsActive = json['isActive'].toString().toLowerCase() == 'true' || json['isActive'].toString() == '1';
+      }
+    }
+
     return AdvertisementModel(
-      id: json['id'] is int ? json['id'] as int : int.parse(json['id'].toString()),
-      title: json['title'] as String? ?? '',
-      tagline: json['tagline'] as String?,
-      imageUrl: json['imageUrl'] as String?,
-      category: json['category'] as String? ?? 'General',
-      placements: json['placements'] != null ? List<String>.from(json['placements'] as List) : ['directory_feed'],
-      displayStyle: json['displayStyle'] as String? ?? 'banner',
+      id: json['id'] is int ? json['id'] as int : (int.tryParse(json['id']?.toString() ?? '0') ?? 0),
+      title: json['title']?.toString() ?? '',
+      tagline: json['tagline']?.toString(),
+      imageUrl: json['imageUrl']?.toString(),
+      category: json['category']?.toString().isNotEmpty == true ? json['category'].toString() : 'General',
+      placements: parsedPlacements,
+      displayStyle: json['displayStyle']?.toString() ?? 'banner',
       businessId: json['businessId'] != null ? (json['businessId'] is int ? json['businessId'] as int : int.tryParse(json['businessId'].toString())) : null,
-      targetUrl: json['targetUrl'] as String?,
-      contactMobile: json['contactMobile'] as String?,
-      whatsappMobile: json['whatsappMobile'] as String?,
-      location: json['location'] as String?,
-      isActive: json['isActive'] as bool? ?? true,
+      targetUrl: json['targetUrl']?.toString(),
+      contactMobile: json['contactMobile']?.toString(),
+      whatsappMobile: json['whatsappMobile']?.toString(),
+      location: json['location']?.toString(),
+      isActive: parsedIsActive,
       priority: json['priority'] is int ? json['priority'] as int : (int.tryParse(json['priority']?.toString() ?? '0') ?? 0),
       startDate: json['startDate'] != null ? DateTime.tryParse(json['startDate'].toString()) : null,
       endDate: json['endDate'] != null ? DateTime.tryParse(json['endDate'].toString()) : null,

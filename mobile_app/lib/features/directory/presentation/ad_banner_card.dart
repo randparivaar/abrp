@@ -75,7 +75,7 @@ class AdBannerCard extends StatelessWidget {
                   width: double.infinity,
                   height: double.infinity,
                   placeholder: (context, url) => Container(
-                    color: const Color(0xFFFFFDF5),
+                    color: Theme.of(context).colorScheme.surfaceContainer,
                     child: const Center(
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
@@ -86,10 +86,10 @@ class AdBannerCard extends StatelessWidget {
                     width: double.infinity,
                     height: double.infinity,
                     errorBuilder: (c, e, s) => Container(
-                      color: const Color(0xFFFFFDF5),
-                      child: const Icon(
+                      color: Theme.of(context).colorScheme.surfaceContainer,
+                      child: Icon(
                         Icons.campaign,
-                        color: Color(0xFF795900),
+                        color: Theme.of(context).colorScheme.primary,
                         size: 36,
                       ),
                     ),
@@ -97,10 +97,10 @@ class AdBannerCard extends StatelessWidget {
                 )
               else
                 Container(
-                  color: const Color(0xFFFFFDF5),
-                  child: const Icon(
+                  color: Theme.of(context).colorScheme.surfaceContainer,
+                  child: Icon(
                     Icons.campaign,
-                    color: Color(0xFF795900),
+                    color: Theme.of(context).colorScheme.primary,
                     size: 36,
                   ),
                 ),

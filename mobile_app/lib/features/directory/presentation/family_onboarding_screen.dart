@@ -209,9 +209,9 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
                   'Resume Onboarding?',
                   style: TextStyle(color: dialogTheme.colorScheme.error, fontWeight: FontWeight.bold),
                 ),
-                content: const Text(
+                content: Text(
                   'We found an unsaved family head onboarding draft. Would you like to resume where you left off?',
-                  style: TextStyle(color: Colors.black87),
+                  style: TextStyle(color: dialogTheme.colorScheme.onSurface),
                 ),
                 actions: [
                   TextButton(
@@ -1170,7 +1170,7 @@ class _VillagePickerTile extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: theme.brightness == Brightness.dark ? theme.colorScheme.surfaceContainer : Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: hasError

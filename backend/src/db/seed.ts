@@ -190,6 +190,8 @@ async function seedUsers() {
   }
 }
 
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────
 
 async function main() {

@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../constants/app_constants.dart';
@@ -49,3 +51,49 @@ class ThemeNotifier extends _$ThemeNotifier {
     }
   }
 }
+
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+  final _storage = const FlutterSecureStorage();
+
+  @override
+  ThemeMode build() {
+    _loadThemeMode();
+    return ThemeMode.system;
+  }
+
+  Future<void> _loadThemeMode() async {
+    try {
+      final savedMode = await _storage.read(key: AppConstants.themeModeKey);
+      if (savedMode != null) {
+        switch (savedMode) {
+          case 'light':
+            state = ThemeMode.light;
+            break;
+          case 'dark':
+            state = ThemeMode.dark;
+            break;
+          default:
+            state = ThemeMode.system;
+            break;
+        }
+      }
+    } catch (_) {
+      state = ThemeMode.system;
+    }
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    try {
+      final modeStr = mode == ThemeMode.light
+          ? 'light'
+          : (mode == ThemeMode.dark ? 'dark' : 'system');
+      await _storage.write(key: AppConstants.themeModeKey, value: modeStr);
+      state = mode;
+    } catch (_) {
+      state = mode;
+    }
+  }
+}
+
+final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
+

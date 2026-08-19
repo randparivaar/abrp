@@ -11,12 +11,14 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
     final themeConfig = ref.watch(themeProvider);
+    final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
       title: 'Akhil Bhartiya Rander Parivar Samaj',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.buildTheme(themeConfig, isDark: false),
-      themeMode: ThemeMode.light, // Locked to light mode so device dark mode on Android/iOS does not alter the app UI
+      darkTheme: AppTheme.buildTheme(themeConfig, isDark: true),
+      themeMode: themeMode,
       routerConfig: router,
     );
   }

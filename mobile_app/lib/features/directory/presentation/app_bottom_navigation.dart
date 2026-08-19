@@ -64,12 +64,7 @@ class AppBottomNavigation extends ConsumerWidget {
               }
             }
           } else if (index == 3) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Ads will be available soon.'),
-                duration: Duration(seconds: 2),
-              ),
-            );
+            context.go('/ads');
           } else if (index == 4) {
             Scaffold.of(context).openDrawer();
           }

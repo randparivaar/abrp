@@ -19,6 +19,7 @@ class AppConstants {
   static const String userKey  = 'auth_user_metadata';
   static const String langKey  = 'app_preferred_language';
   static const String themeKey = 'app_custom_theme_config';
+  static const String themeModeKey = 'app_theme_mode';
 }
 
 

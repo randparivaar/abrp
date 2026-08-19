@@ -6,17 +6,13 @@ import { eq, and, lte, gte, isNull, or, desc, sql } from 'drizzle-orm';
  * Get active ads matching a specific placement key (e.g. 'home_carousel', 'directory_feed')
  */
 export async function getActiveAdsForPlacement(placementKey: string) {
-  const now = new Date();
-
   const ads = await dbRetry(() =>
     db
       .select()
       .from(advertisements)
       .where(
         and(
-          eq(advertisements.isActive, true),
-          lte(advertisements.startDate, now),
-          or(isNull(advertisements.endDate), gte(advertisements.endDate, now)),
+          or(eq(advertisements.isActive, true), isNull(advertisements.isActive)),
           sql`${advertisements.placements} @> ${JSON.stringify([placementKey])}::jsonb`
         )
       )
@@ -30,19 +26,11 @@ export async function getActiveAdsForPlacement(placementKey: string) {
  * Get all active ads across placements
  */
 export async function getAllActiveAds() {
-  const now = new Date();
-
   const ads = await dbRetry(() =>
     db
       .select()
       .from(advertisements)
-      .where(
-        and(
-          eq(advertisements.isActive, true),
-          lte(advertisements.startDate, now),
-          or(isNull(advertisements.endDate), gte(advertisements.endDate, now))
-        )
-      )
+      .where(or(eq(advertisements.isActive, true), isNull(advertisements.isActive)))
       .orderBy(desc(advertisements.priority), desc(advertisements.createdAt))
   );
 

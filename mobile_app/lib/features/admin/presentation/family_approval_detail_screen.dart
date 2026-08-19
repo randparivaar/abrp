@@ -438,6 +438,7 @@ class _FamilyApprovalDetailScreenState extends ConsumerState<FamilyApprovalDetai
 
   Widget _buildMemberDetailCard(BuildContext context, Map<String, dynamic> m, Map<dynamic, String> memberMap) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final name = (m['fullName'] as String? ?? '').toTitleCase();
     final rel = (m['relationshipToHead'] as String? ?? 'other').toUpperCase();
     final gender = (m['gender'] as String? ?? '').toUpperCase();
@@ -476,7 +477,11 @@ class _FamilyApprovalDetailScreenState extends ConsumerState<FamilyApprovalDetai
 
     return Card(
       elevation: isHead ? 3 : 1,
-      color: isHead ? Colors.amber.shade50.withValues(alpha: 0.4) : theme.cardColor,
+      color: isHead
+          ? (theme.brightness == Brightness.dark
+              ? colorScheme.surfaceContainerHigh
+              : Colors.amber.shade50.withValues(alpha: 0.4))
+          : theme.cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
         side: isHead

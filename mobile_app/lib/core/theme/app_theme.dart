@@ -32,14 +32,14 @@ class AppTheme {
       // AppBar Theme Configuration
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.surface,
-        foregroundColor: colorScheme.secondary, // Maroon for authority/culture
+        foregroundColor: isDark ? colorScheme.onSurface : colorScheme.secondary, // Crisp off-white in dark mode, maroon in light mode
         elevation: 0,
         centerTitle: true,
         titleTextStyle: textTheme.titleLarge?.copyWith(
-          color: colorScheme.secondary,
+          color: isDark ? colorScheme.onSurface : colorScheme.secondary,
           fontWeight: FontWeight.w600,
         ),
-        iconTheme: IconThemeData(color: colorScheme.secondary),
+        iconTheme: IconThemeData(color: isDark ? colorScheme.onSurface : colorScheme.secondary),
       ),
 
       // Button Theme Configurations (Heritage: Saffron fill/White text, Maroon outlines)
@@ -363,6 +363,8 @@ class AppTheme {
     final primary = scheme.primary;
     final secondary = scheme.secondary;
     final neutral = scheme.onSurface;
+    final isDark = scheme.brightness == Brightness.dark;
+    final titleColor = isDark ? scheme.onSurface : secondary;
 
     TextStyle getStyle({
       required double fontSize,
@@ -387,28 +389,28 @@ class AppTheme {
         fontWeight: FontWeight.w700,
         lineHeight: 64,
         letterSpacing: -0.25,
-        color: secondary, // Maroon headline accents
+        color: titleColor,
       ),
       // headline-lg
       headlineLarge: getStyle(
         fontSize: 32,
         fontWeight: FontWeight.w600,
         lineHeight: 40,
-        color: secondary,
+        color: titleColor,
       ),
       // headline-lg-mobile
       headlineMedium: getStyle(
         fontSize: 28,
         fontWeight: FontWeight.w600,
         lineHeight: 36,
-        color: secondary,
+        color: titleColor,
       ),
       // title-lg
       titleLarge: getStyle(
         fontSize: 22,
         fontWeight: FontWeight.w500,
         lineHeight: 28,
-        color: secondary,
+        color: titleColor,
       ),
       // title-md
       titleMedium: getStyle(
@@ -416,7 +418,7 @@ class AppTheme {
         fontWeight: FontWeight.w600,
         lineHeight: 24,
         letterSpacing: 0.15,
-        color: secondary,
+        color: titleColor,
       ),
       // body-lg
       bodyLarge: getStyle(

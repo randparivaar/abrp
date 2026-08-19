@@ -122,7 +122,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
     });
 
     return Scaffold(
-        backgroundColor: _showPremiumUI ? null : const Color(0xFFF9F6F0),
+        backgroundColor: _showPremiumUI ? null : theme.colorScheme.surface,
         drawer: const AppDrawer(),
         appBar: AppBar(
           backgroundColor: Colors.transparent,
@@ -159,7 +159,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                   Text(
                     head.fullName,
                     style: GoogleFonts.outfit(
-                      color: const Color(0xFF4A3419),
+                      color: theme.colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                       letterSpacing: 0.3,
@@ -591,7 +591,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                 style: GoogleFonts.outfit(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: const Color(0xFF2C1D11),
+                  color: colorScheme.onSurface,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -714,7 +714,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
+        color: theme.brightness == Brightness.dark ? colorScheme.surfaceContainer : Colors.white.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(
           color: const Color(0xFFD4AF37).withValues(alpha: 0.6),
@@ -875,7 +875,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                 style: GoogleFonts.outfit(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
-                  color: const Color(0xFF2C1D11),
+                  color: colorScheme.onSurface,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -916,10 +916,10 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
       coupleHeader = Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.95),
+          color: theme.brightness == Brightness.dark ? colorScheme.surfaceContainer : Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: const Color(0xFFE5D7BF),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
             width: 1.2,
           ),
           boxShadow: [
@@ -957,10 +957,10 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
       coupleHeader = Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.95),
+          color: theme.brightness == Brightness.dark ? colorScheme.surfaceContainer : Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: const Color(0xFFE5D7BF),
+            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
             width: 1.2,
           ),
           boxShadow: [

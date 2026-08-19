@@ -94,9 +94,10 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final primaryColor = const Color(0xFF795900);
-    final secondaryColor = const Color(0xFFB22B1D);
-    final surfaceColor = const Color(0xFFFBF9F8);
+    final primaryColor = colorScheme.primary;
+    final secondaryColor = colorScheme.secondary;
+    final surfaceColor = colorScheme.surface;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: surfaceColor,
@@ -149,7 +150,7 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
               Container(
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? colorScheme.surfaceContainer : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: colorScheme.outlineVariant.withValues(alpha: 0.3),
@@ -202,12 +203,12 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                            color: isSelected ? Colors.white : colorScheme.onSurface,
+                            color: isSelected ? colorScheme.onPrimary : colorScheme.onSurface,
                           ),
                         ),
                         selectedColor: primaryColor,
-                        backgroundColor: Colors.white,
-                        checkmarkColor: Colors.white,
+                        backgroundColor: isDark ? colorScheme.surfaceContainer : Colors.white,
+                        checkmarkColor: colorScheme.onPrimary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                           side: BorderSide(
@@ -236,7 +237,7 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
                     style: GoogleFonts.inter(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: secondaryColor,
+                      color: isDark ? colorScheme.onSurface : secondaryColor,
                     ),
                   ),
                   Container(
@@ -299,7 +300,7 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
 
                     return Card(
                       margin: EdgeInsets.zero,
-                      color: Colors.white,
+                      color: isDark ? colorScheme.surfaceContainer : Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),

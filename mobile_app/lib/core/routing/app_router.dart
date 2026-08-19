@@ -14,6 +14,7 @@ import 'package:mobile_app/features/directory/presentation/directory_screen.dart
 import 'package:mobile_app/features/directory/presentation/business_directory_screen.dart';
 import 'package:mobile_app/features/auth/presentation/splash_screen.dart';
 import 'package:mobile_app/features/auth/presentation/onboarding_screen.dart';
+import 'package:mobile_app/features/directory/presentation/active_ads_screen.dart';
 
 part 'app_router.g.dart';
 
@@ -127,6 +128,10 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/business-directory',
         builder: (context, state) => const BusinessDirectoryScreen(),
+      ),
+      GoRoute(
+        path: '/ads',
+        builder: (context, state) => const ActiveAdsScreen(),
       ),
     ],
   );

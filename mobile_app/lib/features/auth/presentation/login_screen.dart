@@ -199,7 +199,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: theme.colorScheme.surfaceContainer,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: secondaryColor.withValues(alpha: 0.15), width: 1),
                     boxShadow: [
@@ -222,7 +222,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: Text(
                           'EN',
                           style: TextStyle(
-                            color: lang == AppLanguage.en ? secondaryColor : Colors.black54,
+                            color: lang == AppLanguage.en ? secondaryColor : theme.colorScheme.onSurfaceVariant,
                             fontWeight: lang == AppLanguage.en ? FontWeight.bold : FontWeight.normal,
                             fontSize: 12,
                           ),
@@ -243,7 +243,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: Text(
                           'हिं',
                           style: TextStyle(
-                            color: lang == AppLanguage.hi ? secondaryColor : Colors.black54,
+                            color: lang == AppLanguage.hi ? secondaryColor : theme.colorScheme.onSurfaceVariant,
                             fontWeight: lang == AppLanguage.hi ? FontWeight.bold : FontWeight.normal,
                             fontSize: 12,
                           ),

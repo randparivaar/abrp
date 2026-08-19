@@ -196,6 +196,10 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     final ownerMember = widget.owner ?? 
         (_members.isNotEmpty && _members.any((m) => (m['roleInBusiness'] as String? ?? '').toLowerCase().contains('owner'))
             ? _members.firstWhere((m) => (m['roleInBusiness'] as String? ?? '').toLowerCase().contains('owner'))
@@ -219,14 +223,14 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
     final hasOperatingHours = widget.business.operatingHours != null && widget.business.operatingHours!.isNotEmpty;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF9F8),
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFBF9F8),
+        backgroundColor: colorScheme.surface,
         elevation: 0,
         scrolledUnderElevation: 1.0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1B1C1C)),
+          icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
           onPressed: () {
             if (context.canPop()) {
               context.pop();
@@ -238,7 +242,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
         title: Text(
           widget.business.businessName,
           style: GoogleFonts.outfit(
-            color: const Color(0xFF1B1C1C),
+            color: colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
@@ -247,14 +251,14 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.share_outlined, color: Color(0xFF4F4634)),
+            icon: Icon(Icons.share_outlined, color: colorScheme.onSurfaceVariant),
             tooltip: 'Share Profile',
             onPressed: _shareBusinessProfile,
           ),
           IconButton(
             icon: Icon(
               _isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: _isFavorite ? Colors.red : const Color(0xFF4F4634),
+              color: _isFavorite ? Colors.red : colorScheme.onSurfaceVariant,
             ),
             tooltip: 'Favorite',
             onPressed: () {
@@ -532,13 +536,13 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                                 'https://maps.google.com/?q=${Uri.encodeComponent("${widget.business.businessName}, ${widget.business.address}, ${widget.business.city}")}';
                             _launchURL(context, mapUrl);
                           },
-                          icon: const Icon(Icons.map_outlined, size: 18, color: Color(0xFF553D00)),
+                          icon: Icon(Icons.map_outlined, size: 18, color: isDark ? colorScheme.onSurface : const Color(0xFF553D00)),
                           label: Text(
                             'View on Map',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF553D00)),
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? colorScheme.onSurface : const Color(0xFF553D00)),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
+                            backgroundColor: isDark ? colorScheme.surfaceContainer : Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             elevation: 0,
@@ -557,26 +561,26 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF6F3F2),
+                  color: colorScheme.surfaceContainer,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE4E2E1), width: 1),
+                  border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3), width: 1),
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.schedule, size: 32, color: Color(0xFF795900)),
+                    Icon(Icons.schedule, size: 32, color: colorScheme.primary),
                     const SizedBox(height: 8),
                     Text(
                       'Operating Hours',
                       style: GoogleFonts.outfit(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: const Color(0xFF1B1C1C),
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${widget.business.operatingHours!['days'] ?? "Mon - Sat"}: ${widget.business.operatingHours!['open'] ?? "10:00 AM"} - ${widget.business.operatingHours!['close'] ?? "08:30 PM"}',
-                      style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF4F4634)),
+                      style: GoogleFonts.inter(fontSize: 13, color: colorScheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -584,7 +588,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
-                        color: const Color(0xFF795900),
+                        color: colorScheme.primary,
                       ),
                     ),
                   ],
@@ -597,14 +601,14 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
             if (hasDescription || hasTags) ...[
               Row(
                 children: [
-                  const Icon(Icons.info_outline, size: 20, color: Color(0xFF795900)),
+                  Icon(Icons.info_outline, size: 20, color: colorScheme.primary),
                   const SizedBox(width: 8),
                   Text(
                     'About Business',
                     style: GoogleFonts.outfit(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
-                      color: const Color(0xFF795900),
+                      color: isDark ? colorScheme.onSurface : colorScheme.primary,
                     ),
                   ),
                 ],
@@ -616,7 +620,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     height: 1.5,
-                    color: const Color(0xFF4F4634),
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -629,7 +633,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFDAD4),
+                        color: isDark ? colorScheme.secondaryContainer : const Color(0xFFFFDAD4),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -637,7 +641,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF8F0F07),
+                          color: isDark ? colorScheme.onSecondaryContainer : const Color(0xFF8F0F07),
                         ),
                       ),
                     );
@@ -654,14 +658,14 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.shopping_bag_outlined, size: 20, color: Color(0xFF795900)),
+                      Icon(Icons.shopping_bag_outlined, size: 20, color: colorScheme.primary),
                       const SizedBox(width: 8),
                       Text(
                         'Products & Services',
                         style: GoogleFonts.outfit(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
-                          color: const Color(0xFF795900),
+                          color: isDark ? colorScheme.onSurface : colorScheme.primary,
                         ),
                       ),
                     ],
@@ -677,7 +681,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                       style: GoogleFonts.inter(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
-                        color: const Color(0xFF795900),
+                        color: colorScheme.primary,
                       ),
                     ),
                   ),
@@ -704,15 +708,15 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                         clipBehavior: Clip.antiAlias,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: const BorderSide(color: Color(0xFFE4E2E1), width: 0.8),
+                          side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3), width: 0.8),
                         ),
-                        color: Colors.white,
+                        color: isDark ? colorScheme.surfaceContainer : Colors.white,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               child: Container(
-                                color: const Color(0xFFF6F3F2),
+                                color: isDark ? colorScheme.surfaceContainerHighest : const Color(0xFFF6F3F2),
                                 child: img.isNotEmpty
                                     ? Image.network(
                                         img,
@@ -721,7 +725,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                                         errorBuilder: (context, error, stackTrace) =>
                                             const Center(child: Icon(Icons.image, color: Colors.grey)),
                                       )
-                                    : const Center(child: Icon(Icons.shopping_bag, size: 32, color: Color(0xFF795900))),
+                                    : Center(child: Icon(Icons.shopping_bag, size: 32, color: colorScheme.primary)),
                               ),
                             ),
                             Padding(
@@ -731,7 +735,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                                 children: [
                                   Text(
                                     title,
-                                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF1B1C1C)),
+                                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.onSurface),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -739,7 +743,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                                     const SizedBox(height: 2),
                                     Text(
                                       desc,
-                                      style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF4F4634)),
+                                      style: GoogleFonts.inter(fontSize: 11, color: colorScheme.onSurfaceVariant),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -842,9 +846,9 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF6F3F2),
+                color: isDark ? colorScheme.surfaceContainer : const Color(0xFFF6F3F2),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE4E2E1), width: 1),
+                border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3), width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -854,7 +858,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                     style: GoogleFonts.outfit(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      color: const Color(0xFF795900),
+                      color: isDark ? colorScheme.onSurface : colorScheme.primary,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -872,12 +876,12 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.location_on_outlined, color: Color(0xFF795900), size: 20),
+                          Icon(Icons.location_on_outlined, color: colorScheme.primary, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               '${widget.business.address}, ${widget.business.city}${widget.business.pincode != null ? ' - ${widget.business.pincode}' : ''}',
-                              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF4F4634), height: 1.4),
+                              style: GoogleFonts.inter(fontSize: 13, color: colorScheme.onSurfaceVariant, height: 1.4),
                             ),
                           ),
                         ],
@@ -895,11 +899,11 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Row(
                           children: [
-                            const Icon(Icons.mail_outline, color: Color(0xFF795900), size: 20),
+                            Icon(Icons.mail_outline, color: colorScheme.primary, size: 20),
                             const SizedBox(width: 10),
                             Text(
                               widget.business.email!,
-                              style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF4F4634)),
+                              style: GoogleFonts.inter(fontSize: 13, color: colorScheme.onSurfaceVariant),
                             ),
                           ],
                         ),
@@ -917,13 +921,13 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Row(
                           children: [
-                            const Icon(Icons.language_outlined, color: Color(0xFF795900), size: 20),
+                            Icon(Icons.language_outlined, color: colorScheme.primary, size: 20),
                             const SizedBox(width: 10),
                             Text(
                               widget.business.websiteUrl!,
                               style: GoogleFonts.inter(
                                 fontSize: 13,
-                                color: const Color(0xFF795900),
+                                color: colorScheme.primary,
                                 fontWeight: FontWeight.w600,
                                 decoration: TextDecoration.underline,
                               ),
@@ -933,7 +937,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                       ),
                     ),
 
-                  const Divider(height: 24, color: Color(0xFFE4E2E1)),
+                  Divider(height: 24, color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
 
                   // Trust Badges
                   Text(
@@ -941,7 +945,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: const Color(0xFF4F4634),
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -951,29 +955,29 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                         width: 70,
                         height: 28,
                         child: Stack(
-                          children: const [
+                          children: [
                             Positioned(
                               left: 0,
                               child: CircleAvatar(
                                 radius: 14,
-                                backgroundColor: Color(0xFFE0E0E0),
-                                child: Icon(Icons.person, size: 16, color: Colors.grey),
+                                backgroundColor: isDark ? colorScheme.surfaceContainerHighest : const Color(0xFFE0E0E0),
+                                child: Icon(Icons.person, size: 16, color: colorScheme.onSurfaceVariant),
                               ),
                             ),
                             Positioned(
                               left: 18,
                               child: CircleAvatar(
                                 radius: 14,
-                                backgroundColor: Color(0xFFBDBDBD),
-                                child: Icon(Icons.person, size: 16, color: Colors.white),
+                                backgroundColor: isDark ? colorScheme.surfaceContainerHigh : const Color(0xFFBDBDBD),
+                                child: Icon(Icons.person, size: 16, color: colorScheme.onSurfaceVariant),
                               ),
                             ),
                             Positioned(
                               left: 36,
                               child: CircleAvatar(
                                 radius: 14,
-                                backgroundColor: Color(0xFF795900),
-                                child: Icon(Icons.person, size: 16, color: Colors.white),
+                                backgroundColor: colorScheme.primary,
+                                child: Icon(Icons.person, size: 16, color: colorScheme.onPrimary),
                               ),
                             ),
                           ],
@@ -984,7 +988,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                         'Trusted by 150+ members',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: const Color(0xFF4F4634),
+                          color: colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -1006,15 +1010,15 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                       style: GoogleFonts.outfit(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
-                        color: const Color(0xFF795900),
+                        color: isDark ? colorScheme.onSurface : colorScheme.primary,
                       ),
                     ),
                     TextButton.icon(
                       onPressed: _showAssignMemberSheet,
-                      icon: const Icon(Icons.add, size: 18, color: Color(0xFF795900)),
+                      icon: Icon(Icons.add, size: 18, color: colorScheme.primary),
                       label: Text(
                         'Add / जोड़ें',
-                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF795900)),
+                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: colorScheme.primary),
                       ),
                     ),
                   ],
@@ -1031,13 +1035,14 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF6F3F2),
+                      color: isDark ? colorScheme.surfaceContainer : const Color(0xFFF6F3F2),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3), width: 1),
                     ),
                     child: Center(
                       child: Text(
                         'No partners linked yet / कोई साझेदार लिंक नहीं है',
-                        style: GoogleFonts.inter(fontSize: 13, fontStyle: FontStyle.italic, color: const Color(0xFF4F4634)),
+                        style: GoogleFonts.inter(fontSize: 13, fontStyle: FontStyle.italic, color: colorScheme.onSurfaceVariant),
                       ),
                     ),
                   )
@@ -1057,9 +1062,9 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF6F3F2),
+                          color: isDark ? colorScheme.surfaceContainer : const Color(0xFFF6F3F2),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE4E2E1), width: 0.8),
+                          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3), width: 0.8),
                         ),
                         child: ListTile(
                           leading: AppAvatar(
@@ -1069,11 +1074,11 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                           ),
                           title: Text(
                             name,
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: colorScheme.onSurface),
                           ),
                           subtitle: Text(
                             role,
-                            style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF795900), fontWeight: FontWeight.w600),
+                            style: GoogleFonts.inter(fontSize: 11, color: colorScheme.primary, fontWeight: FontWeight.w600),
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
