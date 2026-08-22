@@ -13,10 +13,13 @@ import '../../directory/presentation/family_tree_screen.dart';
 import '../../directory/presentation/app_drawer.dart';
 import '../../auth/presentation/auth_controller.dart';
 import 'family_approval_detail_screen.dart';
+import '../../events/presentation/events_provider.dart';
+import '../../events/presentation/event_form_dialog.dart';
+import '../../events/presentation/event_detail_screen.dart';
 
 class AdminScreen extends ConsumerStatefulWidget {
   final int initialSection;
-  const AdminScreen({super.key, this.initialSection = -1});
+  const AdminScreen({super.key, this.initialSection = 0});
 
   @override
   ConsumerState<AdminScreen> createState() => _AdminScreenState();
@@ -32,7 +35,7 @@ String _formatHumanDate(DateTime? dt) {
 }
 
 class _AdminScreenState extends ConsumerState<AdminScreen> {
-  late int _selectedAdminSectionIndex;
+  int _selectedTabIndex = 0;
 
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
@@ -71,7 +74,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedAdminSectionIndex = widget.initialSection;
+    _selectedTabIndex = widget.initialSection.clamp(0, 6);
     _fetchAdminAds();
     final authState = ref.read(authProvider);
     if (authState.user?.role == 'admin') {
@@ -2495,186 +2498,927 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     );
   }
 
+  static const _months = [
+    '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+  String _mon(int m) => _months[m.clamp(1, 12)];
+
+  void _refreshAdminEvents() {
+    ref.invalidate(adminEventsProvider);
+    ref.invalidate(activeEventsProvider);
+  }
+
+  Widget _buildEventsManagementTab() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final adminEventsAsync = ref.watch(adminEventsProvider);
+    final eventsService = ref.read(eventsServiceProvider);
+
+    return RefreshIndicator(
+      onRefresh: () async => _refreshAdminEvents(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Header ──────────────────────────────────────────────
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Community Events',
+                          style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+                      adminEventsAsync.when(
+                        data: (list) => Text(
+                          '${list.length} total · ${list.where((e) => e.isActive).length} active',
+                          style: GoogleFonts.inter(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                        ),
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded),
+                  tooltip: 'Refresh',
+                  onPressed: _refreshAdminEvents,
+                ),
+                FilledButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => EventFormDialog(
+                        onSuccess: () {
+                          _refreshAdminEvents();
+                        },
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Add Event'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // ── List ────────────────────────────────────────────────
+            adminEventsAsync.when(
+              data: (eventsList) {
+                if (eventsList.isEmpty) {
+                  return SizedBox(
+                    height: 300,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.event_busy_rounded, size: 56,
+                              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
+                          const SizedBox(height: 12),
+                          Text('No events yet.',
+                              style: GoogleFonts.inter(
+                                  fontSize: 15, fontWeight: FontWeight.w600,
+                                  color: colorScheme.onSurfaceVariant)),
+                          const SizedBox(height: 6),
+                          Text('Tap "Add Event" to create the first one.',
+                              style: GoogleFonts.inter(fontSize: 13, color: colorScheme.onSurfaceVariant)),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: eventsList.map((eventItem) {
+                    final hasAlbum = eventItem.externalAlbumUrl?.isNotEmpty == true;
+                    final galleryCount = eventItem.galleryUrls.length;
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: eventItem.isActive
+                              ? Colors.green.withValues(alpha: 0.4)
+                              : colorScheme.outlineVariant.withValues(alpha: 0.5),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Top row: thumbnail + info + menu
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: (eventItem.imageUrl?.isNotEmpty == true)
+                                      ? Image.network(
+                                          eventItem.imageUrl!,
+                                          width: 60, height: 60, fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => _eventPlaceholder(colorScheme),
+                                        )
+                                      : _eventPlaceholder(colorScheme),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(eventItem.title,
+                                          style: GoogleFonts.inter(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis),
+                                      const SizedBox(height: 4),
+                                      Builder(builder: (_) {
+                                        final d = eventItem.eventDate;
+                                        final e = eventItem.endDate;
+                                        final isMulti = e != null &&
+                                            !(e.year == d.year && e.month == d.month && e.day == d.day);
+                                        final dateStr = isMulti
+                                            ? '📅 ${d.day} ${_mon(d.month)} → ${e.day} ${_mon(e.month)} ${e.year}'
+                                            : '📅 ${d.day} ${_mon(d.month)} ${d.year}';
+                                        final days = isMulti ? e.difference(d).inDays + 1 : null;
+                                        return Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              dateStr +
+                                                  (eventItem.venue?.isNotEmpty == true
+                                                      ? '  ·  📍${eventItem.venue}'
+                                                      : ''),
+                                              style: GoogleFonts.inter(
+                                                  fontSize: 11,
+                                                  color: colorScheme.onSurfaceVariant),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            if (days != null) ...[ 
+                                              const SizedBox(height: 2),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 6, vertical: 1),
+                                                decoration: BoxDecoration(
+                                                  color: colorScheme.primaryContainer,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  '$days-Day Event',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: colorScheme.onPrimaryContainer,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        );
+                                      }),
+                                      if (galleryCount > 0 || hasAlbum) ...[
+                                        const SizedBox(height: 4),
+                                        Wrap(
+                                          spacing: 4,
+                                          children: [
+                                            if (galleryCount > 0)
+                                              _miniChip('$galleryCount photos', Icons.photo_library_outlined),
+                                            if (hasAlbum)
+                                              _miniChip('Album', Icons.link_rounded,
+                                                  color: const Color(0xFF4285F4)),
+                                          ],
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert, size: 20),
+                                  onSelected: (action) async {
+                                    if (action == 'edit') {
+                                      showDialog(
+                                        context: context,
+                                        builder: (_) => EventFormDialog(
+                                          eventToEdit: eventItem,
+                                          onSuccess: _refreshAdminEvents,
+                                        ),
+                                      );
+                                    } else if (action == 'view') {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => EventDetailScreen(event: eventItem),
+                                        ),
+                                      );
+                                    } else if (action == 'delete') {
+                                      final ok = await showDialog<bool>(
+                                        context: context,
+                                        builder: (_) => AlertDialog(
+                                          title: Text('Delete "${eventItem.title}"?'),
+                                          content: const Text(
+                                              'This action cannot be undone.'),
+                                          actions: [
+                                            TextButton(
+                                                onPressed: () => Navigator.pop(context, false),
+                                                child: const Text('Cancel')),
+                                            FilledButton(
+                                                style: FilledButton.styleFrom(
+                                                    backgroundColor: colorScheme.error),
+                                                onPressed: () => Navigator.pop(context, true),
+                                                child: const Text('Delete')),
+                                          ],
+                                        ),
+                                      );
+                                      if (ok == true && mounted) {
+                                        final deleted =
+                                            await eventsService.deleteEvent(eventItem.id);
+                                        if (!mounted) return;
+                                        if (deleted) {
+                                          _refreshAdminEvents();
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                                content: Text('Event deleted.')),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                                content:
+                                                    Text('Delete failed. Try again.')),
+                                          );
+                                        }
+                                      }
+                                    }
+                                  },
+                                  itemBuilder: (_) => [
+                                    const PopupMenuItem(
+                                        value: 'view',
+                                        child: Row(children: [
+                                          Icon(Icons.visibility_outlined, size: 18),
+                                          SizedBox(width: 8),
+                                          Text('View')
+                                        ])),
+                                    const PopupMenuItem(
+                                        value: 'edit',
+                                        child: Row(children: [
+                                          Icon(Icons.edit_outlined, size: 18),
+                                          SizedBox(width: 8),
+                                          Text('Edit')
+                                        ])),
+                                    const PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(children: [
+                                          Icon(Icons.delete_outline,
+                                              size: 18, color: Colors.red),
+                                          SizedBox(width: 8),
+                                          Text('Delete',
+                                              style: TextStyle(color: Colors.red))
+                                        ])),
+                                  ],
+                                ),
+                              ],
+                            ),
+
+                            const Divider(height: 16),
+
+                            // Status toggle
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 8, height: 8,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: eventItem.isActive
+                                            ? Colors.green
+                                            : Colors.red.shade400,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      eventItem.isActive
+                                          ? 'Active — Visible to members'
+                                          : 'Inactive — Hidden from feed',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: eventItem.isActive
+                                            ? Colors.green.shade700
+                                            : Colors.red.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Switch.adaptive(
+                                  value: eventItem.isActive,
+                                  activeTrackColor: Colors.green,
+                                  onChanged: (newVal) async {
+                                    final ok = await eventsService.toggleEventStatus(
+                                        eventItem.id,
+                                        isActive: newVal);
+                                    if (!mounted) return;
+                                    if (ok) {
+                                      _refreshAdminEvents();
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(newVal
+                                              ? 'Event activated.'
+                                              : 'Event deactivated.'),
+                                          backgroundColor:
+                                              newVal ? Colors.green : Colors.red.shade700,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                            content:
+                                                Text('Failed to update status.')),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+              loading: () => const SizedBox(
+                  height: 200,
+                  child: Center(child: CircularProgressIndicator())),
+              error: (err, _) => SizedBox(
+                height: 200,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline, size: 40, color: Colors.red),
+                      const SizedBox(height: 8),
+                      Text('Failed to load events',
+                          style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold, color: Colors.red)),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: _refreshAdminEvents,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _eventPlaceholder(ColorScheme cs) => Container(
+        width: 60, height: 60,
+        decoration: BoxDecoration(
+          color: cs.primaryContainer,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(Icons.campaign_rounded, color: cs.primary, size: 28),
+      );
+
+  Widget _miniChip(String label, IconData icon, {Color? color}) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: (color ?? Colors.grey).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+              color: (color ?? Colors.grey).withValues(alpha: 0.4), width: 0.8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 10, color: color ?? Colors.grey.shade600),
+            const SizedBox(width: 3),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 9,
+                    color: color ?? Colors.grey.shade700,
+                    fontWeight: FontWeight.w500)),
+          ],
+        ),
+      );
+
+
+  // ─── Dashboard overview tab ──────────────────────────────────────────────
+  Widget _buildDashboardTab(AppLanguage lang, bool isAdmin) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final authState = ref.watch(authProvider);
+    final userName = authState.user?.fullName ?? 'Admin';
+    final userRole = authState.user?.role ?? 'admin';
+    final isDark = theme.brightness == Brightness.dark;
+
+    final List<Map<String, dynamic>> modules = [
+      {
+        'title': 'Family Approvals',
+        'subtitle': 'Review submitted family records',
+        'icon': Icons.groups_rounded,
+        'badge': _pendingFamiliesList.length,
+        'color': const Color(0xFF1976D2),
+        'tab': 1,
+      },
+      {
+        'title': 'Business Approvals',
+        'subtitle': 'Approve community business profiles',
+        'icon': Icons.business_center_rounded,
+        'badge': _pendingBusinessesList.length,
+        'color': const Color(0xFFE65100),
+        'tab': 2,
+      },
+      if (isAdmin) ...[
+        {
+          'title': 'Events & Bulletins',
+          'subtitle': 'Manage events, galleries & albums',
+          'icon': Icons.event_available_rounded,
+          'badge': 0,
+          'color': const Color(0xFF2E7D32),
+          'tab': 3,
+        },
+        {
+          'title': 'Ad Campaigns',
+          'subtitle': 'Create & manage promotions',
+          'icon': Icons.campaign_rounded,
+          'badge': _adminAdsList.length,
+          'color': const Color(0xFF6A1B9A),
+          'tab': 4,
+        },
+        {
+          'title': 'User & Roles',
+          'subtitle': 'Manage coordinators & permissions',
+          'icon': Icons.manage_accounts_rounded,
+          'badge': 0,
+          'color': const Color(0xFF283593),
+          'tab': 5,
+        },
+        {
+          'title': 'Notifications',
+          'subtitle': 'Broadcast messages to members',
+          'icon': Icons.notifications_active_rounded,
+          'badge': 0,
+          'color': const Color(0xFF00695C),
+          'tab': isAdmin ? 6 : 3,
+        },
+      ] else ...[
+        {
+          'title': 'Notifications',
+          'subtitle': 'Broadcast messages to members',
+          'icon': Icons.notifications_active_rounded,
+          'badge': 0,
+          'color': const Color(0xFF00695C),
+          'tab': 3,
+        },
+      ],
+    ];
+
+    final totalPending = _pendingFamiliesList.length + _pendingBusinessesList.length;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Welcome card ────────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [colorScheme.primary.withValues(alpha: 0.3), colorScheme.primaryContainer.withValues(alpha: 0.2)]
+                    : [colorScheme.primary, colorScheme.primary.withValues(alpha: 0.75)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 26,
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
+                  child: Text(
+                    userName.isNotEmpty ? userName[0].toUpperCase() : 'A',
+                    style: GoogleFonts.outfit(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Welcome back,',
+                          style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.8))),
+                      Text(userName,
+                          style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          userRole.toUpperCase(),
+                          style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Pending alerts row ──────────────────────────────────
+          if (totalPending > 0) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.pending_actions_rounded,
+                      color: Colors.orange.shade700, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '$totalPending pending approval${totalPending == 1 ? '' : 's'} require your attention.',
+                      style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.orange.shade800),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // ── Stats row ───────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: _dashStatCard(
+                  label: 'Pending Families',
+                  value: '${_pendingFamiliesList.length}',
+                  icon: Icons.family_restroom_rounded,
+                  color: const Color(0xFF1976D2),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _dashStatCard(
+                  label: 'Pending Businesses',
+                  value: '${_pendingBusinessesList.length}',
+                  icon: Icons.storefront_rounded,
+                  color: const Color(0xFFE65100),
+                ),
+              ),
+              if (isAdmin) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _dashStatCard(
+                    label: 'Ad Campaigns',
+                    value: '${_adminAdsList.length}',
+                    icon: Icons.bar_chart_rounded,
+                    color: const Color(0xFF6A1B9A),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // ── Module grid ────────────────────────────────────────
+          Text('Admin Modules',
+              style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurface)),
+          const SizedBox(height: 12),
+
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: modules.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.5,
+            ),
+            itemBuilder: (_, i) {
+              final m = modules[i];
+              final color = m['color'] as Color;
+              final badge = m['badge'] as int;
+              return _dashModuleCard(
+                title: m['title'] as String,
+                subtitle: m['subtitle'] as String,
+                icon: m['icon'] as IconData,
+                color: color,
+                badge: badge,
+                onTap: () => setState(() => _selectedTabIndex = m['tab'] as int),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dashStatCard({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 8),
+          Text(value,
+              style: GoogleFonts.outfit(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: color)),
+          Text(label,
+              style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: theme.colorScheme.onSurfaceVariant),
+              maxLines: 2),
+        ],
+      ),
+    );
+  }
+
+  Widget _dashModuleCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required int badge,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(icon, color: color, size: 20),
+                  ),
+                  if (badge > 0)
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text('$badge',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold, fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  Text(subtitle,
+                      style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: theme.colorScheme.onSurfaceVariant),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Main build ──────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final lang = ref.watch(languageStateProvider);
     final authState = ref.watch(authProvider);
     final isAdmin = authState.user?.role == 'admin';
-    final isModerator = authState.user?.role == 'moderator';
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
-    final title = isModerator ? AppTranslations.get('zone_coordinator_panel', lang) : AppTranslations.get('admin_dashboard', lang);
-
-    final List<Map<String, dynamic>> sections = [
-      {
-        'title': 'Family Approvals',
-        'subtitle': 'Review & verify submitted family records',
-        'icon': Icons.groups_outlined,
-        'badge': _pendingFamiliesList.length,
-        'color': Colors.blue.shade700,
-        'view': _buildFamilyApprovalsTab(),
-      },
-      {
-        'title': 'Business Approvals',
-        'subtitle': 'Approve or reject community business profiles',
-        'icon': Icons.business_center_outlined,
-        'badge': _pendingBusinessesList.length,
-        'color': Colors.amber.shade900,
-        'view': _buildBusinessApprovalsTab(),
-      },
-      if (isAdmin) ...[
-        {
-          'title': 'Ad Campaigns',
-          'subtitle': 'Create & target multi-placement ad promotions',
-          'icon': Icons.campaign_outlined,
-          'badge': _adminAdsList.length,
-          'color': Colors.purple.shade700,
-          'view': _buildAdvertisementsTab(lang),
-        },
-        {
-          'title': 'User & Coordinator Roles',
-          'subtitle': 'Assign regional coordinator access and permissions',
-          'icon': Icons.manage_accounts_outlined,
-          'badge': _totalUsersCount,
-          'color': Colors.indigo.shade700,
-          'view': _buildUsersTab(),
-        },
-      ],
-      {
-        'title': 'Dispatch Notifications',
-        'subtitle': 'Send push notifications to members',
-        'icon': Icons.notifications_outlined,
-        'badge': 0,
-        'color': Colors.teal.shade800,
-        'view': _buildNotificationsTab(lang),
-      },
+    // Build tab list lazily — only define metadata here, build body on demand
+    final List<({IconData icon, String label, int badge})> tabs = [
+      (icon: Icons.dashboard_rounded, label: 'Dashboard', badge: 0),
+      (icon: Icons.groups_rounded, label: 'Families', badge: _pendingFamiliesList.length),
+      (icon: Icons.business_center_rounded, label: 'Businesses', badge: _pendingBusinessesList.length),
+      if (isAdmin) (icon: Icons.event_available_rounded, label: 'Events', badge: 0),
+      if (isAdmin) (icon: Icons.campaign_rounded, label: 'Ads', badge: _adminAdsList.length),
+      if (isAdmin) (icon: Icons.manage_accounts_rounded, label: 'Users', badge: _totalUsersCount),
+      (icon: Icons.notifications_rounded, label: 'Notifications', badge: 0),
     ];
 
-    final String currentTitle = _selectedAdminSectionIndex != -1 && _selectedAdminSectionIndex < sections.length
-        ? (sections[_selectedAdminSectionIndex]['title'] as String)
-        : title;
+    // Clamp index if tabs count changed (role switch)
+    if (_selectedTabIndex >= tabs.length) {
+      _selectedTabIndex = 0;
+    }
+
+    // Tab titles
+    final tabTitles = [
+      'Dashboard',
+      'Family Approvals',
+      'Business Approvals',
+      if (isAdmin) 'Events & Bulletins',
+      if (isAdmin) 'Ad Campaigns',
+      if (isAdmin) 'User & Coordinator Roles',
+      'Dispatch Notifications',
+    ];
 
     return Scaffold(
       drawer: const AppDrawer(),
       appBar: AppBar(
-        title: Text(currentTitle),
+        elevation: 0,
+        scrolledUnderElevation: 1,
         leading: Builder(
-          builder: (context) {
-            if (_selectedAdminSectionIndex != -1) {
-              return IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  setState(() => _selectedAdminSectionIndex = -1);
-                },
-              );
-            }
-            return IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () => Scaffold.of(context).openDrawer(),
-            );
-          },
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
         ),
-      ),
-      body: _selectedAdminSectionIndex != -1
-          ? sections[_selectedAdminSectionIndex]['view'] as Widget
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Administrative Tools Hub',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18, color: theme.colorScheme.onSurface),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Select an administrative tool to manage community approvals, ads, roles, and broadcasts.',
-                    style: GoogleFonts.inter(fontSize: 13, color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 20),
-
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 1.1,
-                    ),
-                    itemCount: sections.length,
-                    itemBuilder: (ctx, index) {
-                      final sec = sections[index];
-                      final badgeCount = sec['badge'] as int;
-
-                      return Card(
-                        elevation: 1,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5)),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () => setState(() => _selectedAdminSectionIndex = index),
-                          child: Padding(
-                            padding: const EdgeInsets.all(14.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: (sec['color'] as Color).withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Icon(sec['icon'] as IconData, color: sec['color'] as Color, size: 24),
-                                    ),
-                                    if (badgeCount > 0)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: sec['color'] as Color,
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: Text(
-                                          '$badgeCount',
-                                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      sec['title'] as String,
-                                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      sec['subtitle'] as String,
-                                      style: GoogleFonts.inter(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+        title: Text(
+          tabTitles[_selectedTabIndex.clamp(0, tabTitles.length - 1)],
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: CircleAvatar(
+              radius: 16,
+              backgroundColor: colorScheme.primaryContainer,
+              child: Text(
+                ((authState.user?.fullName ?? '').isNotEmpty
+                        ? (authState.user?.fullName ?? 'A')[0]
+                        : 'A')
+                    .toUpperCase(),
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.onPrimaryContainer),
               ),
             ),
+          ),
+        ],
+      ),
+      body: Row(
+        children: [
+          // ── NavigationRail ─────────────────────────────────────
+          NavigationRail(
+            selectedIndex: _selectedTabIndex,
+            onDestinationSelected: (i) =>
+                setState(() => _selectedTabIndex = i),
+            labelType: NavigationRailLabelType.all,
+            minWidth: 72,
+            groupAlignment: -1.0,
+            backgroundColor: isDark
+                ? colorScheme.surface
+                : colorScheme.surfaceContainerLowest,
+            selectedIconTheme: IconThemeData(color: colorScheme.primary),
+            unselectedIconTheme: IconThemeData(
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
+            selectedLabelTextStyle: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.primary),
+            unselectedLabelTextStyle: GoogleFonts.inter(
+                fontSize: 10,
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
+            destinations: tabs.map((t) {
+              final hasBadge = t.badge > 0;
+              return NavigationRailDestination(
+                icon: hasBadge
+                    ? Badge(
+                        label: Text('${t.badge}',
+                            style: const TextStyle(fontSize: 8)),
+                        child: Icon(t.icon),
+                      )
+                    : Icon(t.icon),
+                selectedIcon: hasBadge
+                    ? Badge(
+                        label: Text('${t.badge}',
+                            style: const TextStyle(fontSize: 8)),
+                        child: Icon(t.icon),
+                      )
+                    : Icon(t.icon),
+                label: Text(t.label),
+              );
+            }).toList(),
+          ),
+
+          // ── Vertical divider ───────────────────────────────────
+          VerticalDivider(
+            width: 1,
+            thickness: 1,
+            color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+          ),
+
+          // ── Tab body ───────────────────────────────────────────
+          Expanded(
+            child: IndexedStack(
+              index: _selectedTabIndex,
+              children: [
+                _buildDashboardTab(lang, isAdmin),
+                _buildFamilyApprovalsTab(),
+                _buildBusinessApprovalsTab(),
+                if (isAdmin) _buildEventsManagementTab(),
+                if (isAdmin) _buildAdvertisementsTab(lang),
+                if (isAdmin) _buildUsersTab(),
+                _buildNotificationsTab(lang),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

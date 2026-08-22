@@ -283,7 +283,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                                 child: Opacity(
                                   opacity: _fadeIn.value,
                                   child: _buildDeityCard(
-                                    imagePath: 'assets/images/deity1.jpg',
+                                    imagePath: 'assets/images/deity1.webp',
                                     borderColor: deityPink,
                                     glowColor: deityPink.withValues(alpha: 0.4),
                                     shimmerProgress: (_shimmer.value + 2) / 4,
@@ -301,7 +301,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                                 child: Opacity(
                                   opacity: _fadeIn.value,
                                   child: _buildDeityCard(
-                                    imagePath: 'assets/images/deity2.jpg',
+                                    imagePath: 'assets/images/deity2.webp',
                                     borderColor: teal,
                                     glowColor: teal.withValues(alpha: 0.4),
                                     shimmerProgress:

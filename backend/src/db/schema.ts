@@ -360,6 +360,36 @@ export const advertisementsRelations = relations(advertisements, ({ one }) => ({
   }),
 }));
 
+/**
+ * Events Table: Community events, announcements, multi-image galleries, & external album links
+ */
+export const events = pgTable('events', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  imageUrl: text('image_url'), // Primary banner image
+  galleryUrls: jsonb('gallery_urls').$type<string[]>().default([]), // Additional gallery photos
+  externalAlbumUrl: text('external_album_url'), // Direct link to Google Photos, Dropbox, etc.
+  eventDate: timestamp('event_date').notNull(),
+  endDate: timestamp('end_date'),
+  venue: varchar('venue', { length: 255 }),
+  category: varchar('category', { length: 100 }).default('general').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => [
+  index('events_is_active_date_idx').on(table.isActive, table.eventDate),
+]);
+
+export const eventsRelations = relations(events, ({ one }) => ({
+  creator: one(users, {
+    fields: [events.createdBy],
+    references: [users.id],
+  }),
+}));
+
+
 
 
 

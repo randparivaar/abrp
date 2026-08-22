@@ -119,11 +119,20 @@ class AppDrawer extends ConsumerWidget {
                       ),
                       if (user?.role == 'admin') ...[
                         _buildDrawerSubItem(
+                          icon: Icons.event_available_outlined,
+                          title: 'Events & Bulletins',
+                          onTap: () {
+                            context.pop();
+                            context.push('/admin?section=2');
+                          },
+                          primaryColor: primaryColor,
+                        ),
+                        _buildDrawerSubItem(
                           icon: Icons.campaign_outlined,
                           title: 'Ad Campaigns',
                           onTap: () {
                             context.pop();
-                            context.push('/admin?section=2');
+                            context.push('/admin?section=3');
                           },
                           primaryColor: primaryColor,
                         ),
@@ -132,7 +141,7 @@ class AppDrawer extends ConsumerWidget {
                           title: 'User & Coordinator Roles',
                           onTap: () {
                             context.pop();
-                            context.push('/admin?section=3');
+                            context.push('/admin?section=4');
                           },
                           primaryColor: primaryColor,
                         ),
@@ -142,7 +151,7 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Dispatch Notifications',
                         onTap: () {
                           context.pop();
-                          final notifIndex = user?.role == 'admin' ? 4 : 2;
+                          final notifIndex = user?.role == 'admin' ? 5 : 2;
                           context.push('/admin?section=$notifIndex');
                         },
                         primaryColor: primaryColor,
@@ -155,9 +164,7 @@ class AppDrawer extends ConsumerWidget {
                   title: 'Events',
                   onTap: () {
                     context.pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Events will be available soon.')),
-                    );
+                    context.push('/events');
                   },
                   primaryColor: primaryColor,
                 ),

@@ -10,6 +10,9 @@ import '../../directory/presentation/app_drawer.dart';
 import '../../directory/presentation/app_bottom_navigation.dart';
 import '../../directory/presentation/ads_provider.dart';
 import '../../directory/presentation/ad_banner_card.dart';
+import '../../events/domain/event_model.dart';
+import '../../events/presentation/events_provider.dart';
+import '../../events/presentation/event_detail_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -127,159 +130,417 @@ class HomeScreen extends ConsumerWidget {
                 final carouselAds =
                     ref.watch(adsByPlacementProvider('home_carousel')).value ??
                     [];
+                final activeEvents =
+                    ref.watch(activeEventsProvider).value ?? [];
+
                 return SizedBox(
                   height: 270,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     physics: const BouncingScrollPhysics(),
                     children: [
-                      // Carousel Card 1: Upcoming Event
-                      Container(
-                        width: MediaQuery.of(context).size.width * 0.85,
-                        margin: const EdgeInsets.only(right: 16),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: theme.colorScheme.secondary.withValues(
-                              alpha: 0.05,
-                            ),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 3,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Stack(
-                                children: [
-                                  Image.network(
-                                    'https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkmefiChBJ0IIWUeFtuJJ-dvjed_XzRjOCYr0RauyP0pL-556MAyDLh5a4rZAMXnhNyOjSaAcM6w-GMr7kt8G62KykrX4zAxgKW0k5px8T2S4MYd5DhWWtngvWO-8Raw4FaaIjfOjhqf9yI=s1360-w1360-h1020-rw',
-                                    height: 130,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            Container(
-                                              height: 130,
-                                              color: theme
-                                                  .colorScheme
-                                                  .primaryContainer,
-                                              child: Icon(
-                                                Icons.temple_hindu_outlined,
-                                                color: primaryColor,
-                                                size: 48,
-                                              ),
-                                            ),
+                      // Render Live Events from API
+                      if (activeEvents.isNotEmpty)
+                        ...activeEvents.map((event) {
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      EventDetailScreen(event: event),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: MediaQuery.of(context).size.width * 0.85,
+                              margin: const EdgeInsets.only(right: 16),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: theme.colorScheme.secondary.withValues(
+                                    alpha: 0.1,
                                   ),
-                                  Positioned(
-                                    top: 12,
-                                    left: 12,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: primaryColor,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'LATEST',
-                                        style: GoogleFonts.inter(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 3,
+                                    offset: const Offset(0, 1),
                                   ),
                                 ],
                               ),
-                              Padding(
-                                padding: const EdgeInsets.all(12.0),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      '6th Sammelan, 2026 at Ayodhya',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: primaryColor,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
+                                    Stack(
                                       children: [
-                                        Icon(
-                                          Icons.calendar_today_outlined,
-                                          size: 14,
-                                          color: theme
-                                              .colorScheme
-                                              .onSurfaceVariant,
+                                        if (event.imageUrl != null &&
+                                            event.imageUrl!.isNotEmpty)
+                                          Image.network(
+                                            event.imageUrl!,
+                                            height: 130,
+                                            width: double.infinity,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    Container(
+                                                      height: 130,
+                                                      color: theme
+                                                          .colorScheme
+                                                          .primaryContainer,
+                                                      child: Icon(
+                                                        Icons.event,
+                                                        color: primaryColor,
+                                                        size: 48,
+                                                      ),
+                                                    ),
+                                          )
+                                        else
+                                          Container(
+                                            height: 130,
+                                            decoration: const BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Color(0xFFB22B1D),
+                                                  Color(0xFFDAA520),
+                                                ],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                            ),
+                                            child: const Center(
+                                              child: Icon(
+                                                Icons.campaign_rounded,
+                                                color: Colors.white,
+                                                size: 48,
+                                              ),
+                                            ),
+                                          ),
+                                        Positioned(
+                                          top: 12,
+                                          left: 12,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: primaryColor,
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              event.category.toUpperCase(),
+                                              style: GoogleFonts.inter(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
                                         ),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Text(
-                                            'June 19 - 21, 2026',
+                                        if (event.externalAlbumUrl != null &&
+                                            event.externalAlbumUrl!.isNotEmpty)
+                                          Positioned(
+                                            top: 12,
+                                            right: 12,
+                                            child: Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 4,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF4285F4),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.photo_library,
+                                                    color: Colors.white,
+                                                    size: 12,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    'ALBUM',
+                                                    style: GoogleFonts.inter(
+                                                      color: Colors.white,
+                                                      fontSize: 9,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.all(12.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            event.title,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: GoogleFonts.inter(
-                                              fontSize: 13,
-                                              color: theme
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: primaryColor,
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 2.0,
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.calendar_today_outlined,
+                                                size: 14,
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Expanded(
+                                                child: Text(
+                                                  '${event.eventDate.day}/${event.eventDate.month}/${event.eventDate.year}',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 13,
+                                                    color: theme
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          child: Icon(
-                                            Icons.location_on_outlined,
-                                            size: 14,
-                                            color: theme
-                                                .colorScheme
-                                                .onSurfaceVariant,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Text(
-                                            'Asharfi Bhawan Chauraha Rd, Tulsi Nagar, Ayodhya, Uttar Pradesh 224123',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 13,
-                                              color: theme
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
+                                          if (event.venue != null &&
+                                              event.venue!.isNotEmpty) ...[
+                                            const SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.location_on_outlined,
+                                                  size: 14,
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Expanded(
+                                                  child: Text(
+                                                    event.venue!,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 13,
+                                                      color: theme
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                          ),
-                                        ),
-                                      ],
+                                          ],
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ],
+                            ),
+                          );
+                        })
+                      else
+                        // Fallback Featured Event Card
+                        GestureDetector(
+                          onTap: () {
+                            final defaultEvent = EventModel(
+                              id: 0,
+                              title: '6th Sammelan, 2026 at Ayodhya',
+                              description:
+                                  'Grand ABRP Community Sammelan at Ayodhya. Join us with family for devotional & cultural programs.',
+                              imageUrl:
+                                  'https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkmefiChBJ0IIWUeFtuJJ-dvjed_XzRjOCYr0RauyP0pL-556MAyDLh5a4rZAMXnhNyOjSaAcM6w-GMr7kt8G62KykrX4zAxgKW0k5px8T2S4MYd5DhWWtngvWO-8Raw4FaaIjfOjhqf9yI=s1360-w1360-h1020-rw',
+                              eventDate: DateTime(2026, 6, 19),
+                              venue:
+                                  'Asharfi Bhawan Chauraha Rd, Tulsi Nagar, Ayodhya, Uttar Pradesh 224123',
+                              category: 'sammelan',
+                            );
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    EventDetailScreen(event: defaultEvent),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            width: MediaQuery.of(context).size.width * 0.85,
+                            margin: const EdgeInsets.only(right: 16),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: theme.colorScheme.secondary.withValues(
+                                  alpha: 0.05,
+                                ),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 3,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Stack(
+                                    children: [
+                                      Image.network(
+                                        'https://lh3.googleusercontent.com/gps-cs-s/AHRPTWkmefiChBJ0IIWUeFtuJJ-dvjed_XzRjOCYr0RauyP0pL-556MAyDLh5a4rZAMXnhNyOjSaAcM6w-GMr7kt8G62KykrX4zAxgKW0k5px8T2S4MYd5DhWWtngvWO-8Raw4FaaIjfOjhqf9yI=s1360-w1360-h1020-rw',
+                                        height: 130,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                Container(
+                                                  height: 130,
+                                                  color: theme
+                                                      .colorScheme
+                                                      .primaryContainer,
+                                                  child: Icon(
+                                                    Icons.temple_hindu_outlined,
+                                                    color: primaryColor,
+                                                    size: 48,
+                                                  ),
+                                                ),
+                                      ),
+                                      Positioned(
+                                        top: 12,
+                                        left: 12,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: primaryColor,
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'FEATURED',
+                                            style: GoogleFonts.inter(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '6th Sammelan, 2026 at Ayodhya',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: primaryColor,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.calendar_today_outlined,
+                                              size: 14,
+                                              color: theme
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                'June 19 - 21, 2026',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 13,
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 2.0,
+                                              ),
+                                              child: Icon(
+                                                Icons.location_on_outlined,
+                                                size: 14,
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                'Asharfi Bhawan Chauraha Rd, Tulsi Nagar, Ayodhya, Uttar Pradesh 224123',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 13,
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
                       // Carousel Card 2: Community News
                       Container(
                         width: MediaQuery.of(context).size.width * 0.85,
@@ -556,11 +817,7 @@ class HomeScreen extends ConsumerWidget {
                   icon: Icons.event_note_rounded,
                   label: 'Events',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Events will be available soon.'),
-                      ),
-                    );
+                    context.push('/events');
                   },
                   theme: theme,
                 ),

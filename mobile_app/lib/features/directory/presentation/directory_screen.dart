@@ -39,244 +39,6 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
   Timer? _letterIndicatorTimer;
   final List<String> _alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-
-  static const List<Map<String, dynamic>> _dummyMembers = [
-    {
-      'id': 101,
-      'familyId': 1,
-      'fullName': 'Rameshchandra J. Shah',
-      'relationshipToHead': 'HEAD',
-      'isHead': true,
-      'village': {'id': 1, 'name': 'Patan'},
-      'gotra': 'Kashyap',
-      'occupationType': 'Business',
-      'avatarUrl': null,
-    },
-    {
-      'id': 102,
-      'familyId': 1,
-      'fullName': 'Savitaben R. Shah',
-      'relationshipToHead': 'SPOUSE',
-      'familyHeadName': 'Rameshchandra J. Shah',
-      'village': {'id': 1, 'name': 'Patan'},
-      'gotra': 'Kashyap',
-      'occupationType': 'Homemaker',
-      'avatarUrl': null,
-    },
-    {
-      'id': 103,
-      'familyId': 1,
-      'fullName': 'Amitkumar R. Shah',
-      'relationshipToHead': 'SON',
-      'familyHeadName': 'Rameshchandra J. Shah',
-      'village': {'id': 1, 'name': 'Patan'},
-      'gotra': 'Kashyap',
-      'occupationType': 'IT Professional',
-      'avatarUrl': null,
-    },
-    {
-      'id': 104,
-      'familyId': 1,
-      'fullName': 'Neha A. Shah',
-      'relationshipToHead': 'DAUGHTER_IN_LAW',
-      'familyHeadName': 'Rameshchandra J. Shah',
-      'village': {'id': 1, 'name': 'Patan'},
-      'gotra': 'Vashishtha',
-      'occupationType': 'Architect',
-      'avatarUrl': null,
-    },
-    {
-      'id': 105,
-      'familyId': 2,
-      'fullName': 'Bharatbhai M. Patel',
-      'relationshipToHead': 'HEAD',
-      'isHead': true,
-      'village': {'id': 2, 'name': 'Unjha'},
-      'gotra': 'Garg',
-      'occupationType': 'Agriculture & Trade',
-      'avatarUrl': null,
-    },
-    {
-      'id': 106,
-      'familyId': 2,
-      'fullName': 'Chirag B. Patel',
-      'relationshipToHead': 'SON',
-      'familyHeadName': 'Bharatbhai M. Patel',
-      'village': {'id': 2, 'name': 'Unjha'},
-      'gotra': 'Garg',
-      'occupationType': 'Chartered Accountant',
-      'avatarUrl': null,
-    },
-    {
-      'id': 107,
-      'familyId': 3,
-      'fullName': 'Dineshbhai K. Mehta',
-      'relationshipToHead': 'HEAD',
-      'isHead': true,
-      'village': {'id': 3, 'name': 'Siddhpur'},
-      'gotra': 'Bharadwaj',
-      'occupationType': 'Jewellery Business',
-      'avatarUrl': null,
-    },
-    {
-      'id': 108,
-      'familyId': 3,
-      'fullName': 'Deepak D. Mehta',
-      'relationshipToHead': 'SON',
-      'familyHeadName': 'Dineshbhai K. Mehta',
-      'village': {'id': 3, 'name': 'Siddhpur'},
-      'gotra': 'Bharadwaj',
-      'occupationType': 'Salaried Job',
-      'avatarUrl': null,
-    },
-    {
-      'id': 109,
-      'familyId': 4,
-      'fullName': 'Girishbhai S. Parikh',
-      'relationshipToHead': 'HEAD',
-      'isHead': true,
-      'village': {'id': 4, 'name': 'Visnagar'},
-      'gotra': 'Vatsa',
-      'occupationType': 'Textile Trading',
-      'avatarUrl': null,
-    },
-    {
-      'id': 110,
-      'familyId': 4,
-      'fullName': 'Hetal G. Parikh',
-      'relationshipToHead': 'DAUGHTER',
-      'familyHeadName': 'Girishbhai S. Parikh',
-      'village': {'id': 4, 'name': 'Visnagar'},
-      'gotra': 'Vatsa',
-      'occupationType': 'Doctor',
-      'avatarUrl': null,
-    },
-    {
-      'id': 111,
-      'familyId': 5,
-      'fullName': 'Jitendrabhai V. Modi',
-      'relationshipToHead': 'HEAD',
-      'isHead': true,
-      'village': {'id': 5, 'name': 'Vadnagar'},
-      'gotra': 'Shandilya',
-      'occupationType': 'Retail Store',
-      'avatarUrl': null,
-    },
-    {
-      'id': 112,
-      'familyId': 5,
-      'fullName': 'Kiran J. Modi',
-      'relationshipToHead': 'SON',
-      'familyHeadName': 'Jitendrabhai V. Modi',
-      'village': {'id': 5, 'name': 'Vadnagar'},
-      'gotra': 'Shandilya',
-      'occupationType': 'Software Engineer',
-      'avatarUrl': null,
-    },
-    {
-      'id': 113,
-      'familyId': 6,
-      'fullName': 'Maheshbhai P. Shroff',
-      'relationshipToHead': 'HEAD',
-      'isHead': true,
-      'village': {'id': 1, 'name': 'Patan'},
-      'gotra': 'Parashar',
-      'occupationType': 'Financial Advisor',
-      'avatarUrl': null,
-    },
-    {
-      'id': 114,
-      'familyId': 6,
-      'fullName': 'Nitin M. Shroff',
-      'relationshipToHead': 'SON',
-      'familyHeadName': 'Maheshbhai P. Shroff',
-      'village': {'id': 1, 'name': 'Patan'},
-      'gotra': 'Parashar',
-      'occupationType': 'Civil Engineer',
-      'avatarUrl': null,
-    },
-    {
-      'id': 115,
-      'familyId': 7,
-      'fullName': 'Pankajbhai L. Gandhi',
-      'relationshipToHead': 'HEAD',
-      'isHead': true,
-      'village': {'id': 6, 'name': 'Kadi'},
-      'gotra': 'Agastya',
-      'occupationType': 'Chemical Industry',
-      'avatarUrl': null,
-    },
-    {
-      'id': 116,
-      'familyId': 7,
-      'fullName': 'Pooja P. Gandhi',
-      'relationshipToHead': 'DAUGHTER',
-      'familyHeadName': 'Pankajbhai L. Gandhi',
-      'village': {'id': 6, 'name': 'Kadi'},
-      'gotra': 'Agastya',
-      'occupationType': 'Professor',
-      'avatarUrl': null,
-    },
-    {
-      'id': 117,
-      'familyId': 8,
-      'fullName': 'Rajeshbhai T. Choksi',
-      'relationshipToHead': 'HEAD',
-      'isHead': true,
-      'village': {'id': 2, 'name': 'Unjha'},
-      'gotra': 'Kashyap',
-      'occupationType': 'Real Estate',
-      'avatarUrl': null,
-    },
-    {
-      'id': 118,
-      'familyId': 8,
-      'fullName': 'Sanjay R. Choksi',
-      'relationshipToHead': 'SON',
-      'familyHeadName': 'Rajeshbhai T. Choksi',
-      'village': {'id': 2, 'name': 'Unjha'},
-      'gotra': 'Kashyap',
-      'occupationType': 'Business',
-      'avatarUrl': null,
-    },
-    {
-      'id': 119,
-      'familyId': 9,
-      'fullName': 'Tusharbhai H. Vora',
-      'relationshipToHead': 'HEAD',
-      'isHead': true,
-      'village': {'id': 3, 'name': 'Siddhpur'},
-      'gotra': 'Garg',
-      'occupationType': 'Pharmaceuticals',
-      'avatarUrl': null,
-    },
-    {
-      'id': 120,
-      'familyId': 9,
-      'fullName': 'Vipul T. Vora',
-      'relationshipToHead': 'SON',
-      'familyHeadName': 'Tusharbhai H. Vora',
-      'village': {'id': 3, 'name': 'Siddhpur'},
-      'gotra': 'Garg',
-      'occupationType': 'Consultant',
-      'avatarUrl': null,
-    },
-  ];
-
-  List<dynamic> _filterDummyMembers() {
-    return _dummyMembers.where((m) {
-      if (_searchQuery.isNotEmpty) {
-        final name = (m['fullName'] as String? ?? '').toLowerCase();
-        if (!name.contains(_searchQuery.toLowerCase())) return false;
-      }
-      if (_selectedVillageId != null) {
-        final vId = m['village']?['id'] as int?;
-        if (vId != _selectedVillageId) return false;
-      }
-      return true;
-    }).toList();
-  }
-
   @override
   void initState() {
     super.initState();
@@ -357,7 +119,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
         });
 
         setState(() {
-          _members = membersList.isNotEmpty ? membersList : _filterDummyMembers();
+          _members = membersList;
           _villages = responses[1].data['villages'] as List<dynamic>;
           _isLoading = false;
         });
@@ -365,7 +127,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _members = _filterDummyMembers();
+          _members = [];
           _isLoading = false;
         });
       }
@@ -388,13 +150,13 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
 
       if (mounted) {
         setState(() {
-          _members = membersList.isNotEmpty ? membersList : _filterDummyMembers();
+          _members = membersList;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _members = _filterDummyMembers();
+          _members = [];
         });
       }
     }
@@ -699,15 +461,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                   ),
                 )
               else if (_members.isEmpty)
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 40.0),
-                    child: Text(
-                      'No members found',
-                      style: GoogleFonts.inter(color: colorScheme.onSurfaceVariant),
-                    ),
-                  ),
-                )
+                _buildEmptyState(context, colorScheme, primaryColor, secondaryColor, isDark)
               else
                 Builder(
                   builder: (context) {
@@ -1103,6 +857,108 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
         );
       }
     }
+  }
+
+  Widget _buildEmptyState(
+    BuildContext context,
+    ColorScheme colorScheme,
+    Color primaryColor,
+    Color secondaryColor,
+    bool isDark,
+  ) {
+    final bool hasFilter = _searchQuery.isNotEmpty || _selectedVillageId != null;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48.0, horizontal: 24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: primaryColor.withValues(alpha: 0.08),
+                border: Border.all(
+                  color: primaryColor.withValues(alpha: 0.15),
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(
+                hasFilter ? Icons.person_search_rounded : Icons.group_off_rounded,
+                size: 56,
+                color: primaryColor,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              hasFilter ? 'No Members Found / कोई सदस्य नहीं मिला' : 'Directory is Empty / निर्देशिका खाली है',
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              hasFilter
+                  ? 'We couldn\'t find any members matching your search or village filter. Try searching for a different name or clearing filters.\nआपके सर्च या गांव फ़िल्टर से कोई सदस्य नहीं मिला।'
+                  : 'No registered members found in the directory yet. Check back soon or pull down to refresh!\nनिर्देशिका में अभी तक कोई पंजीकृत सदस्य नहीं है।',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: colorScheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            if (hasFilter)
+              OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _searchController.clear();
+                    _searchQuery = '';
+                    _selectedVillageId = null;
+                    _selectedVillageName = null;
+                  });
+                  _fetchMembersOnly();
+                },
+                icon: const Icon(Icons.filter_alt_off_rounded, size: 18),
+                label: Text(
+                  'Clear Filters / फ़िल्टर हटाएं',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: primaryColor,
+                  side: BorderSide(color: primaryColor.withValues(alpha: 0.4)),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              )
+            else
+              ElevatedButton.icon(
+                onPressed: _loadData,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(
+                  'Refresh / रिफ्रेश करें',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

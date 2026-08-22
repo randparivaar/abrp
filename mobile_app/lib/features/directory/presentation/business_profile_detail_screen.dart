@@ -44,7 +44,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
     setState(() => _isLoadingMembers = true);
     try {
       final dio = ref.read(apiClientProvider);
-      final response = await dio.get('/api/v1/directory/business/${widget.business.id}/members');
+      final response = await dio.get('/directory/business/${widget.business.id}/members');
       if (response.statusCode == 200 && response.data != null) {
         setState(() {
           _members = response.data['members'] as List<dynamic>;
@@ -174,7 +174,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
 
     try {
       final dio = ref.read(apiClientProvider);
-      final response = await dio.delete('/api/v1/directory/business/${widget.business.id}/member/$memberId');
+      final response = await dio.delete('/directory/business/${widget.business.id}/member/$memberId');
       if (!mounted) return;
       Navigator.pop(context); // Close loading spinner
 
@@ -1215,7 +1215,7 @@ class _AssignMemberBottomSheetState extends ConsumerState<_AssignMemberBottomShe
     // Tier 1: Try dedicated eligible-partners endpoint
     try {
       final dio = ref.read(apiClientProvider);
-      final response = await dio.get('/api/v1/directory/business/${widget.businessId}/eligible-partners');
+      final response = await dio.get('/directory/business/${widget.businessId}/eligible-partners');
       if (response.statusCode == 200 && response.data != null) {
         final list = response.data['eligibleMembers'] as List<dynamic>? ?? [];
         setState(() {
@@ -1229,10 +1229,10 @@ class _AssignMemberBottomSheetState extends ConsumerState<_AssignMemberBottomShe
       debugPrint('Eligible partners endpoint not found on server, attempting fallback: $e');
     }
 
-    // Tier 2: Fallback to /api/v1/directory/my-family for user's family members
+    // Tier 2: Fallback to /directory/my-family for user's family members
     try {
       final dio = ref.read(apiClientProvider);
-      final response = await dio.get('/api/v1/directory/my-family');
+      final response = await dio.get('/directory/my-family');
       if (response.statusCode == 200 && response.data != null) {
         final familyData = response.data['family'];
         if (familyData != null && familyData['members'] is List) {
@@ -1252,7 +1252,7 @@ class _AssignMemberBottomSheetState extends ConsumerState<_AssignMemberBottomShe
     // Tier 3: Secondary Fallback to global approved members list
     try {
       final dio = ref.read(apiClientProvider);
-      final response = await dio.get('/api/v1/directory/members');
+      final response = await dio.get('/directory/members');
       if (response.statusCode == 200 && response.data != null) {
         final list = response.data['members'] as List<dynamic>? ?? [];
         setState(() {
@@ -1302,7 +1302,7 @@ class _AssignMemberBottomSheetState extends ConsumerState<_AssignMemberBottomShe
     try {
       final dio = ref.read(apiClientProvider);
       final response = await dio.post(
-        '/api/v1/directory/business/${widget.businessId}/member',
+        '/directory/business/${widget.businessId}/member',
         data: {
           'memberId': _selectedMember!['id'],
           'roleInBusiness': _selectedRole == 'Other' ? _roleController.text : _selectedRole,
