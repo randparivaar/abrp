@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/localization/app_language.dart';
 import '../../../core/localization/app_translations.dart';
 import 'auth_controller.dart';
+import 'link_mobile_bottom_sheet.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -357,7 +358,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               OutlinedButton(
                                 onPressed: authState.isLoading
                                     ? null
-                                    : () => ref.read(authProvider.notifier).signInWithGoogle(),
+                                    : () async {
+                                        await ref.read(authProvider.notifier).signInWithGoogle();
+                                        if (!mounted) return;
+                                        final user = ref.read(authProvider).user;
+                                        if (user != null && (user.mobile == null || user.mobile!.trim().isEmpty)) {
+                                          if (context.mounted) {
+                                            await LinkMobileBottomSheet.show(context);
+                                          }
+                                        }
+                                      },
                                 style: OutlinedButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   minimumSize: const Size.fromHeight(56),

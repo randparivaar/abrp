@@ -71,4 +71,12 @@ export async function updateUserPassword(userId: string, newPasswordHash: string
     .where(eq(users.id, userId));
 }
 
+export async function updateUserMobile(userId: string, mobile: string) {
+  const [updatedUser] = await db.update(users)
+    .set({ mobile: mobile.trim(), updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning();
+  return updatedUser;
+}
+
 

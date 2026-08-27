@@ -9,6 +9,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/app_avatar.dart';
 import '../../../core/utils/image_cropper_screen.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../auth/presentation/link_mobile_bottom_sheet.dart';
 import '../../directory/presentation/app_bottom_navigation.dart';
 import '../../directory/presentation/my_family_provider.dart';
 import '../../directory/presentation/family_tree_screen.dart';
@@ -196,13 +197,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       subtitle: Text(
                         (user?.mobile != null && user!.mobile!.isNotEmpty)
                             ? user.mobile!
-                            : 'Not available',
+                            : 'Not linked yet',
                         style: TextStyle(
                           color: (user?.mobile != null && user!.mobile!.isNotEmpty)
                               ? null
                               : colorScheme.onSurface.withValues(alpha: 0.4),
                         ),
                       ),
+                      trailing: (user?.mobile == null || user!.mobile!.isEmpty)
+                          ? TextButton.icon(
+                              onPressed: () => LinkMobileBottomSheet.show(context),
+                              icon: const Icon(Icons.link_rounded, size: 16),
+                              label: const Text('Link Now'),
+                            )
+                          : const Icon(Icons.verified_user_outlined, color: Colors.green, size: 20),
                     ),
                     const Divider(),
                     ListTile(

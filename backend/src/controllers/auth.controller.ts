@@ -5,7 +5,8 @@ import {
   createUser, 
   updateGoogleLink, 
   verifyGoogleIdToken, 
-  generateSessionToken 
+  generateSessionToken,
+  updateUserMobile
 } from '../services/auth.service.js';
 import { registerDeviceToken } from '../services/notifications.service.js';
 import { associateUserWithFamilyMemberByMobile } from '../services/directory.service.js';
@@ -281,4 +282,58 @@ export async function handleResetPassword(c: Context) {
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }
+
+export async function handleLinkMobile(c: Context) {
+  try {
+    const authPayload = c.get('jwtPayload') || c.get('user');
+    if (!authPayload || !authPayload.id) {
+      return c.json({ error: 'Unauthorized access.' }, 401);
+    }
+
+    const { mobile } = await c.req.json<{ mobile?: string }>();
+    if (!mobile || !mobile.trim()) {
+      return c.json({ error: 'Please enter a valid mobile number.' }, 400);
+    }
+
+    const cleanMobile = mobile.trim();
+    if (cleanMobile.length < 10) {
+      return c.json({ error: 'Mobile number must be at least 10 digits.' }, 400);
+    }
+
+    // Check if mobile number is already linked to another account
+    const existingUser = await db.query.users.findFirst({
+      where: (u: any, { eq, and, ne }: any) => and(eq(u.mobile, cleanMobile), ne(u.id, authPayload.id)),
+    });
+
+    if (existingUser) {
+      return c.json({ error: 'This mobile number is already linked to another registered account.' }, 409);
+    }
+
+    const updatedUser = await updateUserMobile(authPayload.id, cleanMobile);
+
+    // Auto-associate user with family tree member profile
+    await associateUserWithFamilyMemberByMobile(updatedUser.id, cleanMobile);
+
+    const token = generateSessionToken(updatedUser);
+
+    return c.json({
+      success: true,
+      token,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        fullName: updatedUser.fullName,
+        avatarUrl: updatedUser.avatarUrl,
+        role: updatedUser.role,
+        preferredLanguage: updatedUser.preferredLanguage,
+        status: updatedUser.status,
+        mobile: updatedUser.mobile,
+      },
+    });
+  } catch (error: any) {
+    console.error('Link mobile handler error:', error);
+    return c.json({ error: 'Internal Server Error while linking mobile number.' }, 500);
+  }
+}
+
 

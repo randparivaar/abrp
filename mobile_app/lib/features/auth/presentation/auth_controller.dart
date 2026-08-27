@@ -192,6 +192,34 @@ class Auth extends _$Auth {
     }
   }
 
+  Future<bool> linkMobileNumber(String mobile) async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.post('/auth/link-mobile', data: {
+        'mobile': mobile,
+      });
+
+      if (response.data['success'] == true && response.data['user'] != null) {
+        final updatedUser = UserModel.fromJson(response.data['user']);
+        final token = response.data['token'] as String?;
+
+        if (token != null) {
+          await _storage.write(key: AppConstants.tokenKey, value: token);
+        }
+        await _storage.write(key: AppConstants.userKey, value: jsonEncode(updatedUser.toJson()));
+
+        state = AuthState(user: updatedUser);
+        return true;
+      }
+      state = state.copyWith(isLoading: false, errorMessage: response.data['error'] ?? 'Failed to link mobile number');
+      return false;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: _getErrorMessage(e));
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     state = state.copyWith(isLoading: true);
     try {

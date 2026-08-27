@@ -6,20 +6,26 @@ import { eq, and, lte, gte, isNull, or, desc, sql } from 'drizzle-orm';
  * Get active ads matching a specific placement key (e.g. 'home_carousel', 'directory_feed')
  */
 export async function getActiveAdsForPlacement(placementKey: string) {
-  const ads = await dbRetry(() =>
-    db
-      .select()
-      .from(advertisements)
-      .where(
-        and(
-          or(eq(advertisements.isActive, true), isNull(advertisements.isActive)),
-          sql`${advertisements.placements} @> ${JSON.stringify([placementKey])}::jsonb`
-        )
-      )
-      .orderBy(desc(advertisements.priority), desc(advertisements.createdAt))
-  );
-
-  return ads;
+  try {
+    const allAds = await getAllActiveAds();
+    return allAds.filter((ad: any) => {
+      if (!ad.placements) return false;
+      if (Array.isArray(ad.placements)) {
+        return ad.placements.includes(placementKey);
+      }
+      if (typeof ad.placements === 'string') {
+        try {
+          const parsed = JSON.parse(ad.placements);
+          if (Array.isArray(parsed)) return parsed.includes(placementKey);
+        } catch (_) {}
+        return ad.placements.includes(placementKey);
+      }
+      return false;
+    });
+  } catch (error) {
+    console.error('getActiveAdsForPlacement error:', error);
+    return [];
+  }
 }
 
 /**
