@@ -30,3 +30,5 @@ esac
 
 echo ""
 flutter run --dart-define=BASE_URL="$BASE_URL" "$@"
+
+#flutter build  apk --release --dart-define=BASE_URL="https://abrp.vercel.app/api/v1"
