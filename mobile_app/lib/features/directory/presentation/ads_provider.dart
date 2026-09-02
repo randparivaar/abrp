@@ -17,8 +17,12 @@ final adsByPlacementProvider = FutureProvider.family<List<AdvertisementModel>, S
         return list.map((json) => AdvertisementModel.fromJson(json as Map<String, dynamic>)).toList();
       }
     }
-  } catch (e, st) {
-    debugPrint('Error fetching ads by placement ($placementKey): $e\n$st');
+  } catch (e) {
+    if (e is DioException && (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout)) {
+      debugPrint('Ads fetch timeout for placement: $placementKey');
+    } else {
+      debugPrint('Error fetching ads by placement ($placementKey): $e');
+    }
   }
   return [];
 });

@@ -1370,16 +1370,33 @@ export async function associateUserWithFamilyMemberByMobile(userId: string, mobi
   const cleanMobile = mobile.trim();
   if (!cleanMobile) return;
 
+  const userRec = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+  if (!userRec) return;
+
+  // 1. Check if user is already associated with a family member record
+  const existingUserMember = await db.query.familyMembers.findFirst({
+    where: (m: any, { eq }: any) => eq(m.userId, userId),
+  });
+
+  if (existingUserMember) {
+    // If mobile number in family member record is different, sync it
+    if (existingUserMember.mobile !== cleanMobile) {
+      await db.update(familyMembers)
+        .set({ mobile: cleanMobile })
+        .where(eq(familyMembers.id, existingUserMember.id));
+    }
+    return;
+  }
+
+  // 2. Look for existing unlinked family member matching mobile number
   const matchingMember = await db.query.familyMembers.findFirst({
     where: (m: any, { eq, and, isNull }: any) => and(eq(m.mobile, cleanMobile), isNull(m.userId)),
   });
 
   if (matchingMember) {
-    const userRec = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
-
-    const targetAvatar = userRec?.avatarUrl || matchingMember.avatarUrl;
+    const targetAvatar = userRec.avatarUrl || matchingMember.avatarUrl;
 
     await db.update(familyMembers)
       .set({
@@ -1388,10 +1405,46 @@ export async function associateUserWithFamilyMemberByMobile(userId: string, mobi
       })
       .where(eq(familyMembers.id, matchingMember.id));
 
-    if (userRec && !userRec.avatarUrl && matchingMember.avatarUrl) {
+    if (!userRec.avatarUrl && matchingMember.avatarUrl) {
       await db.update(users)
         .set({ avatarUrl: matchingMember.avatarUrl, updatedAt: new Date() })
         .where(eq(users.id, userId));
+    }
+  } else {
+    // 3. No matching family member found -> Automatically create a NEW Family and Family Head record!
+    try {
+      const defaultVillage = await db.query.villages.findFirst();
+      if (!defaultVillage) {
+        console.warn('No village found in database to attach new auto-created family.');
+        return;
+      }
+
+      const familyCode = await generateUniqueFamilyCode();
+      const [newFamily] = await db.insert(families).values({
+        familyCode,
+        address: 'Address Pending Update',
+        villageId: defaultVillage.id,
+      }).returning();
+
+      const [newHead] = await db.insert(familyMembers).values({
+        familyId: newFamily.id,
+        userId: userId,
+        fullName: userRec.fullName,
+        gender: 'other',
+        relationshipToHead: 'self',
+        mobile: cleanMobile,
+        avatarUrl: userRec.avatarUrl || null,
+        createdBy: userId,
+        status: 'approved',
+      }).returning();
+
+      await db.update(families)
+        .set({ familyHeadId: newHead.id })
+        .where(eq(families.id, newFamily.id));
+
+      console.log(`Auto-created new family unit ${familyCode} for user ${userRec.fullName} (${userId})`);
+    } catch (err) {
+      console.error('Error auto-creating family for newly linked mobile user:', err);
     }
   }
 }
