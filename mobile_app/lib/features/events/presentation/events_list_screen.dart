@@ -32,8 +32,6 @@ class _EventsListScreenState extends ConsumerState<EventsListScreen>
   ];
 
   // Hardcoded fallback featured events demonstrating UPCOMING, LIVE NOW, and COMPLETED states
-  late final List<EventModel> _fallbackEvents;
-
   @override
   void initState() {
     super.initState();
@@ -42,50 +40,6 @@ class _EventsListScreenState extends ConsumerState<EventsListScreen>
       if (!mounted) return;
       setState(() {});
     });
-
-    final now = DateTime.now();
-
-    _fallbackEvents = [
-      EventModel(
-        id: 101,
-        title: '6th Sammelan, 2026 at Ayodhya',
-        description:
-            'Grand ABRP Community Sammelan at Ayodhya. Join us with family for devotional & cultural programs, family tree registrations, and youth networking.',
-        imageUrl:
-            'https://images.unsplash.com/photo-1541872703-74c5e44368f9?q=80&w=1200&auto=format&fit=crop',
-        externalAlbumUrl: 'https://photos.google.com',
-        eventDate: DateTime(2026, 11, 19, 9, 0),
-        endDate: DateTime(2026, 11, 21, 18, 0),
-        venue:
-            'Asharfi Bhawan Chauraha Rd, Tulsi Nagar, Ayodhya, Uttar Pradesh 224123',
-        category: 'sammelan',
-        isActive: true,
-      ),
-      EventModel(
-        id: 102,
-        title: 'Annual Youth & Talent Excellence Awards 2026',
-        description:
-            'Felicitation of meritorious students, young entrepreneurs, and sports achievers across all zones of Rander Parivar Samaj.',
-        imageUrl:
-            'https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1200&auto=format&fit=crop',
-        eventDate: now.subtract(const Duration(hours: 2)),
-        endDate: now.add(const Duration(hours: 10)),
-        venue: 'Surat Community Center, Majura Gate, Surat',
-        category: 'cultural',
-        isActive: true,
-      ),
-      EventModel(
-        id: 103,
-        title: 'Shree Krishna Bhajan Sandhya & Mahaprasad',
-        description:
-            'Evening of devotional bhajans, spiritual discourse, and mahaprasad gathering for all parivar members.',
-        imageUrl: null,
-        eventDate: DateTime(2025, 8, 28, 17, 30),
-        venue: 'Rander Bhavan, Pal Gam, Surat',
-        category: 'religious',
-        isActive: true,
-      ),
-    ];
   }
 
   @override
@@ -110,9 +64,7 @@ class _EventsListScreenState extends ConsumerState<EventsListScreen>
   }
 
   List<EventModel> _filterEvents(List<EventModel> allEvents) {
-    final listToFilter = allEvents.isEmpty ? _fallbackEvents : allEvents;
-
-    return listToFilter.where((event) {
+    return allEvents.where((event) {
       // 1. Tab Filter (0: All, 1: Upcoming/Live, 2: Past)
       if (_tabController.index == 1 && !_isEventUpcomingOrLive(event)) {
         return false;
@@ -239,8 +191,8 @@ class _EventsListScreenState extends ConsumerState<EventsListScreen>
           tabs: [
             Tab(
               text: isHindi
-                  ? 'सभी (${activeEventsAsync.value?.length ?? _fallbackEvents.length})'
-                  : 'All Events (${activeEventsAsync.value?.length ?? _fallbackEvents.length})',
+                  ? 'सभी (${activeEventsAsync.value?.length ?? 0})'
+                  : 'All Events (${activeEventsAsync.value?.length ?? 0})',
             ),
             Tab(text: isHindi ? 'आगामी / लाइव' : 'Upcoming & Live'),
             Tab(text: isHindi ? 'संपन्न' : 'Past Events'),
@@ -298,15 +250,30 @@ class _EventsListScreenState extends ConsumerState<EventsListScreen>
               loading: () => const Center(
                 child: CircularProgressIndicator(),
               ),
-              error: (err, stack) => _buildEventsList(
-                events: _filterEvents(_fallbackEvents),
-                theme: theme,
-                lang: lang,
-                isFallback: true,
+              error: (err, stack) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.wifi_off_rounded, size: 48, color: theme.colorScheme.error),
+                      const SizedBox(height: 12),
+                      Text(
+                        isHindi ? 'कार्यक्रम लोड करने में विफल: $err' : 'Failed to load events: $err',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: theme.colorScheme.error, fontSize: 13),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => ref.invalidate(activeEventsProvider),
+                        child: Text(isHindi ? 'पुनः प्रयास करें' : 'Retry'),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               data: (serverEvents) {
                 final filtered = _filterEvents(serverEvents);
-                final isUsingFallback = serverEvents.isEmpty;
                 return RefreshIndicator(
                   onRefresh: () async {
                     ref.invalidate(activeEventsProvider);
@@ -315,7 +282,7 @@ class _EventsListScreenState extends ConsumerState<EventsListScreen>
                     events: filtered,
                     theme: theme,
                     lang: lang,
-                    isFallback: isUsingFallback,
+                    isFallback: false,
                   ),
                 );
               },

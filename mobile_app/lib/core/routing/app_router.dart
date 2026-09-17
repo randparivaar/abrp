@@ -14,10 +14,12 @@ import 'package:mobile_app/features/directory/presentation/directory_screen.dart
 import 'package:mobile_app/features/directory/presentation/business_directory_screen.dart';
 import 'package:mobile_app/features/auth/presentation/splash_screen.dart';
 import 'package:mobile_app/features/auth/presentation/onboarding_screen.dart';
+import 'package:mobile_app/features/auth/presentation/forgot_password_screen.dart';
 import 'package:mobile_app/features/directory/presentation/active_ads_screen.dart';
 import 'package:mobile_app/features/events/presentation/events_list_screen.dart';
 
 part 'app_router.g.dart';
+
 
 /// A [ChangeNotifier] that listens to [AuthState] changes and notifies
 /// GoRouter to re-evaluate its redirect logic without rebuilding the router.
@@ -51,9 +53,10 @@ GoRouter appRouter(Ref ref) {
       final isLoggingIn = state.matchedLocation == '/login';
       final isSplash = state.matchedLocation == '/splash';
       final isOnboarding = state.matchedLocation == '/onboarding';
+      final isForgotPassword = state.matchedLocation == '/forgot-password';
 
-      // Allow splash and onboarding screens to display without redirection
-      if (isSplash || isOnboarding) return null;
+      // Allow splash, onboarding, and forgot password screens to display without redirection
+      if (isSplash || isOnboarding || isForgotPassword) return null;
 
       // 1. If not authenticated and not currently on login page, send to /login
       if (!isAuthenticated && !isLoggingIn) {
@@ -87,6 +90,10 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: '/',

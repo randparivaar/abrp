@@ -2,10 +2,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/localization/app_language.dart';
 import '../../../core/localization/app_translations.dart';
 import 'auth_controller.dart';
-import 'link_mobile_bottom_sheet.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -353,87 +353,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const SizedBox(height: 24),
-                              // Primary Action: Google Login
-                              OutlinedButton(
-                                onPressed: authState.isLoading
-                                    ? null
-                                    : () async {
-                                        await ref.read(authProvider.notifier).signInWithGoogle();
-                                        if (!mounted) return;
-                                        final user = ref.read(authProvider).user;
-                                        if (user != null && (user.mobile == null || user.mobile!.trim().isEmpty)) {
-                                          if (context.mounted) {
-                                            await LinkMobileBottomSheet.show(context);
-                                          }
-                                        }
-                                      },
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  minimumSize: const Size.fromHeight(56),
-                                  side: BorderSide(color: theme.colorScheme.outlineVariant, width: 1),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CustomPaint(
-                                        painter: GoogleLogoPainter(),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Text(
-                                      _getString('continue_with_google', lang),
-                                      style: GoogleFonts.inter(
-                                        color: theme.colorScheme.onSurface,
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 14,
-                                        letterSpacing: 0.1,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                                const SizedBox(height: 12),
 
-                              const SizedBox(height: 24),
-
-                              // Divider
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Divider(
-                                      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-                                      height: 1,
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                    child: Text(
-                                      _getString('or_divider', lang).toUpperCase(),
-                                      style: GoogleFonts.inter(
-                                        color: theme.colorScheme.outline,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Divider(
-                                      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-                                      height: 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 24),
 
                               // Form Fields
                               Form(
@@ -657,7 +578,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                             ),
                                             if (!_isSignUp)
                                               TextButton(
-                                                onPressed: () => _showForgotPasswordDialog(context),
+                                                onPressed: () => context.push('/forgot-password'),
                                                 style: TextButton.styleFrom(
                                                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                                                   minimumSize: Size.zero,
@@ -979,231 +900,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  void _showForgotPasswordDialog(BuildContext context) {
-    final lang = ref.read(languageStateProvider);
-    final theme = Theme.of(context);
-    final emailController = TextEditingController(text: _emailController.text.trim());
-    final otpController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    
-    bool isOtpSent = false;
-    bool isLoading = false;
-    String? errorMessage;
-    String? devOtpHint;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 24,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        lang == AppLanguage.hi ? 'पासवर्ड रीसेट करें' : 'Reset Password',
-                        style: GoogleFonts.outfit(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    isOtpSent
-                        ? (lang == AppLanguage.hi
-                            ? 'अपने ईमेल में प्राप्त 6-अंकों का ओटीपी और नया पासवर्ड दर्ज करें।'
-                            : 'Enter the 6-digit OTP code sent to your email and your new password.')
-                        : (lang == AppLanguage.hi
-                            ? 'ओटीपी प्राप्त करने के लिए अपना पंजीकृत ईमेल दर्ज करें।'
-                            : 'Enter your registered email address to receive a password reset OTP code.'),
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  if (errorMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        errorMessage!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  if (devOtpHint != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Dev OTP: $devOtpHint',
-                        style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  if (!isOtpSent) ...[
-                    TextFormField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      style: TextStyle(color: theme.colorScheme.onSurface),
-                      decoration: InputDecoration(
-                        labelText: lang == AppLanguage.hi ? 'ईमेल पता' : 'Email Address',
-                        prefixIcon: const Icon(Icons.email_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: isLoading
-                          ? null
-                          : () async {
-                              final email = emailController.text.trim();
-                              if (email.isEmpty) {
-                                setModalState(() => errorMessage = lang == AppLanguage.hi ? 'ईमेल दर्ज करें' : 'Please enter email');
-                                return;
-                              }
-                              setModalState(() {
-                                isLoading = true;
-                                errorMessage = null;
-                              });
-                              try {
-                                final otp = await ref.read(authProvider.notifier).forgotPassword(email);
-                                setModalState(() {
-                                  isLoading = false;
-                                  isOtpSent = true;
-                                  devOtpHint = otp;
-                                });
-                              } catch (e) {
-                                setModalState(() {
-                                  isLoading = false;
-                                  errorMessage = e.toString().replaceAll('Exception: ', '');
-                                });
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: isLoading
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : Text(lang == AppLanguage.hi ? 'ओटीपी भेजें' : 'Send OTP'),
-                    ),
-                  ] else ...[
-                    TextFormField(
-                      controller: otpController,
-                      keyboardType: TextInputType.number,
-                      style: TextStyle(color: theme.colorScheme.onSurface),
-                      decoration: InputDecoration(
-                        labelText: lang == AppLanguage.hi ? '6-अंकों का ओटीपी' : '6-Digit OTP Code',
-                        prefixIcon: const Icon(Icons.pin_outlined),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: newPasswordController,
-                      obscureText: true,
-                      style: TextStyle(color: theme.colorScheme.onSurface),
-                      decoration: InputDecoration(
-                        labelText: lang == AppLanguage.hi ? 'नया पासवर्ड' : 'New Password',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: isLoading
-                          ? null
-                          : () async {
-                              final email = emailController.text.trim();
-                              final otp = otpController.text.trim();
-                              final newPass = newPasswordController.text.trim();
-                              if (otp.isEmpty || newPass.isEmpty) {
-                                setModalState(() => errorMessage = lang == AppLanguage.hi ? 'सभी फ़ील्ड भरें' : 'Please fill all fields');
-                                return;
-                              }
-                              setModalState(() {
-                                isLoading = true;
-                                errorMessage = null;
-                              });
-                               final messenger = ScaffoldMessenger.of(context);
-                              try {
-                                await ref.read(authProvider.notifier).resetPassword(email, otp, newPass);
-                                if (ctx.mounted) {
-                                  Navigator.pop(ctx);
-                                }
-                                if (mounted) {
-                                  _emailController.text = email;
-                                  _passwordController.text = newPass;
-                                  messenger.showSnackBar(
-                                    SnackBar(
-                                      content: Text(lang == AppLanguage.hi ? 'पासवर्ड सफलतापूर्वक बदल दिया गया! लॉग इन करें।' : 'Password reset successful! You can now log in.'),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                setModalState(() {
-                                  isLoading = false;
-                                  errorMessage = e.toString().replaceAll('Exception: ', '');
-                                });
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: isLoading
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : Text(lang == AppLanguage.hi ? 'पासवर्ड रीसेट करें' : 'Reset Password'),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 }
 
 // ── CUSTOM WEAVE/EMBLEM WIDGET ──────────────────────────────────────────────

@@ -256,12 +256,10 @@ class Auth extends _$Auth {
     }
   }
 
-  Future<String?> forgotPassword(String email) async {
+  Future<void> forgotPassword(String email) async {
     try {
       final dio = ref.read(apiClientProvider);
-      final response = await dio.post('/auth/forgot-password', data: {'email': email});
-      final otp = response.data['otp'] as String?;
-      return otp;
+      await dio.post('/auth/forgot-password', data: {'email': email});
     } catch (e) {
       throw Exception(_getErrorMessage(e));
     }

@@ -7,7 +7,7 @@ import {
   handleResetPassword,
   handleLinkMobile
 } from '../controllers/auth.controller.js';
-import { authMiddleware } from '../middleware/auth.middleware.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const authRouter = new Hono();
 

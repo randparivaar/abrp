@@ -854,6 +854,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                           const SizedBox(height: 2),
                                           Text(
                                             item['email'] as String? ?? item['mobile'] as String? ?? 'No contact info',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
                                               fontSize: 13,
                                               color: theme.colorScheme.onSurfaceVariant,
@@ -3382,6 +3384,21 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       'Dispatch Notifications',
     ];
 
+    final isCompactScreen = MediaQuery.of(context).size.width < 600;
+
+    final tabBody = IndexedStack(
+      index: _selectedTabIndex.clamp(0, tabTitles.length - 1),
+      children: [
+        _buildDashboardTab(lang, isAdmin),
+        _buildFamilyApprovalsTab(),
+        _buildBusinessApprovalsTab(),
+        if (isAdmin) _buildEventsManagementTab(),
+        if (isAdmin) _buildAdvertisementsTab(lang),
+        if (isAdmin) _buildUsersTab(),
+        _buildNotificationsTab(lang),
+      ],
+    );
+
     return Scaffold(
       drawer: const AppDrawer(),
       appBar: AppBar(
@@ -3417,75 +3434,136 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           ),
         ],
       ),
-      body: Row(
-        children: [
-          // ── NavigationRail ─────────────────────────────────────
-          NavigationRail(
-            selectedIndex: _selectedTabIndex,
-            onDestinationSelected: (i) =>
-                setState(() => _selectedTabIndex = i),
-            labelType: NavigationRailLabelType.all,
-            minWidth: 72,
-            groupAlignment: -1.0,
-            backgroundColor: isDark
-                ? colorScheme.surface
-                : colorScheme.surfaceContainerLowest,
-            selectedIconTheme: IconThemeData(color: colorScheme.primary),
-            unselectedIconTheme: IconThemeData(
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
-            selectedLabelTextStyle: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.primary),
-            unselectedLabelTextStyle: GoogleFonts.inter(
-                fontSize: 10,
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
-            destinations: tabs.map((t) {
-              final hasBadge = t.badge > 0;
-              return NavigationRailDestination(
-                icon: hasBadge
-                    ? Badge(
-                        label: Text('${t.badge}',
-                            style: const TextStyle(fontSize: 8)),
-                        child: Icon(t.icon),
-                      )
-                    : Icon(t.icon),
-                selectedIcon: hasBadge
-                    ? Badge(
-                        label: Text('${t.badge}',
-                            style: const TextStyle(fontSize: 8)),
-                        child: Icon(t.icon),
-                      )
-                    : Icon(t.icon),
-                label: Text(t.label),
-              );
-            }).toList(),
-          ),
-
-          // ── Vertical divider ───────────────────────────────────
-          VerticalDivider(
-            width: 1,
-            thickness: 1,
-            color: colorScheme.outlineVariant.withValues(alpha: 0.4),
-          ),
-
-          // ── Tab body ───────────────────────────────────────────
-          Expanded(
-            child: IndexedStack(
-              index: _selectedTabIndex,
+      body: isCompactScreen
+          ? Column(
               children: [
-                _buildDashboardTab(lang, isAdmin),
-                _buildFamilyApprovalsTab(),
-                _buildBusinessApprovalsTab(),
-                if (isAdmin) _buildEventsManagementTab(),
-                if (isAdmin) _buildAdvertisementsTab(lang),
-                if (isAdmin) _buildUsersTab(),
-                _buildNotificationsTab(lang),
+                // Top Horizontal Scrollable Tab Bar for Mobile Screens
+                Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? colorScheme.surface
+                        : colorScheme.surfaceContainerLowest,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    itemCount: tabs.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (ctx, i) {
+                      final t = tabs[i];
+                      final isSelected = _selectedTabIndex == i;
+                      final hasBadge = t.badge > 0;
+
+                      return ChoiceChip(
+                        showCheckmark: false,
+                        avatar: null,
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            hasBadge
+                                ? Badge(
+                                    label: Text('${t.badge}', style: const TextStyle(fontSize: 8)),
+                                    child: Icon(t.icon, size: 18, color: isSelected ? Colors.white : colorScheme.primary),
+                                  )
+                                : Icon(t.icon, size: 18, color: isSelected ? Colors.white : colorScheme.onSurfaceVariant),
+                            if (isSelected) ...[
+                              const SizedBox(width: 6),
+                              Text(t.label),
+                            ],
+                          ],
+                        ),
+                        selected: isSelected,
+                        onSelected: (_) => setState(() => _selectedTabIndex = i),
+                        selectedColor: colorScheme.primary,
+                        labelStyle: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSelected ? 8 : 4,
+                          vertical: 4,
+                        ),
+                        backgroundColor: colorScheme.surfaceContainerLow,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: isSelected
+                                ? colorScheme.primary
+                                : colorScheme.outlineVariant.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Expanded(child: tabBody),
+              ],
+            )
+          : Row(
+              children: [
+                // ── NavigationRail for Larger Screens / Tablets ────────
+                NavigationRail(
+                  selectedIndex: _selectedTabIndex,
+                  onDestinationSelected: (i) =>
+                      setState(() => _selectedTabIndex = i),
+                  labelType: NavigationRailLabelType.all,
+                  minWidth: 72,
+                  groupAlignment: -1.0,
+                  backgroundColor: isDark
+                      ? colorScheme.surface
+                      : colorScheme.surfaceContainerLowest,
+                  selectedIconTheme: IconThemeData(color: colorScheme.primary),
+                  unselectedIconTheme: IconThemeData(
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                  selectedLabelTextStyle: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.primary),
+                  unselectedLabelTextStyle: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7)),
+                  destinations: tabs.map((t) {
+                    final hasBadge = t.badge > 0;
+                    return NavigationRailDestination(
+                      icon: hasBadge
+                          ? Badge(
+                              label: Text('${t.badge}',
+                                  style: const TextStyle(fontSize: 8)),
+                              child: Icon(t.icon),
+                            )
+                          : Icon(t.icon),
+                      selectedIcon: hasBadge
+                          ? Badge(
+                              label: Text('${t.badge}',
+                                  style: const TextStyle(fontSize: 8)),
+                              child: Icon(t.icon),
+                            )
+                          : Icon(t.icon),
+                      label: Text(t.label),
+                    );
+                  }).toList(),
+                ),
+
+                // ── Vertical divider ───────────────────────────────────
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+                ),
+
+                // ── Tab body ───────────────────────────────────────────
+                Expanded(child: tabBody),
               ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }
+

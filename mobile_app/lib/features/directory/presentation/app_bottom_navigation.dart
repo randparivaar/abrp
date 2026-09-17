@@ -30,6 +30,12 @@ class AppBottomNavigation extends ConsumerWidget {
         currentIndex: currentIndex,
         elevation: 0,
         type: BottomNavigationBarType.fixed,
+        showUnselectedLabels: false,
+        showSelectedLabels: true,
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+        unselectedLabelStyle: const TextStyle(fontSize: 0),
         onTap: (index) async {
           if (index == currentIndex) return;
 

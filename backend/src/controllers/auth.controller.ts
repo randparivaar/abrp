@@ -10,6 +10,7 @@ import {
 } from '../services/auth.service.js';
 import { registerDeviceToken } from '../services/notifications.service.js';
 import { associateUserWithFamilyMemberByMobile } from '../services/directory.service.js';
+import { brevoService } from '../services/brevo.service.js';
 import { GoogleLoginRequest, RegisterRequest, LoginRequest } from '../types/auth.types.js';
 import { hashPassword, verifyPassword } from '../utils/crypto.js';
 
@@ -217,7 +218,7 @@ export async function handleForgotPassword(c: Context) {
     const user = await findUserByEmail(cleanEmail);
 
     if (!user) {
-      return c.json({ message: 'If an account exists with this email, an OTP has been sent.', success: true });
+      return c.json({ error: 'No registered account found with this email address. Please check your email or sign up.' }, 404);
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -225,12 +226,44 @@ export async function handleForgotPassword(c: Context) {
 
     otpStore.set(cleanEmail, { otp, expiresAt });
 
-    console.log(`[AUTH] Password Reset OTP for ${cleanEmail}: ${otp}`);
+    console.log(`[AUTH] Password Reset OTP generated for ${cleanEmail}`);
+
+    // Send Email via Brevo REST API
+    const emailSent = await brevoService.sendEmail(
+      cleanEmail,
+      user.fullName || 'Member',
+      'Your ABRP Password Reset Code',
+      `
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+          <div style="text-align: center; padding-bottom: 16px; border-bottom: 1px solid #f1f5f9;">
+            <h2 style="color: #8B0000; margin: 0; font-size: 22px;">Akhil Bhartiya Rander Parivar</h2>
+            <p style="color: #64748b; font-size: 13px; margin-top: 4px;">Heritage · Community · Progress</p>
+          </div>
+          <div style="padding: 24px 0;">
+            <p style="font-size: 15px; color: #1e293b;">Hello <strong>${user.fullName || 'Member'}</strong>,</p>
+            <p style="font-size: 14px; color: #475569; line-height: 1.5;">
+              We received a request to reset your password for your Rander Parivar Samaj account. Use the 6-digit verification code below:
+            </p>
+            <div style="text-align: center; margin: 28px 0;">
+              <span style="font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #8B0000; background-color: #fff8f6; padding: 14px 28px; border-radius: 8px; border: 1.5px dashed #8B0000; display: inline-block;">${otp}</span>
+            </div>
+            <p style="font-size: 13px; color: #64748b; text-align: center;">This verification OTP code is valid for <strong>15 minutes</strong>.</p>
+            <p style="font-size: 13px; color: #94a3b8; line-height: 1.4;">If you did not request a password reset, please ignore this email or contact support if you suspect unauthorized access.</p>
+          </div>
+          <div style="border-top: 1px solid #f1f5f9; padding-top: 16px; text-align: center; font-size: 12px; color: #94a3b8;">
+            © Akhil Bhartiya Rander Parivar Samaj
+          </div>
+        </div>
+      `
+    );
+
+    if (!emailSent) {
+      console.warn(`[AUTH] Brevo API email dispatch skipped/failed for ${cleanEmail}. Check BREVO_API_KEY.`);
+    }
 
     return c.json({
-      message: 'Password reset OTP has been sent to your email.',
+      message: 'Password reset OTP code has been sent to your email address.',
       success: true,
-      otp,
     });
   } catch (error: any) {
     console.error('Forgot Password handler error:', error);
