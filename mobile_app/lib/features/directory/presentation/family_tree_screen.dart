@@ -10,6 +10,7 @@ import 'package:mobile_app/features/directory/presentation/family_member_detail_
 import 'package:mobile_app/features/directory/presentation/app_drawer.dart';
 import 'package:mobile_app/features/directory/presentation/directory_models.dart';
 export 'package:mobile_app/features/directory/presentation/directory_models.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class FamilyTreeNotifier extends AsyncNotifier<FamilyTreeData> {
   final int familyId;
@@ -56,7 +57,10 @@ class FamilyTreeScreen extends ConsumerStatefulWidget {
 class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
   int? _focusedRootMemberId;
   final Set<int> _collapsedMemberIds = {};
-  bool _showPremiumUI = false;
+  bool _showCanvasTree = false;
+  bool get _showPremiumUI => _showCanvasTree;
+  String _seniorSearchQuery = '';
+  int _seniorFilterGen = 0; // 0 = All, 1 = Elders/Parents, 2 = Self/Spouse, 3 = Children, 4 = Grandchildren
   final ScrollController _horizontalScrollController = ScrollController();
   final TransformationController _transformationController = TransformationController();
 
@@ -186,21 +190,21 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
             Padding(
               padding: const EdgeInsets.only(right: 10),
               child: GestureDetector(
-                onTap: () => setState(() => _showPremiumUI = !_showPremiumUI),
+                onTap: () => setState(() => _showCanvasTree = !_showCanvasTree),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOut,
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    gradient: _showPremiumUI
+                    gradient: _showCanvasTree
                         ? const LinearGradient(
                             colors: [Color(0xFFD4AF37), Color(0xFFAA771C)],
                           )
                         : null,
-                    color: _showPremiumUI ? null : Colors.grey.withValues(alpha: 0.12),
+                    color: _showCanvasTree ? null : Colors.grey.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: _showPremiumUI
+                      color: _showCanvasTree
                           ? const Color(0xFFD4AF37)
                           : Colors.grey.shade400,
                       width: 1.0,
@@ -210,19 +214,19 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        _showPremiumUI
+                        _showCanvasTree
                             ? Icons.auto_awesome
-                            : Icons.auto_awesome_outlined,
+                            : Icons.view_agenda_outlined,
                         size: 13,
-                        color: _showPremiumUI ? Colors.white : Colors.grey.shade600,
+                        color: _showCanvasTree ? Colors.white : Colors.grey.shade600,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        _showPremiumUI ? 'V2' : 'V1',
+                        _showCanvasTree ? 'V2 Tree' : 'Cards',
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: _showPremiumUI ? Colors.white : Colors.grey.shade600,
+                          color: _showCanvasTree ? Colors.white : Colors.grey.shade600,
                         ),
                       ),
                     ],
@@ -233,9 +237,9 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
           ],
         ),
       body: treeAsync.when(
-        data: (data) => _showPremiumUI
+        data: (data) => _showCanvasTree
             ? _buildPremiumTreeContent(context, data, theme)
-            : _buildTreeContent(context, data, theme),
+            : _buildSeniorTreeContent(context, data, theme),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(
           child: Padding(
@@ -303,771 +307,6 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
             )
           : null,
       bottomNavigationBar: const AppBottomNavigation(currentIndex: 2),
-    );
-  }
-
-  Widget _buildTreeContent(BuildContext context, FamilyTreeData data, ThemeData theme) {
-    // Determine the root member (either Main Head or Focused Sub-Tree Root)
-    final head = data.members.firstWhere(
-      (m) => m.relationshipToHead == 'self',
-      orElse: () => data.members.first,
-    );
-
-    final currentRoot = _focusedRootMemberId != null
-        ? data.members.firstWhere(
-            (m) => m.id == _focusedRootMemberId,
-            orElse: () => head,
-          )
-        : head;
-
-    final isFocused = _focusedRootMemberId != null && _focusedRootMemberId != head.id;
-
-    // Find Root's spouse if exists
-    final spouse = data.members.firstWhere(
-      (m) => m.spouseId == currentRoot.id || (currentRoot.spouseId != null && m.id == currentRoot.spouseId),
-      orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
-    );
-    final hasSpouse = spouse.id != -1;
-
-    // Helper function to sort members by age (oldest first, youngest last)
-    List<MemberNode> sortByAge(Iterable<MemberNode> list) {
-      final sorted = list.toList();
-      sorted.sort((a, b) {
-        // 1. Sort by birthDate if available (earlier birthDate = older person)
-        if (a.birthDate != null && b.birthDate != null) {
-          return a.birthDate!.compareTo(b.birthDate!);
-        }
-        if (a.birthDate != null) return -1; // a has birthdate, b doesn't -> a first
-        if (b.birthDate != null) return 1;  // b has birthdate, a doesn't -> b first
-
-        // 2. Sort by estimatedAgeOnCreation (higher age = older person)
-        if (a.estimatedAgeOnCreation != null && b.estimatedAgeOnCreation != null) {
-          return b.estimatedAgeOnCreation!.compareTo(a.estimatedAgeOnCreation!);
-        }
-        if (a.estimatedAgeOnCreation != null) return -1;
-        if (b.estimatedAgeOnCreation != null) return 1;
-
-        // 3. Fallback to ID for stable sorting
-        return a.id.compareTo(b.id);
-      });
-      return sorted;
-    }
-
-    // Find Root's direct children (sorted oldest to youngest)
-    final rootAndSpouseIds = {currentRoot.id, if (hasSpouse) spouse.id};
-    final children = sortByAge(data.members.where((m) {
-      final linkedToRoot = (m.fatherId != null && rootAndSpouseIds.contains(m.fatherId)) ||
-          (m.motherId != null && rootAndSpouseIds.contains(m.motherId));
-      return linkedToRoot && m.id != currentRoot.id && m.id != spouse.id;
-    }));
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Breadcrumb Navigation Bar for Sub-Tree Focus Mode
-          if (isFocused) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.account_tree_outlined, color: theme.colorScheme.primary, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Sub-Tree View: ${currentRoot.fullName}\'s Lineage',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                        color: theme.colorScheme.primary,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _focusedRootMemberId = null;
-                      });
-                    },
-                    icon: const Icon(Icons.home_outlined, size: 14),
-                    label: const Text('Main Tree', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          // Rejection Notice Banner (if any member was rejected with feedback)
-          if (data.members.any((m) => m.status == 'rejected' && m.validationFeedback != null && m.validationFeedback!.isNotEmpty)) ...[
-            Builder(builder: (_) {
-              final rejectedMember = data.members.firstWhere((m) => m.status == 'rejected' && m.validationFeedback != null && m.validationFeedback!.isNotEmpty);
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-                padding: const EdgeInsets.all(12.0),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.shade300),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Family Update Required / संशोधन आवश्यक',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.red.shade900, fontSize: 13),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Moderator Reason: ${rejectedMember.validationFeedback}',
-                            style: GoogleFonts.inter(color: Colors.red.shade800, fontSize: 12),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Please edit member details to fix the issue and resubmit.',
-                            style: GoogleFonts.inter(color: Colors.red.shade700, fontSize: 11, fontStyle: FontStyle.italic),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-
-          const SizedBox(height: 8),
-
-          // Interactive Viewer with Pinch-to-Zoom Gesture & Pan Support
-          Builder(builder: (context) {
-            _centerHeadCard();
-            return InteractiveViewer(
-              transformationController: _transformationController,
-              minScale: 0.3,
-              maxScale: 2.5,
-              boundaryMargin: const EdgeInsets.all(80),
-              child: RepaintBoundary(
-                child: SingleChildScrollView(
-                  controller: _horizontalScrollController,
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-                  child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: MediaQuery.of(context).size.width - 48.0,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                  // Root Couple Row
-                  _buildCoupleRow(
-                    context: context,
-                    head: currentRoot,
-                    spouse: spouse,
-                    hasSpouse: hasSpouse,
-                    city: data.family.city?.toUpperCase() ?? 'DELHI',
-                    theme: theme,
-                    family: data.family,
-                  ),
-
-                  // Children Generation Layer
-                  if (children.isNotEmpty) ...[
-                    Builder(builder: (context) {
-                      final List<double> branchWidths = children.map((child) {
-                        final hasChildSpouse = data.members.any(
-                          (m) => (child.spouseId != null && m.id == child.spouseId) || m.spouseId == child.id,
-                        );
-                        return hasChildSpouse ? 232.0 : 152.0;
-                      }).toList();
-                      final totalWidth = branchWidths.fold(0.0, (a, b) => a + b);
-
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Connector painter for child nodes
-                          CustomPaint(
-                            size: Size(totalWidth, 48.0),
-                            painter: ConnectorPainter(
-                              childCount: children.length,
-                              branchWidths: branchWidths,
-                              color: theme.colorScheme.primaryContainer,
-                            ),
-                          ),
-                          // Row of children couple-branch cards
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: children.map((child) {
-                              return _buildRecursiveMemberBranch(context, child, data.members, theme);
-                            }).toList(),
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }),
-          
-          const SizedBox(height: 100),
-        ],
-      ),
-    );
-  }
-
-  /// Builds the top Head + Spouse main couple card
-  Widget _buildCoupleRow({
-    required BuildContext context,
-    required MemberNode head,
-    required MemberNode spouse,
-    required bool hasSpouse,
-    required String city,
-    required ThemeData theme,
-    required FamilyUnit family,
-  }) {
-    final colorScheme = theme.colorScheme;
-
-    Widget buildMemberColumn(MemberNode member, {bool isHead = false}) {
-      return GestureDetector(
-        onTap: () => _showMemberActionSheet(context, member),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GestureDetector(
-              onTap: () => _showMemberPhotoViewer(context, member),
-              child: Container(
-                padding: const EdgeInsets.all(3.5),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: isHead
-                      ? const LinearGradient(
-                          colors: [Color(0xFFF4D068), Color(0xFFAA771C), Color(0xFFD4AF37)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : LinearGradient(
-                          colors: [Colors.pink.shade300, Colors.pink.shade600],
-                        ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isHead ? const Color(0xFFD4AF37) : Colors.pink).withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: AppAvatar(
-                  name: member.fullName,
-                  imageUrl: member.avatarUrl,
-                  radius: 46,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: 112,
-              child: Text(
-                member.fullName,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: colorScheme.onSurface,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                gradient: isHead
-                    ? const LinearGradient(
-                        colors: [Color(0xFF8B0000), Color(0xFFB22222)],
-                      )
-                    : LinearGradient(
-                        colors: [colorScheme.secondary, colorScheme.secondary.withValues(alpha: 0.8)],
-                      ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Text(
-                isHead ? 'HEAD OF FAMILY • $city' : 'SPOUSE',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 9,
-                  letterSpacing: 0.8,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Placeholder spouse card column (tap to add)
-    Widget buildSpousePlaceholderColumn() {
-      return GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AddMemberDialog(
-              familyId: widget.familyId,
-              defaultRelation: 'spouse',
-              defaultGender: head.gender == 'male' ? 'female' : 'male',
-              spouseId: head.id,
-              defaultAddress: family.address,
-              defaultCity: family.city,
-              defaultState: family.state,
-              defaultPincode: family.pincode,
-              onMemberAdded: () {
-                ref.read(familyTreeProvider(widget.familyId).notifier).fetchTree();
-              },
-            ),
-            fullscreenDialog: true,
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(3.5),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.5), width: 2),
-              ),
-              child: CircleAvatar(
-                radius: 46,
-                backgroundColor: const Color(0xFFF0ECE1),
-                child: const Icon(
-                  Icons.person_add_alt_1_outlined,
-                  color: Color(0xFFAA771C),
-                  size: 26,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: 120,
-              child: Text(
-                'Add Spouse',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: const Color(0xFF7A6855),
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEBE4D5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'TAP TO ADD',
-                style: GoogleFonts.inter(
-                  color: const Color(0xFFAA771C),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 9,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      decoration: BoxDecoration(
-        color: theme.brightness == Brightness.dark ? colorScheme.surfaceContainer : Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: const Color(0xFFD4AF37).withValues(alpha: 0.6),
-          width: 2.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFD4AF37).withValues(alpha: 0.15),
-            blurRadius: 20,
-            spreadRadius: 2,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Head
-          buildMemberColumn(head, isHead: true),
-
-          // Heart connector
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 20,
-                  height: 1.5,
-                  color: colorScheme.secondary.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: colorScheme.secondaryContainer.withValues(alpha: 0.4),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: colorScheme.secondary.withValues(alpha: 0.4),
-                      width: 1.0,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.favorite_rounded,
-                    size: 14,
-                    color: colorScheme.secondary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  width: 20,
-                  height: 1.5,
-                  color: colorScheme.secondary.withValues(alpha: 0.5),
-                ),
-              ],
-            ),
-          ),
-
-          // Spouse or placeholder
-          hasSpouse ? buildMemberColumn(spouse, isHead: false) : buildSpousePlaceholderColumn(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecursiveMemberBranch(
-    BuildContext context,
-    MemberNode member,
-    List<MemberNode> allMembers,
-    ThemeData theme,
-  ) {
-    final colorScheme = theme.colorScheme;
-
-    // Find spouse for this node if registered
-    final spouseNode = allMembers.firstWhere(
-      (m) => (member.spouseId != null && m.id == member.spouseId) || m.spouseId == member.id,
-      orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
-    );
-    final hasSpouse = spouseNode.id != -1;
-
-    // Find direct children of this member (sorted oldest to youngest)
-    final memberAndSpouseIds = {member.id, if (hasSpouse) spouseNode.id};
-    final directChildren = allMembers.where((m) {
-      if (memberAndSpouseIds.contains(m.id)) return false;
-      final linkedToMember = (m.fatherId != null && memberAndSpouseIds.contains(m.fatherId)) ||
-          (m.motherId != null && memberAndSpouseIds.contains(m.motherId));
-      return linkedToMember;
-    }).toList();
-
-    directChildren.sort((a, b) {
-      if (a.birthDate != null && b.birthDate != null) {
-        return a.birthDate!.compareTo(b.birthDate!);
-      }
-      if (a.birthDate != null) return -1;
-      if (b.birthDate != null) return 1;
-
-      if (a.estimatedAgeOnCreation != null && b.estimatedAgeOnCreation != null) {
-        return b.estimatedAgeOnCreation!.compareTo(a.estimatedAgeOnCreation!);
-      }
-      if (a.estimatedAgeOnCreation != null) return -1;
-      if (b.estimatedAgeOnCreation != null) return 1;
-
-      return a.id.compareTo(b.id);
-    });
-
-    // Branch width: 232 for couple card pair, 152 for single child
-    final double branchWidth = hasSpouse ? 232.0 : 152.0;
-
-    // ----------- Member photo column (used inside unified card) ----------
-    Widget memberPhotoColumn(MemberNode m, {required String roleTag, bool isPrimary = true}) {
-      return GestureDetector(
-        onTap: () => _showMemberActionSheet(context, m),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GestureDetector(
-              onTap: () => _showMemberPhotoViewer(context, m),
-              child: Container(
-                padding: const EdgeInsets.all(2.5),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: isPrimary
-                      ? const LinearGradient(
-                          colors: [Color(0xFFF4D068), Color(0xFFD4AF37)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : LinearGradient(
-                          colors: [Colors.pink.shade300, Colors.pink.shade500],
-                        ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isPrimary ? const Color(0xFFD4AF37) : Colors.pink).withValues(alpha: 0.25),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: AppAvatar(
-                  name: m.fullName,
-                  imageUrl: m.avatarUrl,
-                  radius: 44,
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            SizedBox(
-              width: 104,
-              child: Text(
-                m.fullName,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: colorScheme.onSurface,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: isPrimary ? const Color(0xFFFAF2E1) : const Color(0xFFFDE8E9),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isPrimary ? const Color(0xFFD4AF37).withValues(alpha: 0.5) : Colors.pink.withValues(alpha: 0.3),
-                  width: 0.8,
-                ),
-              ),
-              child: Text(
-                roleTag.toUpperCase(),
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  color: isPrimary ? const Color(0xFF8C6615) : Colors.pink.shade700,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 9,
-                  letterSpacing: 0.6,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // ----------- Unified Couple / Member Card ----------
-    Widget coupleHeader;
-    if (hasSpouse) {
-      coupleHeader = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-        decoration: BoxDecoration(
-          color: theme.brightness == Brightness.dark ? colorScheme.surfaceContainer : Colors.white.withValues(alpha: 0.95),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-            width: 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFC59B27).withValues(alpha: 0.1),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            memberPhotoColumn(member, roleTag: member.relationshipToHead, isPrimary: true),
-            // Heart connector icon
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(width: 8, height: 1.5, color: const Color(0xFFD4AF37).withValues(alpha: 0.6)),
-                  const SizedBox(height: 3),
-                  Icon(Icons.favorite_rounded, size: 12, color: Colors.pink.shade400),
-                  const SizedBox(height: 3),
-                  Container(width: 8, height: 1.5, color: const Color(0xFFD4AF37).withValues(alpha: 0.6)),
-                ],
-              ),
-            ),
-            memberPhotoColumn(spouseNode, roleTag: spouseNode.relationshipToHead, isPrimary: false),
-          ],
-        ),
-      );
-    } else {
-      coupleHeader = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        decoration: BoxDecoration(
-          color: theme.brightness == Brightness.dark ? colorScheme.surfaceContainer : Colors.white.withValues(alpha: 0.95),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-            width: 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFC59B27).withValues(alpha: 0.1),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: memberPhotoColumn(member, roleTag: member.relationshipToHead, isPrimary: true),
-      );
-    }
-
-    // ----------- Sub-branch children connector + recursive row ----------
-    Widget? childrenSection;
-    final isCollapsed = _collapsedMemberIds.contains(member.id);
-    double subTotalWidth = 0.0;
-
-    if (directChildren.isNotEmpty) {
-      final List<double> subBranchWidths = directChildren.map((sc) {
-        final hasSubSpouse = allMembers.any(
-          (m) => (sc.spouseId != null && m.id == sc.spouseId) || m.spouseId == sc.id,
-        );
-        return hasSubSpouse ? 232.0 : 152.0;
-      }).toList();
-      subTotalWidth = subBranchWidths.fold(0.0, (a, b) => a + b);
-
-      childrenSection = Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Expand / Collapse Toggle Pill
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                if (isCollapsed) {
-                  _collapsedMemberIds.remove(member.id);
-                } else {
-                  _collapsedMemberIds.add(member.id);
-                }
-              });
-            },
-            child: Container(
-              margin: const EdgeInsets.only(top: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.colorScheme.primaryContainer),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    isCollapsed ? Icons.unfold_more : Icons.unfold_less,
-                    size: 12,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${directChildren.length} ${directChildren.length == 1 ? 'Child' : 'Children'}',
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          if (!isCollapsed) ...[
-            Container(width: 2, height: 16, color: colorScheme.primaryContainer),
-            CustomPaint(
-              size: Size(subTotalWidth, 44.0),
-              painter: ConnectorPainter(
-                childCount: directChildren.length,
-                branchWidths: subBranchWidths,
-                color: colorScheme.primaryContainer,
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: directChildren.map((subChild) {
-                return _buildRecursiveMemberBranch(context, subChild, allMembers, theme);
-              }).toList(),
-            ),
-          ],
-        ],
-      );
-    }
-
-    // Dynamic width: allow branch container to expand if level 3 sub-tree children span wider than parent card
-    final double effectiveWidth = (!isCollapsed && subTotalWidth > branchWidth) ? subTotalWidth : branchWidth;
-
-    return SizedBox(
-      width: effectiveWidth,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          coupleHeader,
-          ?childrenSection,
-        ],
-      ),
     );
   }
 
@@ -2553,6 +1792,788 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
         ),
       ),
     );
+  }
+
+  // ============================================================
+  // SENIOR ACCESSIBLE UI — Large cards, bold text, direct action buttons
+  // ============================================================
+
+  Widget _buildSeniorTreeContent(BuildContext context, FamilyTreeData data, ThemeData theme) {
+    // Filter members by search query
+    final filteredMembers = data.members.where((m) {
+      if (_seniorSearchQuery.trim().isEmpty) return true;
+      final q = _seniorSearchQuery.trim().toLowerCase();
+      final nameMatch = m.fullName.toLowerCase().contains(q);
+      final relMatch = m.relationshipToHead.toLowerCase().contains(q);
+      final gotraMatch = (m.gotra ?? '').toLowerCase().contains(q);
+      final mobileMatch = (m.mobile ?? '').contains(q);
+      return nameMatch || relMatch || gotraMatch || mobileMatch;
+    }).toList();
+
+    // 1. Elders & Parents (Sorted by Age Descending)
+    final eldersAndParents = filteredMembers.where((m) {
+      final rel = m.relationshipToHead.toLowerCase();
+      return ['father', 'mother', 'grandfather', 'grandmother', 'paternal_grandfather', 'paternal_grandmother', 'maternal_grandfather', 'maternal_grandmother', 'uncle', 'aunt'].contains(rel);
+    }).toList();
+    eldersAndParents.sort((a, b) => b.age.compareTo(a.age));
+
+    // 2. Self, Spouse & Siblings (Head + Spouse, then Siblings by Age + Spouse)
+    final selfAndSpouseAndSiblings = <MemberNode>[];
+    final processedSelfIds = <int>{};
+
+    final headMember = filteredMembers.firstWhere(
+      (m) => m.relationshipToHead.toLowerCase() == 'self',
+      orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
+    );
+
+    if (headMember.id != -1) {
+      selfAndSpouseAndSiblings.add(headMember);
+      processedSelfIds.add(headMember.id);
+
+      final spouseOfHead = filteredMembers.firstWhere(
+        (m) => (headMember.spouseId != null && m.id == headMember.spouseId) ||
+               (m.relationshipToHead.toLowerCase() == 'spouse'),
+        orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
+      );
+      if (spouseOfHead.id != -1 && !processedSelfIds.contains(spouseOfHead.id)) {
+        selfAndSpouseAndSiblings.add(spouseOfHead);
+        processedSelfIds.add(spouseOfHead.id);
+      }
+    }
+
+    final siblings = filteredMembers.where((m) {
+      final rel = m.relationshipToHead.toLowerCase();
+      return ['brother', 'sister'].contains(rel) && !processedSelfIds.contains(m.id);
+    }).toList();
+    siblings.sort((a, b) => b.age.compareTo(a.age));
+
+    for (final sib in siblings) {
+      if (!processedSelfIds.contains(sib.id)) {
+        selfAndSpouseAndSiblings.add(sib);
+        processedSelfIds.add(sib.id);
+
+        final sibSpouse = filteredMembers.firstWhere(
+          (m) => (sib.spouseId != null && m.id == sib.spouseId) ||
+                 (m.spouseId != null && m.spouseId == sib.id),
+          orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
+        );
+        if (sibSpouse.id != -1 && !processedSelfIds.contains(sibSpouse.id)) {
+          selfAndSpouseAndSiblings.add(sibSpouse);
+          processedSelfIds.add(sibSpouse.id);
+        }
+      }
+    }
+
+    for (final m in filteredMembers) {
+      final rel = m.relationshipToHead.toLowerCase();
+      if (['self', 'spouse', 'brother', 'sister', 'brother_in_law', 'sister_in_law'].contains(rel)) {
+        if (!processedSelfIds.contains(m.id)) {
+          selfAndSpouseAndSiblings.add(m);
+          processedSelfIds.add(m.id);
+        }
+      }
+    }
+
+    // 3. Children & Spouses (Sorted Age-wise: Oldest Child first, followed immediately by their Spouse)
+    final childrenAndInlaws = <MemberNode>[];
+    final processedChildIds = <int>{};
+
+    final primaryChildren = filteredMembers.where((m) =>
+      ['son', 'daughter'].contains(m.relationshipToHead.toLowerCase())
+    ).toList();
+    primaryChildren.sort((a, b) => b.age.compareTo(a.age));
+
+    for (final child in primaryChildren) {
+      if (!processedChildIds.contains(child.id)) {
+        childrenAndInlaws.add(child);
+        processedChildIds.add(child.id);
+
+        // Find spouse of this child
+        final spouse = filteredMembers.firstWhere(
+          (m) => (child.spouseId != null && m.id == child.spouseId) ||
+                 (m.spouseId != null && m.spouseId == child.id),
+          orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
+        );
+        if (spouse.id != -1 && !processedChildIds.contains(spouse.id)) {
+          childrenAndInlaws.add(spouse);
+          processedChildIds.add(spouse.id);
+        }
+      }
+    }
+
+    for (final m in filteredMembers) {
+      final rel = m.relationshipToHead.toLowerCase();
+      if (['son', 'daughter', 'son_in_law', 'daughter_in_law', 'nephew', 'niece'].contains(rel)) {
+        if (!processedChildIds.contains(m.id)) {
+          childrenAndInlaws.add(m);
+          processedChildIds.add(m.id);
+        }
+      }
+    }
+
+    // 4. Grandchildren & Spouses (Sorted Age-wise: Oldest Grandchild first, followed immediately by their Spouse)
+    final grandchildren = <MemberNode>[];
+    final processedGcIds = <int>{};
+
+    final primaryGrandchildren = filteredMembers.where((m) =>
+      ['grandson', 'granddaughter'].contains(m.relationshipToHead.toLowerCase())
+    ).toList();
+    primaryGrandchildren.sort((a, b) => b.age.compareTo(a.age));
+
+    for (final gc in primaryGrandchildren) {
+      if (!processedGcIds.contains(gc.id)) {
+        grandchildren.add(gc);
+        processedGcIds.add(gc.id);
+
+        final spouse = filteredMembers.firstWhere(
+          (m) => (gc.spouseId != null && m.id == gc.spouseId) ||
+                 (m.spouseId != null && m.spouseId == gc.id),
+          orElse: () => MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: ''),
+        );
+        if (spouse.id != -1 && !processedGcIds.contains(spouse.id)) {
+          grandchildren.add(spouse);
+          processedGcIds.add(spouse.id);
+        }
+      }
+    }
+
+    for (final m in filteredMembers) {
+      final rel = m.relationshipToHead.toLowerCase();
+      if (['grandson', 'granddaughter'].contains(rel)) {
+        if (!processedGcIds.contains(m.id)) {
+          grandchildren.add(m);
+          processedGcIds.add(m.id);
+        }
+      }
+    }
+
+    // 5. Others
+    final allCategorizedIds = {
+      ...eldersAndParents.map((e) => e.id),
+      ...selfAndSpouseAndSiblings.map((e) => e.id),
+      ...childrenAndInlaws.map((e) => e.id),
+      ...grandchildren.map((e) => e.id),
+    };
+    final others = filteredMembers.where((m) => !allCategorizedIds.contains(m.id)).toList();
+
+    return Container(
+      color: theme.colorScheme.surface,
+      child: CustomScrollView(
+        slivers: [
+          // Senior Header & Search Bar
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                    theme.colorScheme.surface,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0xFFD4AF37).withValues(alpha: 0.6),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Search Bar
+                  TextField(
+                    onChanged: (val) => setState(() => _seniorSearchQuery = val),
+                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      hintText: 'Search family member name or relation...',
+                      hintStyle: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade500),
+                      prefixIcon: const Icon(Icons.search, size: 24, color: Color(0xFFC59B27)),
+                      suffixIcon: _seniorSearchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () => setState(() => _seniorSearchQuery = ''),
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: theme.colorScheme.surface,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFC59B27), width: 2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Filter Chips Scrollable
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildSeniorFilterChip('All (${filteredMembers.length})', 0),
+                        const SizedBox(width: 8),
+                        if (eldersAndParents.isNotEmpty)
+                          _buildSeniorFilterChip('Elders & Parents (${eldersAndParents.length})', 1),
+                        if (eldersAndParents.isNotEmpty) const SizedBox(width: 8),
+                        if (selfAndSpouseAndSiblings.isNotEmpty)
+                          _buildSeniorFilterChip('Self & Siblings (${selfAndSpouseAndSiblings.length})', 2),
+                        if (selfAndSpouseAndSiblings.isNotEmpty) const SizedBox(width: 8),
+                        if (childrenAndInlaws.isNotEmpty)
+                          _buildSeniorFilterChip('Children (${childrenAndInlaws.length})', 3),
+                        if (childrenAndInlaws.isNotEmpty) const SizedBox(width: 8),
+                        if (grandchildren.isNotEmpty)
+                          _buildSeniorFilterChip('Grandchildren (${grandchildren.length})', 4),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Section 1: Elders & Parents
+          if ((_seniorFilterGen == 0 || _seniorFilterGen == 1) && eldersAndParents.isNotEmpty) ...[
+            _buildSeniorSectionHeader('1. Elders & Parents / बुज़ुर्ग और माता-पिता', Icons.elderly),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildSeniorMemberCard(context, eldersAndParents[index], theme),
+                childCount: eldersAndParents.length,
+              ),
+            ),
+          ],
+
+          // Section 2: Self, Spouse & Siblings
+          if ((_seniorFilterGen == 0 || _seniorFilterGen == 2) && selfAndSpouseAndSiblings.isNotEmpty) ...[
+            _buildSeniorSectionHeader('2. Self, Spouse & Siblings / स्वयं और भाई-बहन', Icons.people),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildSeniorMemberCard(context, selfAndSpouseAndSiblings[index], theme),
+                childCount: selfAndSpouseAndSiblings.length,
+              ),
+            ),
+          ],
+
+          // Section 3: Children & In-laws
+          if ((_seniorFilterGen == 0 || _seniorFilterGen == 3) && childrenAndInlaws.isNotEmpty) ...[
+            _buildSeniorSectionHeader('3. Children & Spouses / बच्चे और बहू-दामाद', Icons.child_care),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildSeniorMemberCard(context, childrenAndInlaws[index], theme),
+                childCount: childrenAndInlaws.length,
+              ),
+            ),
+          ],
+
+          // Section 4: Grandchildren
+          if ((_seniorFilterGen == 0 || _seniorFilterGen == 4) && grandchildren.isNotEmpty) ...[
+            _buildSeniorSectionHeader('4. Grandchildren / पोते-पोती व नाती-नातिन', Icons.face),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildSeniorMemberCard(context, grandchildren[index], theme),
+                childCount: grandchildren.length,
+              ),
+            ),
+          ],
+
+          // Section 5: Others
+          if (_seniorFilterGen == 0 && others.isNotEmpty) ...[
+            _buildSeniorSectionHeader('Other Relatives / अन्य रिश्तेदार', Icons.family_restroom),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildSeniorMemberCard(context, others[index], theme),
+                childCount: others.length,
+              ),
+            ),
+          ],
+
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 100),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSeniorFilterChip(String label, int value) {
+    final isSelected = _seniorFilterGen == value;
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          color: isSelected ? Colors.white : Colors.black87,
+          fontSize: 13,
+        ),
+      ),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) {
+          setState(() => _seniorFilterGen = value);
+        }
+      },
+      selectedColor: const Color(0xFF2E7D32),
+      backgroundColor: Colors.grey.shade200,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    );
+  }
+
+  Widget _buildSeniorSectionHeader(String title, IconData icon) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Row(
+          children: [
+            Icon(icon, color: const Color(0xFFC59B27), size: 22),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFFC59B27),
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                height: 1,
+                color: const Color(0xFFC59B27).withValues(alpha: 0.3),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSeniorMemberCard(BuildContext context, MemberNode member, ThemeData theme) {
+    final relTitle = member.relationshipToHead.replaceAll('_', ' ').toUpperCase();
+    // ignore: unused_local_variable
+    final hasMobile = member.mobile != null && member.mobile!.trim().isNotEmpty;
+
+    // Color & Badge based on relationship
+    Color badgeColor;
+    IconData badgeIcon;
+    switch (member.relationshipToHead.toLowerCase()) {
+      case 'self':
+        badgeColor = const Color(0xFFD4AF37);
+        badgeIcon = Icons.stars_rounded;
+        break;
+      case 'father':
+      case 'mother':
+      case 'grandfather':
+      case 'grandmother':
+        badgeColor = const Color(0xFFC62828);
+        badgeIcon = Icons.elderly_rounded;
+        break;
+      case 'spouse':
+        badgeColor = const Color(0xFFAD1457);
+        badgeIcon = Icons.favorite;
+        break;
+      case 'son':
+      case 'daughter':
+        badgeColor = const Color(0xFF1565C0);
+        badgeIcon = Icons.child_care_rounded;
+        break;
+      default:
+        badgeColor = const Color(0xFF2E7D32);
+        badgeIcon = Icons.person_rounded;
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: badgeColor.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () => _showMemberActionSheet(context, member),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Member Avatar & Basic Info Header
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Profile Photo / Avatar (ENLARGED to 84px for seniors)
+                  Container(
+                    width: 84,
+                    height: 84,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: badgeColor, width: 2.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: badgeColor.withValues(alpha: 0.2),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: member.avatarUrl != null && member.avatarUrl!.isNotEmpty
+                          ? Image.network(
+                              member.avatarUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => _buildSeniorAvatarFallback(member, badgeColor),
+                            )
+                          : _buildSeniorAvatarFallback(member, badgeColor),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  // Name, Relation Badge, Age & Business Owner tag
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                member.fullName,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (member.age > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${member.age} yrs',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        // Relationship Badge & Business Badge
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: badgeColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(badgeIcon, size: 14, color: badgeColor),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    relTitle,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: badgeColor,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (member.businessProfile != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD4AF37).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: const Color(0xFFD4AF37).withValues(alpha: 0.4)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.business_center_rounded, size: 13, color: Color(0xFFC59B27)),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'BUSINESS',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFFC59B27),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              
+              // Rich Info Metadata Grid (Gotra, Blood Group, Education, Occupation, City)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Wrap(
+                  spacing: 14,
+                  runSpacing: 6,
+                  children: [
+                    if (member.gotra != null && member.gotra!.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.shield_outlined, size: 14, color: Color(0xFFC59B27)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Gotra: ${member.gotra}',
+                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    if (member.bloodGroup != null && member.bloodGroup!.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.bloodtype, size: 14, color: Colors.red),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Blood: ${member.bloodGroup}',
+                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.red.shade800),
+                          ),
+                        ],
+                      ),
+                    if (member.currentCity != null && member.currentCity!.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.location_on_outlined, size: 14, color: Colors.blue),
+                          const SizedBox(width: 4),
+                          Text(
+                            member.currentCity!,
+                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    if (member.education != null && member.education!.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.school_outlined, size: 14, color: Colors.purple),
+                          const SizedBox(width: 4),
+                          Text(
+                            member.education!,
+                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    if (member.occupationType != null && member.occupationType!.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.work_outline, size: 14, color: Colors.teal),
+                          const SizedBox(width: 4),
+                          Text(
+                            member.occupationType!,
+                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Compact Action Buttons Row (CALL, SMS, WHATSAPP) hidden for now
+              /*
+              Row(
+                children: [
+                  // Call Button (Compact)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: hasMobile ? () => _callMember(member.mobile!) : null,
+                      icon: const Icon(Icons.phone_in_talk, size: 16),
+                      label: Text(
+                        'CALL',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2E7D32),
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade300,
+                        disabledForegroundColor: Colors.grey.shade600,
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                        minimumSize: const Size(0, 36),
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+
+                  // SMS Button (Compact - Opens Native SMS app like detail screen)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: hasMobile ? () => _smsMember(member.mobile!) : null,
+                      icon: const Icon(Icons.sms_outlined, size: 16),
+                      label: Text(
+                        'SMS',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1565C0),
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade300,
+                        disabledForegroundColor: Colors.grey.shade600,
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                        minimumSize: const Size(0, 36),
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+
+                  // WhatsApp Button (Compact - Direct wa.me link with WhatsApp icon)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: hasMobile ? () => _whatsappMember(member.mobile!) : null,
+                      icon: const Icon(Icons.chat_rounded, size: 16),
+                      label: Text(
+                        'WHATSAPP',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF25D366),
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade300,
+                        disabledForegroundColor: Colors.grey.shade600,
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                        minimumSize: const Size(0, 36),
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              */
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSeniorAvatarFallback(MemberNode member, Color badgeColor) {
+    return Container(
+      color: badgeColor.withValues(alpha: 0.15),
+      child: Center(
+        child: Text(
+          member.fullName.isNotEmpty ? member.fullName[0].toUpperCase() : '?',
+          style: GoogleFonts.outfit(
+            fontSize: 36,
+            fontWeight: FontWeight.bold,
+            color: badgeColor,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ignore: unused_element
+  Future<void> _callMember(String mobile) async {
+    final uri = Uri(scheme: 'tel', path: mobile);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  // ignore: unused_element
+  Future<void> _smsMember(String mobile) async {
+    final uri = Uri(scheme: 'sms', path: mobile);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  // ignore: unused_element
+  Future<void> _whatsappMember(String mobile) async {
+    final cleanNum = mobile.replaceAll(RegExp(r'\D'), '');
+    final numWithCountry = cleanNum.length == 10 ? '91$cleanNum' : cleanNum;
+    final whatsappUri = Uri.parse('https://wa.me/$numWithCountry');
+    if (await canLaunchUrl(whatsappUri)) {
+      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+    } else {
+      // Fallback scheme
+      final fallbackUri = Uri.parse('whatsapp://send?phone=+$numWithCountry');
+      if (await canLaunchUrl(fallbackUri)) {
+        await launchUrl(fallbackUri, mode: LaunchMode.externalApplication);
+      }
+    }
   }
 }
 
