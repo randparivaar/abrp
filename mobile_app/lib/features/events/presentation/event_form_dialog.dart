@@ -117,6 +117,57 @@ class _EventFormDialogState extends ConsumerState<EventFormDialog> {
     }
   }
 
+  Future<void> _showAddImageUrlDialog() async {
+    final urlCtrl = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Image Link (Drive / Web)'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Paste a public Google Drive photo link or direct image URL. It will appear directly in the app gallery.',
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: urlCtrl,
+              decoration: const InputDecoration(
+                hintText: 'https://drive.google.com/file/d/... or https://...',
+                labelText: 'Image / Drive File URL',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, urlCtrl.text.trim()),
+            child: const Text('Add / जोड़ें'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      final direct = DriveUrlHelper.toDirectImageUrl(result) ?? result;
+      setState(() {
+        if (_mainImageUrl == null || _mainImageUrl!.isEmpty) {
+          _mainImageUrl = direct;
+        } else if (!_galleryUrls.contains(direct)) {
+          _galleryUrls.add(direct);
+        }
+      });
+    }
+  }
+
   Future<void> _selectDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -489,21 +540,39 @@ class _EventFormDialogState extends ConsumerState<EventFormDialog> {
                       ),
                       const SizedBox(height: 10),
 
-                      // Upload Button & Preview List
-                      OutlinedButton.icon(
-                        onPressed: _isUploadingImages ? null : _pickAndUploadImages,
-                        icon: _isUploadingImages
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.add_photo_alternate_outlined),
-                        label: Text(_isUploadingImages ? 'Uploading images...' : '📸 Add Photos (Pick Multiple)'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(44),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
+                      // Upload Button & Link Input Row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _isUploadingImages ? null : _pickAndUploadImages,
+                              icon: _isUploadingImages
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.add_photo_alternate_outlined, size: 18),
+                              label: Text(_isUploadingImages ? 'Uploading...' : '📸 Pick Photos', style: const TextStyle(fontSize: 12)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _showAddImageUrlDialog,
+                              icon: const Icon(Icons.link_rounded, size: 18),
+                              label: const Text('🔗 Add Link (Drive/Web)', style: TextStyle(fontSize: 12)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
 
@@ -605,19 +674,20 @@ class _EventFormDialogState extends ConsumerState<EventFormDialog> {
                         const SizedBox(height: 16),
                       ],
 
-                      // EXTERNAL PHOTO ALBUM LINK (GOOGLE PHOTOS / DROPBOX)
+                      // EXTERNAL PHOTO ALBUM LINK (GOOGLE PHOTOS / DROPBOX / DRIVE)
                       Text(
-                        'External Photo Album Link',
+                        'External Photo Album / Folder Link',
                         style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                       const SizedBox(height: 6),
                       TextFormField(
                         controller: _externalAlbumUrlController,
                         decoration: InputDecoration(
-                          labelText: 'Google Photos / Dropbox / Drive Link',
-                          hintText: 'https://photos.app.goo.gl/... or https://dropbox.com/...',
+                          labelText: 'Google Drive Folder / Google Photos / Dropbox Link',
+                          hintText: 'https://drive.google.com/drive/folders/... or https://photos.app.goo.gl/...',
+                          helperText: 'Public folders or albums will open directly in Drive or Photos app',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          prefixIcon: const Icon(Icons.insert_link_rounded),
+                          prefixIcon: const Icon(Icons.folder_shared_outlined),
                         ),
                       ),
                       const SizedBox(height: 24),

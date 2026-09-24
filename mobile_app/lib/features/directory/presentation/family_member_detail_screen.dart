@@ -95,11 +95,12 @@ class FamilyMemberDetailScreen extends StatelessWidget {
             icon: Icon(Icons.share_outlined, color: cs.primary),
             tooltip: 'Share Profile',
             onPressed: () {
-              // Build a deep link for this member's profile
+              // Build a web link and deep link for this member's profile
+              final webLink = 'https://abrp.vercel.app/member/$familyId/${member.id}';
               final deepLink = 'abrp://member/$familyId/${member.id}';
               final shareText = '👤 View ${member.fullName}\'s profile on ABRP\n\n'
-                  'Open the ABRP app and tap this link to view their family profile:\n'
-                  '$deepLink';
+                  'Web link: $webLink\n'
+                  'Direct App Link: $deepLink';
               SharePlus.instance.share(
                 ShareParams(
                   text: shareText,

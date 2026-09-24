@@ -5,9 +5,12 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile_app/core/network/api_client.dart';
 import 'package:mobile_app/core/utils/app_avatar.dart';
+import 'package:mobile_app/features/auth/presentation/auth_controller.dart';
 import 'package:go_router/go_router.dart';
 import 'family_tree_screen.dart';
 import 'family_member_detail_screen.dart';
+import 'my_family_provider.dart';
+import 'business_favorites_provider.dart';
 
 class BusinessProfileDetailScreen extends ConsumerStatefulWidget {
   final BusinessProfile business;
@@ -32,7 +35,6 @@ class BusinessProfileDetailScreen extends ConsumerStatefulWidget {
 class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDetailScreen> {
   List<dynamic> _members = [];
   bool _isLoadingMembers = false;
-  bool _isFavorite = false;
 
   @override
   void initState() {
@@ -59,11 +61,14 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
 
   Future<void> _launchURL(BuildContext context, String urlString) async {
     try {
-      final Uri url = Uri.parse(urlString);
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        throw Exception('Could not launch $urlString');
+      String cleanUrl = urlString.trim();
+      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://') && !cleanUrl.startsWith('tel:') && !cleanUrl.startsWith('mailto:')) {
+        cleanUrl = 'https://$cleanUrl';
+      }
+      final Uri url = Uri.parse(cleanUrl);
+      final launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await launchUrl(url, mode: LaunchMode.platformDefault);
       }
     } catch (e) {
       if (context.mounted) {
@@ -74,18 +79,63 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
     }
   }
 
+  Future<void> _openMap(BuildContext context) async {
+    String? mapUrl = widget.business.googleMapsLink?.trim();
+    if (mapUrl != null && mapUrl.isNotEmpty) {
+      if (!mapUrl.startsWith('http://') && !mapUrl.startsWith('https://')) {
+        mapUrl = 'https://$mapUrl';
+      }
+    } else {
+      final query = [
+        widget.business.businessName,
+        widget.business.address,
+        widget.business.city,
+      ].where((s) => s.trim().isNotEmpty).join(', ');
+      if (query.trim().isEmpty) return;
+      mapUrl = 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}';
+    }
+
+    try {
+      final Uri uri = Uri.parse(mapUrl);
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      final geoQuery = [
+        widget.business.businessName,
+        widget.business.address,
+        widget.business.city,
+      ].where((s) => s.trim().isNotEmpty).join(', ');
+      final geoUri = Uri.parse('geo:0,0?q=${Uri.encodeComponent(geoQuery)}');
+      try {
+        await launchUrl(geoUri, mode: LaunchMode.externalApplication);
+      } catch (err) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Cannot open map / नक्शा नहीं खोला जा सका: $e')),
+          );
+        }
+      }
+    }
+  }
+
   void _callPhone(BuildContext context, String mobile) {
     final cleanMobile = mobile.replaceAll(RegExp(r'\s+'), '');
     _launchURL(context, 'tel:$cleanMobile');
   }
 
   void _shareBusinessProfile() {
+    final webLink = 'https://abrp.vercel.app/business/${widget.business.id}';
     final deepLink = 'abrp://business/${widget.business.id}';
+    final addressText = [widget.business.address, widget.business.city]
+        .where((s) => s.trim().isNotEmpty)
+        .join(', ');
     final shareText = '🏢 View ${widget.business.businessName}\'s profile on ABRP\n\n'
         'Category: ${widget.business.industryCategory}\n'
-        'Address: ${widget.business.address}, ${widget.business.city}\n\n'
-        'Open the ABRP app and tap this link to view business details:\n'
-        '$deepLink';
+        '${addressText.isNotEmpty ? 'Address: $addressText\n\n' : ''}'
+        'Open in ABRP app:\n$webLink\n\n'
+        'Direct Link: $deepLink';
     SharePlus.instance.share(
       ShareParams(
         text: shareText,
@@ -200,6 +250,10 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
+    final authState = ref.watch(authProvider);
+    final isSuperAdmin = authState.user?.role == 'admin';
+    final myFamilyData = ref.watch(myFamilyProvider).value;
+
     final ownerMember = widget.owner ?? 
         (_members.isNotEmpty && _members.any((m) => (m['roleInBusiness'] as String? ?? '').toLowerCase().contains('owner'))
             ? _members.firstWhere((m) => (m['roleInBusiness'] as String? ?? '').toLowerCase().contains('owner'))
@@ -211,6 +265,42 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
         ? '${ownerName.split(' ').first} ji' 
         : 'the business owner';
 
+    // Permissions: Check if current user is admin OR related owner/partner of this business
+    bool isRelatedOwner = false;
+    if (isSuperAdmin) {
+      isRelatedOwner = true;
+    } else {
+      final currentUserName = (authState.user?.fullName ?? '').toLowerCase().trim();
+      final familyMembers = (myFamilyData?['family']?['members'] as List<dynamic>?) ?? [];
+      final familyMemberIds = familyMembers.map((m) => m['id'] is int ? m['id'] as int : int.tryParse(m['id'].toString()) ?? -1).toSet();
+      final familyMemberNames = familyMembers.map((m) => (m['fullName'] as String? ?? '').toLowerCase().trim()).toSet();
+
+      if (widget.owner != null) {
+        if (familyMemberIds.contains(widget.owner!.id) ||
+            (currentUserName.isNotEmpty && widget.owner!.fullName.toLowerCase().trim() == currentUserName)) {
+          isRelatedOwner = true;
+        }
+      }
+
+      if (!isRelatedOwner) {
+        for (final m in _members) {
+          final mId = m['id'] is int ? m['id'] as int : int.tryParse(m['id'].toString()) ?? -1;
+          final mName = (m['fullName'] as String? ?? '').toLowerCase().trim();
+          if (familyMemberIds.contains(mId) ||
+              (currentUserName.isNotEmpty && mName == currentUserName) ||
+              (mName.isNotEmpty && familyMemberNames.contains(mName))) {
+            isRelatedOwner = true;
+            break;
+          }
+        }
+      }
+    }
+    final canManageOwners = isSuperAdmin || isRelatedOwner;
+
+    // Address verification: Only show map & location if address is present
+    final hasAddress = (widget.business.address.trim().isNotEmpty || widget.business.city.trim().isNotEmpty) ||
+        (widget.business.googleMapsLink != null && widget.business.googleMapsLink!.trim().isNotEmpty);
+
     final hasPerk = widget.business.communityPerk != null && 
         (widget.business.communityPerk!['value'] as String? ?? '').isNotEmpty;
     final perkType = widget.business.communityPerk?['type'] as String? ?? 'percent';
@@ -221,6 +311,8 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
     final hasTags = widget.business.tags != null && widget.business.tags!.isNotEmpty;
     final hasCatalog = widget.business.catalog != null && widget.business.catalog!.isNotEmpty;
     final hasOperatingHours = widget.business.operatingHours != null && widget.business.operatingHours!.isNotEmpty;
+
+    final isFavorite = ref.watch(businessFavoritesProvider).contains(widget.business.id);
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -257,21 +349,24 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
           ),
           IconButton(
             icon: Icon(
-              _isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: _isFavorite ? Colors.red : colorScheme.onSurfaceVariant,
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: isFavorite ? Colors.red : colorScheme.onSurfaceVariant,
             ),
             tooltip: 'Favorite',
-            onPressed: () {
-              setState(() {
-                _isFavorite = !_isFavorite;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(_isFavorite 
-                    ? 'Added to favorites / पसंदीदा में जोड़ा गया' 
-                    : 'Removed from favorites / पसंदीदा से हटाया गया'),
-                ),
-              );
+            onPressed: () async {
+              final isNowFav = await ref
+                  .read(businessFavoritesProvider.notifier)
+                  .toggleFavorite(widget.business.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    duration: const Duration(seconds: 2),
+                    content: Text(isNowFav 
+                      ? 'Added to favorites / पसंदीदा में जोड़ा गया' 
+                      : 'Removed from favorites / पसंदीदा से हटाया गया'),
+                  ),
+                );
+              }
             },
           ),
           const SizedBox(width: 4),
@@ -528,27 +623,25 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            final mapUrl = widget.business.googleMapsLink ?? 
-                                'https://maps.google.com/?q=${Uri.encodeComponent("${widget.business.businessName}, ${widget.business.address}, ${widget.business.city}")}';
-                            _launchURL(context, mapUrl);
-                          },
-                          icon: Icon(Icons.map_outlined, size: 18, color: isDark ? colorScheme.onSurface : const Color(0xFF553D00)),
-                          label: Text(
-                            'View on Map',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? colorScheme.onSurface : const Color(0xFF553D00)),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isDark ? colorScheme.surfaceContainer : Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            elevation: 0,
+                      if (hasAddress) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => _openMap(context),
+                            icon: Icon(Icons.map_outlined, size: 18, color: isDark ? colorScheme.onSurface : const Color(0xFF553D00)),
+                            label: Text(
+                              'View on Map',
+                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? colorScheme.onSurface : const Color(0xFF553D00)),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isDark ? colorScheme.surfaceContainer : Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              elevation: 0,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ],
@@ -864,31 +957,33 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                   const SizedBox(height: 12),
 
                   // Location
-                  InkWell(
-                    onTap: () {
-                      final mapUrl = widget.business.googleMapsLink ?? 
-                          'https://maps.google.com/?q=${Uri.encodeComponent("${widget.business.address}, ${widget.business.city}")}';
-                      _launchURL(context, mapUrl);
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.location_on_outlined, color: colorScheme.primary, size: 20),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              '${widget.business.address}, ${widget.business.city}${widget.business.pincode != null ? ' - ${widget.business.pincode}' : ''}',
-                              style: GoogleFonts.inter(fontSize: 13, color: colorScheme.onSurfaceVariant, height: 1.4),
+                  if (hasAddress) ...[
+                    InkWell(
+                      onTap: () => _openMap(context),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.location_on_outlined, color: colorScheme.primary, size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                [
+                                  if (widget.business.address.trim().isNotEmpty) widget.business.address.trim(),
+                                  if (widget.business.city.trim().isNotEmpty) widget.business.city.trim(),
+                                  if (widget.business.pincode != null && widget.business.pincode!.trim().isNotEmpty) widget.business.pincode!.trim(),
+                                ].join(', '),
+                                style: GoogleFonts.inter(fontSize: 13, color: colorScheme.onSurfaceVariant, height: 1.4),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
+                    const SizedBox(height: 8),
+                  ],
 
                   // Email
                   if (widget.business.email != null && widget.business.email!.isNotEmpty)
@@ -1013,14 +1108,15 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                         color: isDark ? colorScheme.onSurface : colorScheme.primary,
                       ),
                     ),
-                    TextButton.icon(
-                      onPressed: _showAssignMemberSheet,
-                      icon: Icon(Icons.add, size: 18, color: colorScheme.primary),
-                      label: Text(
-                        'Add / जोड़ें',
-                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                    if (canManageOwners)
+                      TextButton.icon(
+                        onPressed: _showAssignMemberSheet,
+                        icon: Icon(Icons.add, size: 18, color: colorScheme.primary),
+                        label: Text(
+                          'Add / जोड़ें',
+                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                        ),
                       ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -1087,10 +1183,11 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
                                 icon: const Icon(Icons.arrow_forward_ios, size: 14),
                                 onPressed: () => _navigateToMember(memberId, familyId),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                                onPressed: () => _unlinkMember(memberId),
-                              ),
+                              if (canManageOwners)
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                  onPressed: () => _unlinkMember(memberId),
+                                ),
                             ],
                           ),
                         ),

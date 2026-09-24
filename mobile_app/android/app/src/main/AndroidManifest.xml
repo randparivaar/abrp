@@ -25,12 +25,20 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Deep Links: abrp://member/{familyId}/{memberId} -->
-            <intent-filter android:autoVerify="true">
+            <!-- Deep Links: abrp://business/{id} & abrp://member/{familyId}/{memberId} -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="abrp"/>
+            </intent-filter>
+            <!-- Web App Links: https://abrp.vercel.app/business/* and /member/* -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="abrp.vercel.app" android:pathPrefix="/business"/>
+                <data android:scheme="https" android:host="abrp.vercel.app" android:pathPrefix="/member"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
@@ -45,6 +53,10 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="geo"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>

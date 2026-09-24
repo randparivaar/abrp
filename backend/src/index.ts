@@ -8,6 +8,7 @@ import { usersRouter } from './routes/users.js';
 import { directoryRouter } from './routes/directory.js';
 import adsRouter from './routes/ads.js';
 import eventsRouter from './routes/events.js';
+import { webRouter } from './routes/web.js';
 import { dbHealthCheck } from './db/index.js';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
@@ -77,6 +78,9 @@ app.route('/api/v1/users', usersRouter);
 app.route('/api/v1/directory', directoryRouter);
 app.route('/api/v1/ads', adsRouter);
 app.route('/api/v1/events', eventsRouter);
+
+// Web Landing Pages & Deep Links
+app.route('/', webRouter);
 
 // Start native Node.js HTTP server if running locally (not in Vercel)
 if (!process.env.VERCEL) {

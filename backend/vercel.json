@@ -7,6 +7,12 @@
       "maxDuration": 30
     }
   },
+  "crons": [
+    {
+      "path": "/api/v1/notifications/cron/daily-wishes",
+      "schedule": "30 0 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

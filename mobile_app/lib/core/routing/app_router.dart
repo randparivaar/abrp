@@ -16,6 +16,8 @@ import 'package:mobile_app/features/auth/presentation/splash_screen.dart';
 import 'package:mobile_app/features/auth/presentation/onboarding_screen.dart';
 import 'package:mobile_app/features/auth/presentation/forgot_password_screen.dart';
 import 'package:mobile_app/features/directory/presentation/active_ads_screen.dart';
+import 'package:mobile_app/core/network/api_client.dart';
+import 'package:mobile_app/features/directory/presentation/business_profile_detail_screen.dart';
 import 'package:mobile_app/features/events/presentation/events_list_screen.dart';
 
 part 'app_router.g.dart';
@@ -44,12 +46,28 @@ GoRouter appRouter(Ref ref) {
   return GoRouter(
     initialLocation: '/splash',
     // Handle custom deep link scheme: abrp://member/{familyId}/{memberId}
-    // This redirects the custom URI to the internal /member/:familyId/:memberId route
+    // and abrp://business/{id}
     redirectLimit: 10,
     refreshListenable: notifier,
     redirect: (BuildContext context, GoRouterState state) {
       final authState = notifier.authState;
       final isAuthenticated = authState.user != null;
+
+      // Handle custom deep link scheme (abrp://business/123 or abrp://member/1/2)
+      if (state.uri.scheme == 'abrp') {
+        final host = state.uri.host;
+        final segments = state.uri.pathSegments;
+        if (host == 'business' || (segments.isNotEmpty && segments.first == 'business')) {
+          final id = segments.isNotEmpty ? segments.last : '';
+          if (id.isNotEmpty) return '/business/$id';
+        }
+        if (host == 'member' || (segments.isNotEmpty && segments.first == 'member')) {
+          if (segments.length >= 2) {
+            return '/member/${segments[segments.length - 2]}/${segments.last}';
+          }
+        }
+      }
+
       final isLoggingIn = state.matchedLocation == '/login';
       final isSplash = state.matchedLocation == '/splash';
       final isOnboarding = state.matchedLocation == '/onboarding';
@@ -145,6 +163,13 @@ GoRouter appRouter(Ref ref) {
         path: '/events',
         builder: (context, state) => const EventsListScreen(),
       ),
+      GoRoute(
+        path: '/business/:businessId',
+        builder: (context, state) {
+          final businessId = int.parse(state.pathParameters['businessId']!);
+          return _BusinessDeepLinkScreen(businessId: businessId);
+        },
+      ),
     ],
   );
 }
@@ -204,5 +229,111 @@ class _MemberDeepLinkScreen extends ConsumerWidget {
         );
       },
     );
+  }
+}
+
+/// Handles deep link navigation to a specific business profile.
+/// Fetches the business details and displays BusinessProfileDetailScreen.
+class _BusinessDeepLinkScreen extends ConsumerStatefulWidget {
+  final int businessId;
+
+  const _BusinessDeepLinkScreen({required this.businessId});
+
+  @override
+  ConsumerState<_BusinessDeepLinkScreen> createState() => _BusinessDeepLinkScreenState();
+}
+
+class _BusinessDeepLinkScreenState extends ConsumerState<_BusinessDeepLinkScreen> {
+  BusinessProfile? _business;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBusiness();
+  }
+
+  Future<void> _fetchBusiness() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.get('/directory/businesses');
+      final list = (response.data['businesses'] as List<dynamic>? ?? []);
+      final found = list.firstWhere(
+        (b) => b['id'] == widget.businessId,
+        orElse: () => null,
+      );
+
+      if (found != null) {
+        if (mounted) {
+          setState(() {
+            _business = BusinessProfile.fromJson(found);
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _error = 'Business profile not found.';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load business profile: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading business profile...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_error != null || _business == null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.storefront_outlined, color: Colors.red, size: 48),
+                const SizedBox(height: 16),
+                Text(_error ?? 'Could not find business profile.', textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => context.go('/business-directory'),
+                  child: const Text('Go to Business Directory'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return BusinessProfileDetailScreen(business: _business!);
   }
 }

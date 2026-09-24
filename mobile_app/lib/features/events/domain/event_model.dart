@@ -88,13 +88,59 @@ class EventModel {
   List<String> get allImageUrls {
     final list = <String>[];
     if (imageUrl != null && imageUrl!.trim().isNotEmpty) {
-      list.add(imageUrl!.trim());
+      final direct = DriveUrlHelper.toDirectImageUrl(imageUrl!) ?? imageUrl!.trim();
+      list.add(direct);
     }
     for (final url in galleryUrls) {
-      if (url.trim().isNotEmpty && !list.contains(url.trim())) {
-        list.add(url.trim());
+      if (url.trim().isNotEmpty) {
+        final direct = DriveUrlHelper.toDirectImageUrl(url) ?? url.trim();
+        if (!list.contains(direct)) {
+          list.add(direct);
+        }
+      }
+    }
+    // If externalAlbumUrl is a single Google Drive file or direct image, add to in-app gallery!
+    if (externalAlbumUrl != null && externalAlbumUrl!.trim().isNotEmpty) {
+      final directFromAlbum = DriveUrlHelper.toDirectImageUrl(externalAlbumUrl!);
+      if (directFromAlbum != null && !list.contains(directFromAlbum)) {
+        list.add(directFromAlbum);
       }
     }
     return list;
+  }
+}
+
+class DriveUrlHelper {
+  static String? extractDriveFileId(String url) {
+    final reg1 = RegExp(r'drive\.google\.com/file/d/([a-zA-Z0-9_-]+)');
+    final m1 = reg1.firstMatch(url);
+    if (m1 != null) return m1.group(1);
+
+    final reg2 = RegExp(r'[?&]id=([a-zA-Z0-9_-]+)');
+    final m2 = reg2.firstMatch(url);
+    if (m2 != null) return m2.group(1);
+
+    return null;
+  }
+
+  static bool isDriveFolder(String url) {
+    return url.contains('drive.google.com/drive/folders') || url.contains('drive.google.com/folderview');
+  }
+
+  static String? toDirectImageUrl(String url) {
+    final fileId = extractDriveFileId(url);
+    if (fileId != null && !isDriveFolder(url)) {
+      return 'https://lh3.googleusercontent.com/d/$fileId';
+    }
+    return null;
+  }
+
+  static String sanitizeUrl(String raw) {
+    var s = raw.trim();
+    if (s.isEmpty) return s;
+    if (!s.startsWith('http://') && !s.startsWith('https://')) {
+      s = 'https://$s';
+    }
+    return s;
   }
 }

@@ -22,8 +22,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   int _selectedImageIndex = 0;
 
   Future<void> _launchExternalUrl(BuildContext context, String urlString) async {
+    final sanitized = DriveUrlHelper.sanitizeUrl(urlString);
     try {
-      final Uri url = Uri.parse(urlString.trim());
+      final Uri url = Uri.parse(sanitized);
       final launched = await launchUrl(url, mode: LaunchMode.externalApplication);
       if (!launched) {
         final fallbackLaunched = await launchUrl(url, mode: LaunchMode.platformDefault);
@@ -34,7 +35,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Cannot open link / लिंक नहीं खोला जा सका: $urlString')),
+          SnackBar(content: Text('Cannot open link / लिंक नहीं खोला जा सका: $sanitized')),
         );
       }
     }
@@ -426,74 +427,107 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             ),
             const SizedBox(height: 16),
 
-            // ── EXTERNAL PHOTO ALBUM BENTO CARD (GOOGLE PHOTOS / DROPBOX) ─
+            // ── EXTERNAL PHOTO ALBUM BENTO CARD (GOOGLE PHOTOS / DROPBOX / DRIVE) ─
             if (hasExternalAlbum) ...[
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF4285F4), Color(0xFF34A853)], // Google / Cloud style gradient
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF4285F4).withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+              Builder(
+                builder: (context) {
+                  final albumUrl = widget.event.externalAlbumUrl!.trim();
+                  final isDrive = albumUrl.contains('drive.google.com');
+                  final isPhotos = albumUrl.contains('photos.app.goo.gl') || albumUrl.contains('photos.google.com');
+                  final isDropbox = albumUrl.contains('dropbox.com');
+
+                  final String cardTitle = isDrive
+                      ? 'Google Drive Photo Folder / ड्राइव फ़ोल्डर'
+                      : (isPhotos
+                          ? 'Google Photos Album / फ़ोटो एलबम'
+                          : (isDropbox ? 'Dropbox Folder / ड्रॉपबॉक्स' : 'Full Event Photo Album'));
+
+                  final String cardSubtitle = isDrive
+                      ? 'View all high-resolution event photos directly on Google Drive.'
+                      : (isPhotos
+                          ? 'View all official event photos on Google Photos.'
+                          : 'View all official high-resolution event photos directly on Google Photos, Dropbox, or Google Drive.');
+
+                  final String buttonLabel = isDrive
+                      ? '📁 Open Google Drive / ड्राइव में खोलें'
+                      : (isPhotos
+                          ? '📸 Open Google Photos / गूगल फ़ोटो में खोलें'
+                          : '📸 Open Photo Album / फोटो एलबम खोलें');
+
+                  final Color primaryAccent = isDrive ? const Color(0xFF0F9D58) : const Color(0xFF1E3A8A);
+
+                  return Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDrive
+                            ? [const Color(0xFF0F9D58), const Color(0xFF1B5E20)]
+                            : (isPhotos
+                                ? [const Color(0xFF4285F4), const Color(0xFF34A853)]
+                                : [const Color(0xFF1E3A8A), const Color(0xFF3B82F6)]),
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryAccent.withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.photo_library_rounded, color: Colors.white, size: 24),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Full Event Photo Album',
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: Colors.white,
+                        Row(
+                          children: [
+                            Icon(isDrive ? Icons.folder_shared_rounded : Icons.photo_library_rounded, color: Colors.white, size: 24),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                cardTitle,
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                ),
+                              ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          cardSubtitle,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.9),
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: () => _launchExternalUrl(context, albumUrl),
+                          icon: Icon(Icons.open_in_new_rounded, size: 18, color: primaryAccent),
+                          label: Text(
+                            buttonLabel,
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: primaryAccent,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            minimumSize: const Size.fromHeight(44),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 2,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'View all official high-resolution event photos directly on Google Photos, Dropbox, or Google Drive.',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.9),
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () => _launchExternalUrl(context, widget.event.externalAlbumUrl!),
-                      icon: const Icon(Icons.open_in_new_rounded, size: 18, color: Color(0xFF1E3A8A)),
-                      label: Text(
-                        '📸 Open Photo Album / फोटो एलबम खोलें',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          color: const Color(0xFF1E3A8A),
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(44),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 2,
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 16),
             ],

@@ -10,6 +10,7 @@ import 'business_profile_detail_screen.dart';
 import 'directory_models.dart';
 import 'directory_constants.dart';
 import 'app_bottom_navigation.dart';
+import 'business_favorites_provider.dart';
 
 class BusinessDirectoryScreen extends ConsumerStatefulWidget {
   const BusinessDirectoryScreen({super.key});
@@ -29,8 +30,10 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
   Timer? _debounce;
 
   List<Map<String, String>> get _categories {
+    final favoritesCount = ref.watch(businessFavoritesProvider).length;
     return [
       {'value': 'all', 'label': 'All'},
+      {'value': 'favorites', 'label': '❤️ Favorites${favoritesCount > 0 ? " ($favoritesCount)" : ""}'},
       ...DirectoryConstants.industryCategories.map((item) {
         // Extract the English label (before the slash) to keep it compact on chip
         final fullLabel = item['label'] ?? '';
@@ -63,7 +66,7 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
       final dio = ref.read(apiClientProvider);
       final response = await dio.get('/directory/businesses', queryParameters: {
         if (_searchQuery.isNotEmpty) 'q': _searchQuery,
-        if (_selectedCategory != 'all') 'category': _selectedCategory,
+        if (_selectedCategory != 'all' && _selectedCategory != 'favorites') 'category': _selectedCategory,
       });
 
       if (mounted) {
@@ -98,6 +101,11 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
     final secondaryColor = colorScheme.secondary;
     final surfaceColor = colorScheme.surface;
     final isDark = theme.brightness == Brightness.dark;
+
+    final favorites = ref.watch(businessFavoritesProvider);
+    final displayedBusinesses = _selectedCategory == 'favorites'
+        ? _businesses.where((biz) => favorites.contains(biz['id'])).toList()
+        : _businesses;
 
     return Scaffold(
       backgroundColor: surfaceColor,
@@ -247,7 +255,7 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '${_businesses.length} Listings',
+                      '${displayedBusinesses.length} Listings',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -267,16 +275,23 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
                     child: CircularProgressIndicator(),
                   ),
                 )
-              else if (_businesses.isEmpty)
+              else if (displayedBusinesses.isEmpty)
                 Center(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 40.0),
                     child: Column(
                       children: [
-                        Icon(Icons.storefront_outlined, size: 48, color: colorScheme.onSurfaceVariant),
+                        Icon(
+                          _selectedCategory == 'favorites' ? Icons.favorite_border_rounded : Icons.storefront_outlined,
+                          size: 48,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                         const SizedBox(height: 12),
                         Text(
-                          'No business profiles found',
+                          _selectedCategory == 'favorites'
+                              ? 'No favorite businesses yet\nपसंदीदा व्यापार अभी तक नहीं जोड़ा गया'
+                              : 'No business profiles found',
+                          textAlign: TextAlign.center,
                           style: GoogleFonts.inter(color: colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500),
                         ),
                       ],
@@ -287,10 +302,11 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _businesses.length,
+                  itemCount: displayedBusinesses.length,
                   separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    final biz = _businesses[index];
+                    final biz = displayedBusinesses[index];
+                    final isFavorited = favorites.contains(biz['id']);
                     final String name = (biz['businessName'] as String? ?? 'Business').toTitleCase();
                     final String category = biz['industryCategory'] ?? 'Other';
                     final String city = biz['city'] ?? '';
@@ -407,9 +423,28 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Icon(
-                                Icons.chevron_right,
-                                color: colorScheme.outlineVariant,
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      isFavorited ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                      color: isFavorited ? Colors.red : colorScheme.outlineVariant,
+                                      size: 22,
+                                    ),
+                                    onPressed: () {
+                                      ref.read(businessFavoritesProvider.notifier).toggleFavorite(biz['id']);
+                                    },
+                                    tooltip: isFavorited ? 'Remove favorite' : 'Add favorite',
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Icon(
+                                    Icons.chevron_right,
+                                    color: colorScheme.outlineVariant,
+                                  ),
+                                ],
                               ),
                             ],
                           ),

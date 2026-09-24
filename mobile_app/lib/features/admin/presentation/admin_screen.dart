@@ -50,6 +50,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   String _userSearchQuery = '';
 
   String? _selectedUserId;
+  bool _sendNotificationToAll = true;
   bool _isSendingNotification = false;
   String? _statusMessage;
 
@@ -77,8 +78,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     _selectedTabIndex = widget.initialSection.clamp(0, 6);
     _fetchAdminAds();
     final authState = ref.read(authProvider);
-    if (authState.user?.role == 'admin') {
+    if (authState.user?.role == 'admin' || authState.user?.role == 'moderator') {
       _fetchUsers();
+    } else {
+      _isLoadingUsers = false;
     }
     _fetchRegions();
     _fetchPendingFamilies();
@@ -664,7 +667,8 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   }
 
   Future<void> _sendTestNotification() async {
-    if (_selectedUserId == null) {
+    final targetId = _sendNotificationToAll ? 'all' : _selectedUserId;
+    if (targetId == null || targetId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a recipient user.')),
       );
@@ -689,14 +693,14 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     try {
       final dio = ref.read(apiClientProvider);
       final response = await dio.post('/notifications/send-test', data: {
-        'targetUserId': _selectedUserId,
+        'targetUserId': targetId,
         'title': title,
         'body': body,
       });
 
       setState(() {
         _isSendingNotification = false;
-        _statusMessage = response.data['message'] ?? 'Notification dispatched.';
+        _statusMessage = response.data['message'] ?? 'Notification dispatched successfully.';
       });
       _titleController.clear();
       _bodyController.clear();
@@ -982,27 +986,79 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
           ),
           const SizedBox(height: 16),
           
-          // Target User Dropdown
-          DropdownButtonFormField<String>(
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Select Recipient Member',
-            ),
-            initialValue: _selectedUserId,
-            items: _usersList.map<DropdownMenuItem<String>>((user) {
-              return DropdownMenuItem<String>(
-                value: user['id'] as String,
-                child: Text(
-                  '${user['fullName'] ?? ''} (${user['role']})',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              );
-            }).toList(),
-            onChanged: (val) {
-              setState(() => _selectedUserId = val);
-            },
+          // Target Choice: All or Single
+          const Text(
+            'Target Audience / प्राप्तकर्ता',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              ChoiceChip(
+                label: const Text('📢 All Members / सभी सदस्य'),
+                selected: _sendNotificationToAll,
+                onSelected: (val) {
+                  setState(() => _sendNotificationToAll = true);
+                },
+              ),
+              const SizedBox(width: 12),
+              ChoiceChip(
+                label: const Text('👤 Specific Member / एक सदस्य'),
+                selected: !_sendNotificationToAll,
+                onSelected: (val) {
+                  setState(() => _sendNotificationToAll = false);
+                },
+              ),
+            ],
           ),
           const SizedBox(height: 16),
+
+          if (!_sendNotificationToAll) ...[
+            // Target User Dropdown
+            DropdownButtonFormField<String>(
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Select Recipient Member',
+                prefixIcon: Icon(Icons.person_outline),
+              ),
+              initialValue: _selectedUserId,
+              items: _usersList.map<DropdownMenuItem<String>>((user) {
+                return DropdownMenuItem<String>(
+                  value: user['id'] as String,
+                  child: Text(
+                    '${user['fullName'] ?? ''} (${user['role']})',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() => _selectedUserId = val);
+              },
+            ),
+            const SizedBox(height: 16),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue.shade800, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Broadcast Mode: Notification will be delivered to ALL active member devices.',
+                      style: TextStyle(fontSize: 12, color: Colors.blue.shade900, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           
           // Title Textbox
           TextField(
