@@ -768,9 +768,22 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       _titleController.clear();
       _bodyController.clear();
     } catch (e) {
+      String errorMessage = 'Failed to dispatch notification';
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (data is Map && data['message'] != null) {
+          errorMessage = 'Failed: ${data['message']}';
+        } else if (data is Map && data['error'] != null) {
+          errorMessage = 'Failed: ${data['error']}';
+        } else {
+          errorMessage = 'Failed (${e.response?.statusCode ?? 'network'}): ${e.message}';
+        }
+      } else {
+        errorMessage = 'Failed: $e';
+      }
       setState(() {
         _isSendingNotification = false;
-        _statusMessage = 'Failed to dispatch notification: $e';
+        _statusMessage = errorMessage;
       });
     }
   }

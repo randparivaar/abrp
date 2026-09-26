@@ -68,8 +68,8 @@ export async function handleSendTest(c: Context) {
         success: false,
         message: targetUserId === 'all'
           ? 'No registered member devices found to broadcast.'
-          : 'No active device registrations found for this user.',
-      }, 404);
+          : 'No active device registrations found for this user. The device has not registered an FCM push token.',
+      }, 400);
     }
 
     const sent = await sendPushNotification(tokens, title, body, {
