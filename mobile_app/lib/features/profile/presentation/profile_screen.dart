@@ -14,6 +14,8 @@ import '../../directory/presentation/app_bottom_navigation.dart';
 import '../../directory/presentation/my_family_provider.dart';
 import '../../directory/presentation/family_tree_screen.dart';
 import '../../directory/presentation/family_member_detail_screen.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../directory/presentation/app_drawer.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -329,10 +331,172 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 24),
+
+            // Legal & Support Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Icon(Icons.help_outline, color: colorScheme.primary),
+                      title: Text(AppTranslations.get('help_support', lang)),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () => context.push('/help-support'),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(Icons.shield_outlined, color: colorScheme.primary),
+                      title: Text(AppTranslations.get('privacy_policy', lang)),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () => context.push('/privacy-policy'),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(Icons.gavel_outlined, color: colorScheme.primary),
+                      title: Text(AppTranslations.get('terms_of_service', lang)),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () => context.push('/terms-and-conditions'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Danger Zone / Account Management Card
+            Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: Colors.red.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Colors.red),
+                        const SizedBox(width: 8),
+                        Text(
+                          AppTranslations.get('danger_zone', lang),
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      lang == AppLanguage.hi
+                          ? 'खाता हटाने पर आपके लॉगिन क्रेडेंशियल नष्ट हो जाएंगे, परंतु परिवार वृक्ष में आपकी डायरेक्टरी प्रविष्टि सुरक्षित रहेगी।'
+                          : 'Deleting your account purges your login credentials and notification tokens. Your directory profile will remain preserved in the family tree.',
+                      style: GoogleFonts.inter(fontSize: 12.5, color: colorScheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () => _confirmDeleteAccount(lang),
+                        icon: const Icon(Icons.delete_forever_outlined),
+                        label: Text(
+                          AppTranslations.get('delete_account', lang),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
           ],
         ),
       ),
       bottomNavigationBar: const AppBottomNavigation(currentIndex: 4),
     );
   }
+
+  Future<void> _confirmDeleteAccount(AppLanguage lang) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.red),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                AppTranslations.get('delete_account_dialog_title', lang),
+                style: const TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          AppTranslations.get('delete_account_dialog_desc', lang),
+          style: const TextStyle(fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(AppTranslations.get('cancel', lang)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(AppTranslations.get('delete_account_confirm', lang)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final success = await ref.read(authProvider.notifier).deleteAccount();
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading indicator
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppTranslations.get('delete_success', lang)),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.go('/login');
+        } else {
+          final errorMsg = ref.read(authProvider).errorMessage ?? 'Failed to delete account.';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMsg),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
 }
+

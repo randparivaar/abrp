@@ -8,6 +8,7 @@ import { usersRouter } from './routes/users.js';
 import { directoryRouter } from './routes/directory.js';
 import adsRouter from './routes/ads.js';
 import eventsRouter from './routes/events.js';
+import { legalRouter } from './routes/legal.js';
 import { webRouter } from './routes/web.js';
 import { dbHealthCheck } from './db/index.js';
 import dotenv from 'dotenv';
@@ -78,6 +79,7 @@ app.route('/api/v1/users', usersRouter);
 app.route('/api/v1/directory', directoryRouter);
 app.route('/api/v1/ads', adsRouter);
 app.route('/api/v1/events', eventsRouter);
+app.route('/api/v1/legal', legalRouter);
 
 // Web Landing Pages & Deep Links
 app.route('/', webRouter);

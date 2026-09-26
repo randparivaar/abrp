@@ -4,7 +4,8 @@ import {
   getUserById, 
   updateUserProfile, 
   updateUserRole, 
-  listAllUsers 
+  listAllUsers,
+  deleteUserAccount 
 } from '../services/users.service.js';
 import { UpdateUserProfileRequest, ChangeRoleRequest } from '../types/users.types.js';
 
@@ -86,3 +87,51 @@ export async function handleListUsers(c: Context) {
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }
+
+export async function handleDeleteMyAccount(c: Context) {
+  try {
+    const sessionUser = c.get('user') as UserSession;
+
+    const result = await deleteUserAccount(sessionUser.id);
+    if (!result) {
+      return c.json({ error: 'User account not found or already deleted.' }, 404);
+    }
+
+    return c.json({ 
+      success: true, 
+      message: 'Your account has been deleted successfully. You can re-register anytime with your email or mobile.' 
+    });
+  } catch (error: any) {
+    console.error('Error deleting user account:', error);
+    return c.json({ error: 'Internal Server Error while deleting account.' }, 500);
+  }
+}
+
+export async function handleDeleteUserByAdmin(c: Context) {
+  try {
+    const targetUserId = c.req.param('id');
+    if (!targetUserId) {
+      return c.json({ error: 'Missing target user ID' }, 400);
+    }
+
+    const sessionUser = c.get('user') as UserSession;
+    if (sessionUser.id === targetUserId) {
+      return c.json({ error: 'Cannot delete yourself through admin management. Use delete my account instead.' }, 400);
+    }
+
+    const result = await deleteUserAccount(targetUserId);
+    if (!result) {
+      return c.json({ error: 'Target user not found or already deleted.' }, 404);
+    }
+
+    return c.json({ 
+      success: true, 
+      message: 'User account deleted successfully by administrator.' 
+    });
+  } catch (error: any) {
+    console.error('Error deleting user by admin:', error);
+    return c.json({ error: 'Internal Server Error while deleting user account.' }, 500);
+  }
+}
+
+

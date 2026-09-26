@@ -4,7 +4,9 @@ import {
   handleGetMyProfile, 
   handleUpdateMyProfile, 
   handleChangeRole, 
-  handleListUsers 
+  handleListUsers,
+  handleDeleteMyAccount,
+  handleDeleteUserByAdmin 
 } from '../controllers/users.controller.js';
 
 const usersRouter = new Hono();
@@ -14,11 +16,13 @@ usersRouter.use('*', authMiddleware);
 
 usersRouter.get('/me', handleGetMyProfile);
 usersRouter.patch('/me', handleUpdateMyProfile);
+usersRouter.delete('/me', handleDeleteMyAccount);
 
 // Admin & Moderator routes
 usersRouter.get('/', roleGuard(['admin', 'moderator']), handleListUsers);
 
 // Admin only routes
 usersRouter.patch('/change-role', roleGuard(['admin']), handleChangeRole);
+usersRouter.delete('/:id', roleGuard(['admin']), handleDeleteUserByAdmin);
 
 export { usersRouter };

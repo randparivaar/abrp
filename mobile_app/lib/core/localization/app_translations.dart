@@ -142,6 +142,58 @@ class AppTranslations {
       AppLanguage.en: 'Create Advertisement',
       AppLanguage.hi: 'विज्ञापन बनाएं',
     },
+    'privacy_policy': {
+      AppLanguage.en: 'Privacy Policy',
+      AppLanguage.hi: 'गोपनीयता नीति',
+    },
+    'terms_of_service': {
+      AppLanguage.en: 'Terms & Conditions',
+      AppLanguage.hi: 'नियम एवं शर्तें',
+    },
+    'help_support': {
+      AppLanguage.en: 'Help & Support',
+      AppLanguage.hi: 'सहायता एवं समर्थन',
+    },
+    'faqs': {
+      AppLanguage.en: 'Frequently Asked Questions',
+      AppLanguage.hi: 'अक्सर पूछे जाने वाले प्रश्न',
+    },
+    'danger_zone': {
+      AppLanguage.en: 'Account Management',
+      AppLanguage.hi: 'खाता प्रबंधन',
+    },
+    'delete_account': {
+      AppLanguage.en: 'Delete Account',
+      AppLanguage.hi: 'खाता हटाएं',
+    },
+    'delete_account_dialog_title': {
+      AppLanguage.en: 'Delete Your Account?',
+      AppLanguage.hi: 'क्या आप अपना खाता हटाना चाहते हैं?',
+    },
+    'delete_account_dialog_desc': {
+      AppLanguage.en: 'This action permanently deletes your login credentials, FCM notification tokens, and mobile links. Your email and mobile number will be freed so you can re-register anytime. Your family tree directory entry will remain as an unlinked member profile so genealogical records are preserved.\n\nAre you sure you want to proceed?',
+      AppLanguage.hi: 'यह कार्रवाई आपके लॉगिन क्रेडेंशियल, FCM नोटिफिकेशन टोकन और मोबाइल लिंक को स्थायी रूप से हटा देगी। आपका ईमेल और मोबाइल नंबर मुक्त हो जाएगा ताकि आप कभी भी दोबारा पंजीकरण कर सकें। पारिवारिक वंशावली को सुरक्षित रखने के लिए डायरेक्टरी में आपका नाम बना रहेगा।\n\nक्या आप वाकई आगे बढ़ना चाहते हैं?',
+    },
+    'delete_account_confirm': {
+      AppLanguage.en: 'Permanently Delete',
+      AppLanguage.hi: 'स्थायी रूप से हटाएं',
+    },
+    'cancel': {
+      AppLanguage.en: 'Cancel',
+      AppLanguage.hi: 'रद्द करें',
+    },
+    'delete_success': {
+      AppLanguage.en: 'Your account has been deleted successfully. You can re-register anytime.',
+      AppLanguage.hi: 'आपका खाता सफलतापूर्वक हटा दिया गया है। आप कभी भी पुनः पंजीकरण कर सकते हैं।',
+    },
+    'legal_and_support': {
+      AppLanguage.en: 'Legal & Support',
+      AppLanguage.hi: 'कानूनी एवं सहायता',
+    },
+    'email_support': {
+      AppLanguage.en: 'Email Support',
+      AppLanguage.hi: 'ईमेल सहायता',
+    },
   };
 
   static String get(String key, AppLanguage lang) {

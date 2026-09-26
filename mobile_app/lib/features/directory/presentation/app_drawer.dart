@@ -238,9 +238,25 @@ class AppDrawer extends ConsumerWidget {
                   title: 'Help & Support',
                   onTap: () {
                     context.pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Help & Support will be available soon.')),
-                    );
+                    context.push('/help-support');
+                  },
+                  primaryColor: primaryColor,
+                ),
+                _buildDrawerItem(
+                  icon: Icons.shield_outlined,
+                  title: 'Privacy Policy',
+                  onTap: () {
+                    context.pop();
+                    context.push('/privacy-policy');
+                  },
+                  primaryColor: primaryColor,
+                ),
+                _buildDrawerItem(
+                  icon: Icons.gavel_outlined,
+                  title: 'Terms & Conditions',
+                  onTap: () {
+                    context.pop();
+                    context.push('/terms-and-conditions');
                   },
                   primaryColor: primaryColor,
                 ),

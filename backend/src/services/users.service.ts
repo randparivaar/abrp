@@ -1,6 +1,6 @@
 import { db, dbRetry } from '../db/index.js';
 import { users } from '../db/schema.js';
-import { eq, ilike, or, count, desc } from 'drizzle-orm';
+import { eq, ilike, or, count, desc, ne, and } from 'drizzle-orm';
 import { UpdateUserProfileRequest } from '../types/users.types.js';
 
 export async function getUserById(userId: string) {
@@ -133,4 +133,51 @@ export async function listAllUsers(search?: string, page: number = 1, limit: num
     totalPages: totalPages > 0 ? totalPages : 1,
   };
 }
+
+export async function deleteUserAccount(userId: string) {
+  // 1. Fetch user to verify existence
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+  if (!user) return null;
+
+  const { devices, coordinatorRegions, familyMembers, advertisements, businessProfiles } = await import('../db/schema.js');
+
+  // 2. Remove FCM device tokens
+  await dbRetry(() => db.delete(devices).where(eq(devices.userId, userId)));
+
+  // 3. Remove coordinator assignments if user was moderator
+  await dbRetry(() => db.delete(coordinatorRegions).where(eq(coordinatorRegions.userId, userId)));
+
+  // 4. Unlink family member node: preserves family tree structure, frees personal credentials
+  await dbRetry(() => db.update(familyMembers)
+    .set({ userId: null, updatedAt: new Date() })
+    .where(eq(familyMembers.userId, userId)));
+
+  // 5. Handle user-created records to satisfy foreign key constraints
+  const fallbackAdmin = await db.query.users.findFirst({
+    where: and(ne(users.id, userId), eq(users.role, 'admin')),
+  });
+  
+  let fallbackId = fallbackAdmin?.id;
+  if (!fallbackId) {
+    const anyOtherUser = await db.query.users.findFirst({
+      where: ne(users.id, userId),
+    });
+    fallbackId = anyOtherUser?.id;
+  }
+
+  if (fallbackId) {
+    // Reassign created records to fallback admin/system user
+    await dbRetry(() => db.update(familyMembers).set({ createdBy: fallbackId }).where(eq(familyMembers.createdBy, userId)));
+    await dbRetry(() => db.update(businessProfiles).set({ createdBy: fallbackId }).where(eq(businessProfiles.createdBy, userId)));
+    await dbRetry(() => db.update(advertisements).set({ createdBy: fallbackId }).where(eq(advertisements.createdBy, userId)));
+  }
+
+  // 6. Delete user record - frees email, mobile, and googleId for clean re-registration
+  await dbRetry(() => db.delete(users).where(eq(users.id, userId)));
+
+  return { success: true };
+}
+
 

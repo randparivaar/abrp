@@ -362,6 +362,69 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     }
   }
 
+  Future<void> _deleteUserByAdmin(String userId, String userName) async {
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.delete('/users/$userId');
+      if (response.statusCode == 200 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Account for "$userName" deleted successfully.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _fetchUsers();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete user: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteUserByAdmin(Map<String, dynamic> userItem) async {
+    final name = (userItem['fullName'] as String? ?? 'User').toTitleCase();
+    final email = userItem['email'] as String? ?? userItem['mobile'] as String? ?? '';
+    final userId = userItem['id'] as String;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red),
+            SizedBox(width: 8),
+            Expanded(child: Text('Delete User Account?')),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete the account for "$name" ($email)?\n\nTheir login credentials, FCM notification tokens, and mobile links will be purged. Their family tree directory entry will remain as an unlinked member profile.',
+          style: const TextStyle(fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete Account'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _deleteUserByAdmin(userId, name);
+    }
+  }
+
   Future<void> _fetchUsers({String? query, int? page}) async {
     final search = query ?? _userSearchQuery;
     final currentPage = page ?? _userPage;
@@ -919,16 +982,32 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                   ),
                                 ],
                                 const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    onPressed: () => _showChangeRoleModal(item),
-                                    icon: const Icon(Icons.edit_outlined, size: 16),
-                                    label: const Text('Edit Role & Assigned Zones'),
-                                    style: OutlinedButton.styleFrom(
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => _showChangeRoleModal(item),
+                                        icon: const Icon(Icons.edit_outlined, size: 16),
+                                        label: const Text('Edit Role & Assigned Zones'),
+                                        style: OutlinedButton.styleFrom(
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    if (item['id'] != ref.watch(authProvider).user?.id) ...[
+                                      const SizedBox(width: 8),
+                                      IconButton.outlined(
+                                        onPressed: () => _confirmDeleteUserByAdmin(item),
+                                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                        tooltip: 'Delete User Account',
+                                        style: IconButton.styleFrom(
+                                          foregroundColor: Colors.red,
+                                          side: BorderSide(color: Colors.red.shade200),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ],
                             ),

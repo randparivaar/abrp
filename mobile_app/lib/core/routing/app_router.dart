@@ -19,6 +19,9 @@ import 'package:mobile_app/features/directory/presentation/active_ads_screen.dar
 import 'package:mobile_app/core/network/api_client.dart';
 import 'package:mobile_app/features/directory/presentation/business_profile_detail_screen.dart';
 import 'package:mobile_app/features/events/presentation/events_list_screen.dart';
+import 'package:mobile_app/features/profile/presentation/privacy_policy_screen.dart';
+import 'package:mobile_app/features/profile/presentation/terms_and_conditions_screen.dart';
+import 'package:mobile_app/features/profile/presentation/faq_support_screen.dart';
 
 part 'app_router.g.dart';
 
@@ -72,9 +75,12 @@ GoRouter appRouter(Ref ref) {
       final isSplash = state.matchedLocation == '/splash';
       final isOnboarding = state.matchedLocation == '/onboarding';
       final isForgotPassword = state.matchedLocation == '/forgot-password';
+      final isPrivacy = state.matchedLocation == '/privacy-policy';
+      final isTerms = state.matchedLocation == '/terms-and-conditions';
+      final isHelpSupport = state.matchedLocation == '/help-support';
 
-      // Allow splash, onboarding, and forgot password screens to display without redirection
-      if (isSplash || isOnboarding || isForgotPassword) return null;
+      // Allow splash, onboarding, forgot password, and legal screens to display without redirection
+      if (isSplash || isOnboarding || isForgotPassword || isPrivacy || isTerms || isHelpSupport) return null;
 
       // 1. If not authenticated and not currently on login page, send to /login
       if (!isAuthenticated && !isLoggingIn) {
@@ -120,6 +126,18 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/privacy-policy',
+        builder: (context, state) => const PrivacyPolicyScreen(),
+      ),
+      GoRoute(
+        path: '/terms-and-conditions',
+        builder: (context, state) => const TermsAndConditionsScreen(),
+      ),
+      GoRoute(
+        path: '/help-support',
+        builder: (context, state) => const FaqSupportScreen(),
       ),
       GoRoute(
         path: '/directory',

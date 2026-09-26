@@ -230,6 +230,27 @@ class Auth extends _$Auth {
     state = AuthState(user: null);
   }
 
+  Future<bool> deleteAccount() async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.delete('/users/me');
+
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
+
+      await _storage.delete(key: AppConstants.tokenKey);
+      await _storage.delete(key: AppConstants.userKey);
+
+      state = AuthState(user: null);
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: _getErrorMessage(e));
+      return false;
+    }
+  }
+
   Future<void> changePreferredLanguage(String lang) async {
     if (state.user == null) return;
     try {

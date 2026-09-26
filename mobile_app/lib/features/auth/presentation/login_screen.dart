@@ -698,15 +698,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                                     baseline: TextBaseline.alphabetic,
                                                     child: GestureDetector(
                                                       onTap: () {
-                                                        ScaffoldMessenger.of(context).showSnackBar(
-                                                          SnackBar(
-                                                            content: Text(
-                                                              lang == AppLanguage.hi
-                                                                  ? 'सेवा की शर्तें जल्द ही उपलब्ध होंगी।'
-                                                                  : 'Terms of Service will be available soon.',
-                                                            ),
-                                                          ),
-                                                        );
+                                                        context.push('/terms-and-conditions');
                                                       },
                                                       child: Text(
                                                         lang == AppLanguage.hi ? 'सेवा की शर्तों' : 'Terms of Service',
@@ -727,15 +719,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                                     baseline: TextBaseline.alphabetic,
                                                     child: GestureDetector(
                                                       onTap: () {
-                                                        ScaffoldMessenger.of(context).showSnackBar(
-                                                          SnackBar(
-                                                            content: Text(
-                                                              lang == AppLanguage.hi
-                                                                  ? 'गोपनीयता नीति जल्द ही उपलब्ध होगी।'
-                                                                  : 'Privacy Policy will be available soon.',
-                                                            ),
-                                                          ),
-                                                        );
+                                                        context.push('/privacy-policy');
                                                       },
                                                       child: Text(
                                                         lang == AppLanguage.hi ? 'गोपनीयता नीति' : 'Privacy Policy',
