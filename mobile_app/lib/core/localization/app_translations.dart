@@ -194,6 +194,14 @@ class AppTranslations {
       AppLanguage.en: 'Email Support',
       AppLanguage.hi: 'ईमेल सहायता',
     },
+    'donate': {
+      AppLanguage.en: 'Donation & Contributions',
+      AppLanguage.hi: 'सहयोग एवं दान राशि',
+    },
+    'donate_now': {
+      AppLanguage.en: 'Donate Now',
+      AppLanguage.hi: 'सहयोग करें',
+    },
   };
 
   static String get(String key, AppLanguage lang) {

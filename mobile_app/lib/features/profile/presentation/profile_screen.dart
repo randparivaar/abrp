@@ -340,6 +340,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 child: Column(
                   children: [
                     ListTile(
+                      leading: Icon(Icons.volunteer_activism_outlined, color: colorScheme.primary),
+                      title: Text(AppTranslations.get('donate', lang)),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () => context.push('/donate'),
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
                       leading: Icon(Icons.help_outline, color: colorScheme.primary),
                       title: Text(AppTranslations.get('help_support', lang)),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),

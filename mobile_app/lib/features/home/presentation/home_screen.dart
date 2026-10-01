@@ -554,13 +554,7 @@ class HomeScreen extends ConsumerWidget {
                   icon: Icons.groups_rounded,
                   label: 'Committee',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Committee details will be available soon.',
-                        ),
-                      ),
-                    );
+                    context.push('/committee');
                   },
                   theme: theme,
                 ),

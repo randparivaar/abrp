@@ -118,11 +118,13 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
   final ImagePicker _imagePicker = ImagePicker();
 
   final List<Map<String, String>> _relationships = [
+    {'value': 'father', 'label': 'Father / पिता'},
+    {'value': 'mother', 'label': 'Mother / माता'},
+    {'value': 'grandfather', 'label': 'Grandfather / दादाजी'},
+    {'value': 'grandmother', 'label': 'Grandmother / दादीजी'},
     {'value': 'spouse', 'label': 'Spouse / जीवनसाथी'},
     {'value': 'son', 'label': 'Son / पुत्र'},
     {'value': 'daughter', 'label': 'Daughter / पुत्री'},
-    {'value': 'father', 'label': 'Father / पिता'},
-    {'value': 'mother', 'label': 'Mother / माता'},
     {'value': 'brother', 'label': 'Brother / भाई'},
     {'value': 'sister', 'label': 'Sister / बहन'},
     {'value': 'daughter_in_law', 'label': 'Daughter-in-law / पुत्रवधू'},
@@ -813,19 +815,21 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
                     // Auto-set gender based on relationship
                     if (_relationship == 'son' || 
                         _relationship == 'father' || 
+                        _relationship == 'grandfather' || 
                         _relationship == 'brother' || 
                         _relationship == 'son_in_law' || 
                         _relationship == 'grandson') {
                       _gender = 'male';
                     } else if (_relationship == 'daughter' || 
                                _relationship == 'mother' || 
+                               _relationship == 'grandmother' || 
                                _relationship == 'sister' || 
                                _relationship == 'daughter_in_law' || 
                                _relationship == 'granddaughter') {
                       _gender = 'female';
                     }
 
-                    if (_relationship == 'spouse' || _relationship == 'daughter_in_law' || _relationship == 'son_in_law') { 
+                    if (_relationship == 'spouse' || _relationship == 'daughter_in_law' || _relationship == 'son_in_law' || _relationship == 'grandfather' || _relationship == 'grandmother') { 
                       _maritalStatus = 'married';
                     } else {
                       _maritalStatus = 'single';
@@ -838,9 +842,16 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
         // Dynamic Spouse/Parent Selectors — show for all non-head, non-spouse relationship types
         if (_relationship != 'self' && _relationship != 'spouse' &&
             _relationship != 'father' && _relationship != 'mother' &&
+            _relationship != 'grandfather' && _relationship != 'grandmother' &&
             _relationship != 'brother' && _relationship != 'sister') ...[
           _buildRelationshipSelectors(theme, familyMembers),
           const SizedBox(height: 16),
+        ],
+
+        // Optional spouse selector for elders (Father/Mother, Grandfather/Grandmother)
+        if (_relationship == 'grandfather' || _relationship == 'grandmother' ||
+            _relationship == 'father' || _relationship == 'mother') ...[
+          _buildElderSpouseSelector(theme, familyMembers),
         ],
 
         // Gender Choice Chips
@@ -1391,6 +1402,71 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildElderSpouseSelector(ThemeData theme, List<MemberNode> familyMembers) {
+    List<MemberNode> eligibleSpouses = [];
+    String label = '';
+
+    if (_relationship == 'grandfather') {
+      eligibleSpouses = familyMembers
+          .where((m) => m.gender == 'female' && m.relationshipToHead == 'grandmother' && m.id != widget.memberToEdit?.id)
+          .toList();
+      label = 'Select Wife (Grandmother) / पत्नी (दादीजी) का चयन करें';
+    } else if (_relationship == 'grandmother') {
+      eligibleSpouses = familyMembers
+          .where((m) => m.gender == 'male' && m.relationshipToHead == 'grandfather' && m.id != widget.memberToEdit?.id)
+          .toList();
+      label = 'Select Husband (Grandfather) / पति (दादाजी) का चयन करें';
+    } else if (_relationship == 'father') {
+      eligibleSpouses = familyMembers
+          .where((m) => m.gender == 'female' && m.relationshipToHead == 'mother' && m.id != widget.memberToEdit?.id)
+          .toList();
+      label = 'Select Wife (Mother) / पत्नी (माताजी) का चयन करें';
+    } else if (_relationship == 'mother') {
+      eligibleSpouses = familyMembers
+          .where((m) => m.gender == 'male' && m.relationshipToHead == 'father' && m.id != widget.memberToEdit?.id)
+          .toList();
+      label = 'Select Husband (Father) / पति (पिताजी) का चयन करें';
+    }
+
+    if (eligibleSpouses.isEmpty) return const SizedBox.shrink();
+
+    final spouseValue = eligibleSpouses.any((m) => m.id == _spouseId) ? _spouseId : null;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: DropdownButtonFormField<int>(
+        key: ValueKey('elder_spouse_${_relationship}_$_spouseId'),
+        initialValue: spouseValue,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: const Icon(Icons.favorite_outline),
+          border: const OutlineInputBorder(),
+        ),
+        items: [
+          const DropdownMenuItem<int>(
+            value: null,
+            child: Text('Not specified / निर्दिष्ट नहीं है'),
+          ),
+          ...eligibleSpouses.map((m) {
+            return DropdownMenuItem<int>(
+              value: m.id,
+              child: Text(m.fullName),
+            );
+          }),
+        ],
+        onChanged: (val) {
+          setState(() {
+            _spouseId = val;
+            if (val != null) {
+              _maritalStatus = 'married';
+            }
+          });
+        },
+      ),
     );
   }
 

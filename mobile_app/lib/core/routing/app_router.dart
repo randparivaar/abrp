@@ -22,6 +22,8 @@ import 'package:mobile_app/features/events/presentation/events_list_screen.dart'
 import 'package:mobile_app/features/profile/presentation/privacy_policy_screen.dart';
 import 'package:mobile_app/features/profile/presentation/terms_and_conditions_screen.dart';
 import 'package:mobile_app/features/profile/presentation/faq_support_screen.dart';
+import 'package:mobile_app/features/profile/presentation/donation_screen.dart';
+import 'package:mobile_app/features/profile/presentation/committee_screen.dart';
 
 part 'app_router.g.dart';
 
@@ -138,6 +140,14 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/help-support',
         builder: (context, state) => const FaqSupportScreen(),
+      ),
+      GoRoute(
+        path: '/donate',
+        builder: (context, state) => const DonationScreen(),
+      ),
+      GoRoute(
+        path: '/committee',
+        builder: (context, state) => const CommitteeScreen(),
       ),
       GoRoute(
         path: '/directory',

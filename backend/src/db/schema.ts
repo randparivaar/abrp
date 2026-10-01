@@ -9,7 +9,8 @@ export const genderEnum = pgEnum('gender_type', ['male', 'female', 'other']);
 export const relationshipEnum = pgEnum('relationship_type', [
   'self', 'spouse', 'son', 'daughter', 'father', 'mother',
   'brother', 'sister', 'daughter_in_law', 'son_in_law',
-  'grandson', 'granddaughter', 'other'
+  'grandson', 'granddaughter', 'other',
+  'grandfather', 'grandmother'
 ]);
 
 export const maritalStatusEnum = pgEnum('marital_status', [

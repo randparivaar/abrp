@@ -307,6 +307,18 @@ class _HeroSection extends StatelessWidget {
       case 'daughter':
         relationTitle = 'Daughter of ${head.fullName}';
         break;
+      case 'father':
+        relationTitle = 'Father of ${head.fullName}';
+        break;
+      case 'mother':
+        relationTitle = 'Mother of ${head.fullName}';
+        break;
+      case 'grandfather':
+        relationTitle = 'Grandfather of ${head.fullName}';
+        break;
+      case 'grandmother':
+        relationTitle = 'Grandmother of ${head.fullName}';
+        break;
       case 'grandson':
         relationTitle = 'Grandson of ${head.fullName}';
         break;
@@ -995,9 +1007,13 @@ class _FamilyMemberCard extends StatelessWidget {
       case 'daughter':
         return 'Daughter';
       case 'father':
-        return 'Father';
+        return 'Father / पिता';
       case 'mother':
-        return 'Mother';
+        return 'Mother / माता';
+      case 'grandfather':
+        return 'Grandfather / दादाजी';
+      case 'grandmother':
+        return 'Grandmother / दादीजी';
       default:
         return rel[0].toUpperCase() + rel.substring(1);
     }

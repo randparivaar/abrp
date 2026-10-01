@@ -59,7 +59,7 @@ export interface AddFamilyMemberRequest {
   familyId: number;
   fullName: string;
   gender: 'male' | 'female' | 'other';
-  relationshipToHead: 'spouse' | 'son' | 'daughter' | 'father' | 'mother' | 'brother' | 'sister' | 'daughter_in_law' | 'son_in_law' | 'grandson' | 'granddaughter' | 'other';
+  relationshipToHead: 'spouse' | 'son' | 'daughter' | 'father' | 'mother' | 'brother' | 'sister' | 'daughter_in_law' | 'son_in_law' | 'grandson' | 'granddaughter' | 'other' | 'grandfather' | 'grandmother';
   birthDate?: string; // ISO String
   estimatedAgeOnCreation?: number;
   mobile?: string;

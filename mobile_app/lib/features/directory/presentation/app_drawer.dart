@@ -226,10 +226,8 @@ class AppDrawer extends ConsumerWidget {
                   icon: Icons.groups_outlined,
                   title: 'Committee',
                   onTap: () {
-                    context.pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Committee details will be available soon.')),
-                    );
+                    Navigator.of(context).pop();
+                    context.push('/committee');
                   },
                   primaryColor: primaryColor,
                 ),
@@ -343,10 +341,8 @@ class AppDrawer extends ConsumerWidget {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
                       onTap: () {
-                        context.pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Donate feature coming soon. Thank you for your generosity!')),
-                        );
+                        Navigator.of(context).pop();
+                        context.push('/donate');
                       },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
@@ -355,7 +351,7 @@ class AppDrawer extends ConsumerWidget {
                             const Icon(Icons.volunteer_activism_rounded, color: Colors.white, size: 22),
                             const SizedBox(width: 14),
                             Text(
-                              'Donate Now',
+                              AppTranslations.get('donate_now', lang),
                               style: GoogleFonts.inter(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
