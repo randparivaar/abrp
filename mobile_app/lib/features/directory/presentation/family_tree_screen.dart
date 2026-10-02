@@ -1118,13 +1118,27 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
     MemberNode head,
     FamilyUnit family,
   ) {
+    final String defaultSpouseRelation;
+    final hRel = head.relationshipToHead.toLowerCase();
+    if (hRel == 'father') {
+      defaultSpouseRelation = 'mother';
+    } else if (hRel == 'mother') {
+      defaultSpouseRelation = 'father';
+    } else if (hRel.contains('grandfather')) {
+      defaultSpouseRelation = 'grandmother';
+    } else if (hRel.contains('grandmother')) {
+      defaultSpouseRelation = 'grandfather';
+    } else {
+      defaultSpouseRelation = 'spouse';
+    }
+
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => AddMemberDialog(
             familyId: widget.familyId,
-            defaultRelation: 'spouse',
+            defaultRelation: defaultSpouseRelation,
             defaultGender: head.gender == 'male' ? 'female' : 'male',
             spouseId: head.id,
             defaultAddress: family.address,
@@ -1218,6 +1232,284 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
     );
   }
 
+  MemberNode _findAncestralRoot(List<MemberNode> members) {
+    if (members.isEmpty) {
+      return MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: '');
+    }
+
+    // 1. Look for Grandfather / Paternal Grandfather
+    final grandfather = members.where((m) =>
+      ['grandfather', 'paternal_grandfather'].contains(m.relationshipToHead.toLowerCase())
+    ).firstOrNull;
+    if (grandfather != null) return grandfather;
+
+    final grandmother = members.where((m) =>
+      ['grandmother', 'paternal_grandmother'].contains(m.relationshipToHead.toLowerCase())
+    ).firstOrNull;
+    if (grandmother != null) return grandmother;
+
+    // 2. Look for Father
+    final father = members.where((m) =>
+      m.relationshipToHead.toLowerCase() == 'father'
+    ).firstOrNull;
+    if (father != null) return father;
+
+    // 2b. Look for Mother
+    final mother = members.where((m) =>
+      m.relationshipToHead.toLowerCase() == 'mother'
+    ).firstOrNull;
+    if (mother != null) return mother;
+
+    // 3. Look for Head of Family ('self')
+    final head = members.where((m) =>
+      m.relationshipToHead.toLowerCase() == 'self'
+    ).firstOrNull;
+    if (head != null) return head;
+
+    return members.first;
+  }
+
+  String _getMemberDisplayRoleTag(MemberNode m) {
+    switch (m.relationshipToHead.toLowerCase()) {
+      case 'self':
+        return 'HEAD OF FAMILY / मुखिया';
+      case 'spouse':
+        return 'SPOUSE / जीवनसाथी';
+      case 'father':
+        return 'FATHER / पिता';
+      case 'mother':
+        return 'MOTHER / माता';
+      case 'grandfather':
+      case 'paternal_grandfather':
+        return 'GRANDFATHER / दादाजी';
+      case 'grandmother':
+      case 'paternal_grandmother':
+        return 'GRANDMOTHER / दादीजी';
+      case 'son':
+        return 'SON / पुत्र';
+      case 'daughter':
+        return 'DAUGHTER / पुत्री';
+      case 'brother':
+        return 'BROTHER / भाई';
+      case 'sister':
+        return 'SISTER / बहन';
+      case 'daughter_in_law':
+        return 'DAUGHTER-IN-LAW / पुत्रवधू';
+      case 'son_in_law':
+        return 'SON-IN-LAW / दामाद';
+      case 'grandson':
+        return 'GRANDSON / पौत्र';
+      case 'granddaughter':
+        return 'GRANDDAUGHTER / पौत्री';
+      default:
+        return m.relationshipToHead.replaceAll('_', ' ').toUpperCase();
+    }
+  }
+
+  MemberNode _findSpouseFor(MemberNode member, List<MemberNode> allMembers) {
+    if (member.id == -1) {
+      return MemberNode(id: -1, familyId: -1, fullName: '', gender: '', relationshipToHead: '');
+    }
+    // 1. Direct explicit spouseId match
+    final explicitSpouse = allMembers.where((m) =>
+      (member.spouseId != null && m.id == member.spouseId) ||
+      (m.spouseId != null && m.spouseId == member.id)
+    ).firstOrNull;
+    if (explicitSpouse != null) return explicitSpouse;
+
+    // 2. Relationship-based match when spouseId is not linked:
+    final rel = member.relationshipToHead.toLowerCase();
+    if (rel == 'self') {
+      final s = allMembers.where((m) => m.relationshipToHead.toLowerCase() == 'spouse').firstOrNull;
+      if (s != null) return s;
+    } else if (rel == 'spouse') {
+      final s = allMembers.where((m) => m.relationshipToHead.toLowerCase() == 'self').firstOrNull;
+      if (s != null) return s;
+    } else if (rel == 'father') {
+      final s = allMembers.where((m) => m.relationshipToHead.toLowerCase() == 'mother').firstOrNull;
+      if (s != null) return s;
+    } else if (rel == 'mother') {
+      final s = allMembers.where((m) => m.relationshipToHead.toLowerCase() == 'father').firstOrNull;
+      if (s != null) return s;
+    } else if (['grandfather', 'paternal_grandfather'].contains(rel)) {
+      final s = allMembers.where((m) =>
+        ['grandmother', 'paternal_grandmother'].contains(m.relationshipToHead.toLowerCase())
+      ).firstOrNull;
+      if (s != null) return s;
+    } else if (['grandmother', 'paternal_grandmother'].contains(rel)) {
+      final s = allMembers.where((m) =>
+        ['grandfather', 'paternal_grandfather'].contains(m.relationshipToHead.toLowerCase())
+      ).firstOrNull;
+      if (s != null) return s;
+    } else if (rel == 'son') {
+      final dils = allMembers.where((m) => m.relationshipToHead.toLowerCase() == 'daughter_in_law').toList();
+      final sons = allMembers.where((m) => m.relationshipToHead.toLowerCase() == 'son').toList();
+      if (dils.length == 1 && sons.length == 1) {
+        return dils.first;
+      }
+    } else if (rel == 'daughter_in_law') {
+      final dils = allMembers.where((m) => m.relationshipToHead.toLowerCase() == 'daughter_in_law').toList();
+      final sons = allMembers.where((m) => m.relationshipToHead.toLowerCase() == 'son').toList();
+      if (dils.length == 1 && sons.length == 1) {
+        return sons.first;
+      }
+    } else if (rel == 'brother') {
+      final sils = allMembers.where((m) => m.relationshipToHead.toLowerCase() == 'sister_in_law').toList();
+      final brothers = allMembers.where((m) => m.relationshipToHead.toLowerCase() == 'brother').toList();
+      if (sils.length == 1 && brothers.length == 1) {
+        return sils.first;
+      }
+    } else if (rel == 'sister_in_law') {
+      final sils = allMembers.where((m) => m.relationshipToHead.toLowerCase() == 'sister_in_law').toList();
+      final brothers = allMembers.where((m) => m.relationshipToHead.toLowerCase() == 'brother').toList();
+      if (sils.length == 1 && brothers.length == 1) {
+        return brothers.first;
+      }
+    }
+
+    return MemberNode(
+      id: -1,
+      familyId: -1,
+      fullName: '',
+      gender: '',
+      relationshipToHead: '',
+    );
+  }
+
+  List<MemberNode> _getChildrenOf(
+    MemberNode parent,
+    MemberNode spouse,
+    List<MemberNode> allMembers,
+  ) {
+    final parentSpouseIds = {parent.id, if (spouse.id != -1) spouse.id};
+    final pRel = parent.relationshipToHead.toLowerCase();
+    final sRel = spouse.id != -1 ? spouse.relationshipToHead.toLowerCase() : '';
+
+    final isGrandparent = pRel.contains('grandfather') ||
+        pRel.contains('grandmother') ||
+        sRel.contains('grandfather') ||
+        sRel.contains('grandmother');
+
+    final isParentOfHead = pRel == 'father' ||
+        pRel == 'mother' ||
+        sRel == 'father' ||
+        sRel == 'mother';
+
+    final isHead = pRel == 'self' || sRel == 'self';
+
+    final isSonDaughter = pRel == 'son' ||
+        pRel == 'daughter' ||
+        pRel == 'daughter_in_law' ||
+        pRel == 'son_in_law' ||
+        sRel == 'son' ||
+        sRel == 'daughter' ||
+        sRel == 'daughter_in_law' ||
+        sRel == 'son_in_law';
+
+    // 1. Direct explicit fatherId / motherId links
+    final directLinked = allMembers.where((m) {
+      if (parentSpouseIds.contains(m.id)) return false;
+      return (m.fatherId != null && parentSpouseIds.contains(m.fatherId)) ||
+          (m.motherId != null && parentSpouseIds.contains(m.motherId));
+    }).toList();
+
+    final result = <MemberNode>[...directLinked];
+    final addedIds = result.map((m) => m.id).toSet();
+
+    // 2. Semantic fallback for unlinked members:
+    if (isGrandparent) {
+      for (final m in allMembers) {
+        if (parentSpouseIds.contains(m.id) || addedIds.contains(m.id)) continue;
+        final rel = m.relationshipToHead.toLowerCase();
+        if (['father', 'mother', 'uncle', 'aunt'].contains(rel) &&
+            m.fatherId == null && m.motherId == null) {
+          result.add(m);
+          addedIds.add(m.id);
+        }
+      }
+      if (result.isEmpty) {
+        for (final m in allMembers) {
+          if (parentSpouseIds.contains(m.id) || addedIds.contains(m.id)) continue;
+          if (m.relationshipToHead.toLowerCase() == 'self' &&
+              m.fatherId == null && m.motherId == null) {
+            result.add(m);
+            addedIds.add(m.id);
+          }
+        }
+      }
+    } else if (isParentOfHead) {
+      for (final m in allMembers) {
+        if (parentSpouseIds.contains(m.id) || addedIds.contains(m.id)) continue;
+        final rel = m.relationshipToHead.toLowerCase();
+        if (['self', 'brother', 'sister'].contains(rel) &&
+            m.fatherId == null && m.motherId == null) {
+          result.add(m);
+          addedIds.add(m.id);
+        }
+      }
+    } else if (isHead) {
+      for (final m in allMembers) {
+        if (parentSpouseIds.contains(m.id) || addedIds.contains(m.id)) continue;
+        final rel = m.relationshipToHead.toLowerCase();
+        if (['son', 'daughter'].contains(rel) &&
+            m.fatherId == null && m.motherId == null) {
+          result.add(m);
+          addedIds.add(m.id);
+        }
+      }
+    } else if (isSonDaughter) {
+      final sonsAndDils = allMembers.where((m) =>
+        ['son', 'daughter_in_law'].contains(m.relationshipToHead.toLowerCase())
+      ).toList();
+      if (sonsAndDils.length <= 2) {
+        for (final m in allMembers) {
+          if (parentSpouseIds.contains(m.id) || addedIds.contains(m.id)) continue;
+          final rel = m.relationshipToHead.toLowerCase();
+          if (['grandson', 'granddaughter'].contains(rel) &&
+              m.fatherId == null && m.motherId == null) {
+            result.add(m);
+            addedIds.add(m.id);
+          }
+        }
+      }
+    }
+
+    // Exclude spouses that will be rendered side-by-side with their partner
+    final filtered = result.where((m) {
+      final rel = m.relationshipToHead.toLowerCase();
+      if (rel.contains('in_law') || rel == 'spouse' || rel == 'mother' || rel.contains('grandmother')) {
+        for (final other in result) {
+          if (other.id == m.id) continue;
+          if (m.spouseId == other.id || other.spouseId == m.id) return false;
+          if ((rel == 'daughter_in_law' && other.relationshipToHead.toLowerCase() == 'son') ||
+              (rel == 'son_in_law' && other.relationshipToHead.toLowerCase() == 'daughter') ||
+              (rel == 'mother' && other.relationshipToHead.toLowerCase() == 'father') ||
+              (rel.contains('grandmother') && other.relationshipToHead.toLowerCase().contains('grandfather')) ||
+              (rel == 'sister_in_law' && other.relationshipToHead.toLowerCase() == 'brother')) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }).toList();
+
+    filtered.sort((a, b) {
+      if (a.birthDate != null && b.birthDate != null) {
+        return a.birthDate!.compareTo(b.birthDate!);
+      }
+      if (a.birthDate != null) return -1;
+      if (b.birthDate != null) return 1;
+      if (a.estimatedAgeOnCreation != null && b.estimatedAgeOnCreation != null) {
+        return b.estimatedAgeOnCreation!.compareTo(a.estimatedAgeOnCreation!);
+      }
+      if (a.estimatedAgeOnCreation != null) return -1;
+      if (b.estimatedAgeOnCreation != null) return 1;
+      return a.id.compareTo(b.id);
+    });
+
+    return filtered;
+  }
+
   Widget _buildPremiumCoupleRow({
     required BuildContext context,
     required MemberNode head,
@@ -1261,7 +1553,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
           _buildPremiumMemberPhotoColumn(
             context,
             head,
-            roleTag: 'HEAD OF FAMILY • $city',
+            roleTag: '${_getMemberDisplayRoleTag(head)} • $city',
             isPrimary: true,
             generation: 1,
           ),
@@ -1310,7 +1602,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
               ? _buildPremiumMemberPhotoColumn(
                   context,
                   spouse,
-                  roleTag: 'SPOUSE',
+                  roleTag: _getMemberDisplayRoleTag(spouse),
                   isPrimary: false,
                   generation: 1,
                 )
@@ -1329,40 +1621,10 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
   }) {
     final colorScheme = theme.colorScheme;
 
-    final spouseNode = allMembers.firstWhere(
-      (m) =>
-          (member.spouseId != null && m.id == member.spouseId) ||
-          m.spouseId == member.id,
-      orElse: () => MemberNode(
-        id: -1,
-        familyId: -1,
-        fullName: '',
-        gender: '',
-        relationshipToHead: '',
-      ),
-    );
+    final spouseNode = _findSpouseFor(member, allMembers);
     final hasSpouse = spouseNode.id != -1;
 
-    final memberAndSpouseIds = {member.id, if (hasSpouse) spouseNode.id};
-    final directChildren = allMembers.where((m) {
-      if (memberAndSpouseIds.contains(m.id)) return false;
-      return (m.fatherId != null && memberAndSpouseIds.contains(m.fatherId)) ||
-          (m.motherId != null && memberAndSpouseIds.contains(m.motherId));
-    }).toList();
-
-    directChildren.sort((a, b) {
-      if (a.birthDate != null && b.birthDate != null) {
-        return a.birthDate!.compareTo(b.birthDate!);
-      }
-      if (a.birthDate != null) return -1;
-      if (b.birthDate != null) return 1;
-      if (a.estimatedAgeOnCreation != null && b.estimatedAgeOnCreation != null) {
-        return b.estimatedAgeOnCreation!.compareTo(a.estimatedAgeOnCreation!);
-      }
-      if (a.estimatedAgeOnCreation != null) return -1;
-      if (b.estimatedAgeOnCreation != null) return 1;
-      return a.id.compareTo(b.id);
-    });
+    final directChildren = _getChildrenOf(member, spouseNode, allMembers);
 
     final double branchWidth = hasSpouse ? 290.0 : 160.0;
 
@@ -1405,7 +1667,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                 _buildPremiumMemberPhotoColumn(
                   context,
                   member,
-                  roleTag: member.relationshipToHead,
+                  roleTag: _getMemberDisplayRoleTag(member),
                   isPrimary: true,
                   generation: generation,
                 ),
@@ -1452,7 +1714,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
                 _buildPremiumMemberPhotoColumn(
                   context,
                   spouseNode,
-                  roleTag: spouseNode.relationshipToHead,
+                  roleTag: _getMemberDisplayRoleTag(spouseNode),
                   isPrimary: false,
                   generation: generation,
                 ),
@@ -1462,7 +1724,7 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
             _buildPremiumMemberPhotoColumn(
               context,
               member,
-              roleTag: member.relationshipToHead,
+              roleTag: _getMemberDisplayRoleTag(member),
               isPrimary: true,
               generation: generation,
             ),
@@ -1618,62 +1880,22 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
     FamilyTreeData data,
     ThemeData theme,
   ) {
-    final head = data.members.firstWhere(
-      (m) => m.relationshipToHead == 'self',
-      orElse: () => data.members.first,
-    );
+    final ancestralRoot = _findAncestralRoot(data.members);
 
     final currentRoot = _focusedRootMemberId != null
         ? data.members.firstWhere(
             (m) => m.id == _focusedRootMemberId,
-            orElse: () => head,
+            orElse: () => ancestralRoot,
           )
-        : head;
+        : ancestralRoot;
 
     final isFocused =
-        _focusedRootMemberId != null && _focusedRootMemberId != head.id;
+        _focusedRootMemberId != null && _focusedRootMemberId != ancestralRoot.id;
 
-    final spouse = data.members.firstWhere(
-      (m) =>
-          m.spouseId == currentRoot.id ||
-          (currentRoot.spouseId != null && m.id == currentRoot.spouseId),
-      orElse: () => MemberNode(
-        id: -1,
-        familyId: -1,
-        fullName: '',
-        gender: '',
-        relationshipToHead: '',
-      ),
-    );
+    final spouse = _findSpouseFor(currentRoot, data.members);
     final hasSpouse = spouse.id != -1;
 
-    List<MemberNode> sortByAge(Iterable<MemberNode> list) {
-      final sorted = list.toList();
-      sorted.sort((a, b) {
-        if (a.birthDate != null && b.birthDate != null) {
-          return a.birthDate!.compareTo(b.birthDate!);
-        }
-        if (a.birthDate != null) return -1;
-        if (b.birthDate != null) return 1;
-        if (a.estimatedAgeOnCreation != null &&
-            b.estimatedAgeOnCreation != null) {
-          return b.estimatedAgeOnCreation!
-              .compareTo(a.estimatedAgeOnCreation!);
-        }
-        if (a.estimatedAgeOnCreation != null) return -1;
-        if (b.estimatedAgeOnCreation != null) return 1;
-        return a.id.compareTo(b.id);
-      });
-      return sorted;
-    }
-
-    final rootAndSpouseIds = {currentRoot.id, if (hasSpouse) spouse.id};
-    final children = sortByAge(data.members.where((m) {
-      final linkedToRoot =
-          (m.fatherId != null && rootAndSpouseIds.contains(m.fatherId)) ||
-              (m.motherId != null && rootAndSpouseIds.contains(m.motherId));
-      return linkedToRoot && m.id != currentRoot.id && m.id != spouse.id;
-    }));
+    final children = _getChildrenOf(currentRoot, spouse, data.members);
 
     return Container(
       decoration: const BoxDecoration(

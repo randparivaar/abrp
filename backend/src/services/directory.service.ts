@@ -192,6 +192,35 @@ export async function addMemberToFamily(sessionUserId: string, payload: AddFamil
       .where(eq(familyMembers.id, payload.spouseId));
   }
 
+  // Auto-link parent relationships for head/elders
+  if (payload.relationshipToHead === 'father' && newMember.id) {
+    await db.update(familyMembers)
+      .set({ fatherId: newMember.id })
+      .where(and(eq(familyMembers.familyId, payload.familyId), eq(familyMembers.relationshipToHead, 'self')));
+  } else if (payload.relationshipToHead === 'mother' && newMember.id) {
+    await db.update(familyMembers)
+      .set({ motherId: newMember.id })
+      .where(and(eq(familyMembers.familyId, payload.familyId), eq(familyMembers.relationshipToHead, 'self')));
+  } else if (payload.relationshipToHead === 'grandfather' && newMember.id) {
+    const father = await db.query.familyMembers.findFirst({
+      where: (m: any, { and: a, eq: e }: any) => a(e(m.familyId, payload.familyId), e(m.relationshipToHead, 'father')),
+    });
+    if (father) {
+      await db.update(familyMembers)
+        .set({ fatherId: newMember.id })
+        .where(eq(familyMembers.id, father.id));
+    }
+  } else if (payload.relationshipToHead === 'grandmother' && newMember.id) {
+    const father = await db.query.familyMembers.findFirst({
+      where: (m: any, { and: a, eq: e }: any) => a(e(m.familyId, payload.familyId), e(m.relationshipToHead, 'father')),
+    });
+    if (father) {
+      await db.update(familyMembers)
+        .set({ motherId: newMember.id })
+        .where(eq(familyMembers.id, father.id));
+    }
+  }
+
   // Create business profile if requested
   if (payload.businessProfile && newMember.id) {
     const bp = payload.businessProfile;

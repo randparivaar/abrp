@@ -2688,7 +2688,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                           style: GoogleFonts.inter(fontSize: 12, color: colorScheme.onSurfaceVariant),
                         ),
                         loading: () => const SizedBox.shrink(),
-                        error: (_, __) => const SizedBox.shrink(),
+                        error: (_, _) => const SizedBox.shrink(),
                       ),
                     ],
                   ),
@@ -2775,7 +2775,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
                                       ? Image.network(
                                           eventItem.imageUrl!,
                                           width: 60, height: 60, fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => _eventPlaceholder(colorScheme),
+                                          errorBuilder: (_, _, _) => _eventPlaceholder(colorScheme),
                                         )
                                       : _eventPlaceholder(colorScheme),
                                 ),

@@ -125,16 +125,16 @@ class EventsService {
   }) async {
     try {
       final data = <String, dynamic>{
-        if (title != null) 'title': title,
-        if (description != null) 'description': description,
-        if (imageUrl != null) 'imageUrl': imageUrl,
-        if (galleryUrls != null) 'galleryUrls': galleryUrls,
-        if (externalAlbumUrl != null) 'externalAlbumUrl': externalAlbumUrl,
+        'title': ?title,
+        'description': ?description,
+        'imageUrl': ?imageUrl,
+        'galleryUrls': ?galleryUrls,
+        'externalAlbumUrl': ?externalAlbumUrl,
         if (eventDate != null) 'eventDate': eventDate.toUtc().toIso8601String(),
         if (endDate != null) 'endDate': endDate.toUtc().toIso8601String(),
-        if (venue != null) 'venue': venue,
-        if (category != null) 'category': category,
-        if (isActive != null) 'isActive': isActive,
+        'venue': ?venue,
+        'category': ?category,
+        'isActive': ?isActive,
       };
 
       final response = await dio.put('/events/admin/$id', data: data);
