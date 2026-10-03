@@ -31,3 +31,7 @@ lerna-debug.log*
 .DS_Store
 .vercel
 
+# Firebase Admin Service Account Private Keys
+*-firebase-adminsdk-*.json
+*-adminsdk-*.json
+

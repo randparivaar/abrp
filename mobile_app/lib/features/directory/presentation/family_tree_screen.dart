@@ -459,18 +459,23 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: theme.colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 Text(
                   member.fullName,
                   style: GoogleFonts.inter(
@@ -626,8 +631,9 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
               ],
             ),
           ),
-        );
-      },
+        ),
+      );
+    },
     );
   }
 
@@ -985,130 +991,136 @@ class _FamilyTreeScreenState extends ConsumerState<FamilyTreeScreen> {
 
     return GestureDetector(
       onTap: () => _showMemberActionSheet(context, m),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              GestureDetector(
-                onTap: () => _showMemberPhotoViewer(context, m),
-                child: Container(
-                  padding: const EdgeInsets.all(3.5),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: isPrimary
-                        ? const LinearGradient(
-                            colors: [Color(0xFFF4D068), Color(0xFFAA771C), Color(0xFFD4AF37)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : LinearGradient(
-                            colors: [Colors.pink.shade300, Colors.pink.shade600],
-                          ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (isPrimary ? const Color(0xFFD4AF37) : Colors.pink)
-                            .withValues(alpha: 0.4),
-                        blurRadius: 20,
-                        spreadRadius: 3,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: AppAvatar(
-                    name: m.fullName,
-                    imageUrl: m.avatarUrl,
-                    radius: avatarRadius,
+      child: SizedBox(
+        width: nameWidth,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                GestureDetector(
+                  onTap: () => _showMemberPhotoViewer(context, m),
+                  child: Container(
+                    padding: const EdgeInsets.all(3.5),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: isPrimary
+                          ? const LinearGradient(
+                              colors: [Color(0xFFF4D068), Color(0xFFAA771C), Color(0xFFD4AF37)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : LinearGradient(
+                              colors: [Colors.pink.shade300, Colors.pink.shade600],
+                            ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isPrimary ? const Color(0xFFD4AF37) : Colors.pink)
+                              .withValues(alpha: 0.4),
+                          blurRadius: 20,
+                          spreadRadius: 3,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: AppAvatar(
+                      name: m.fullName,
+                      imageUrl: m.avatarUrl,
+                      radius: avatarRadius,
+                    ),
                   ),
                 ),
-              ),
-              // Status indicator dot
-              Positioned(
-                bottom: 2,
-                right: 2,
-                child: Container(
-                  width: 15,
-                  height: 15,
-                  decoration: BoxDecoration(
-                    color: dotColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: dotColor.withValues(alpha: 0.5),
-                        blurRadius: 5,
-                        spreadRadius: 1,
-                      ),
-                    ],
+                // Status indicator dot
+                Positioned(
+                  bottom: 2,
+                  right: 2,
+                  child: Container(
+                    width: 15,
+                    height: 15,
+                    decoration: BoxDecoration(
+                      color: dotColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: dotColor.withValues(alpha: 0.5),
+                          blurRadius: 5,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
                   ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: nameWidth,
+              child: Text(
+                m.fullName,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  fontSize: generation == 1 ? 16 : 14,
+                  color: const Color(0xFF2C1D11),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (birthInfo != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                birthInfo,
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  color: const Color(0xFF8C6615),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: nameWidth,
-            child: Text(
-              m.fullName,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
-                fontWeight: FontWeight.bold,
-                fontSize: generation == 1 ? 16 : 14,
-                color: const Color(0xFF2C1D11),
+            const SizedBox(height: 4),
+            Container(
+              constraints: BoxConstraints(maxWidth: nameWidth),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                gradient: isPrimary
+                    ? const LinearGradient(
+                        colors: [Color(0xFF8B0000), Color(0xFFB22222)],
+                      )
+                    : null,
+                color: isPrimary ? null : Colors.pink.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: isPrimary
+                    ? null
+                    : Border.all(color: Colors.pink.withValues(alpha: 0.3)),
+                boxShadow: isPrimary
+                    ? [
+                        BoxShadow(
+                          color: Colors.red.withValues(alpha: 0.25),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (birthInfo != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              birthInfo,
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                color: const Color(0xFF8C6615),
-                fontWeight: FontWeight.w600,
+              child: Text(
+                roleTag.toUpperCase(),
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  color: isPrimary ? Colors.white : Colors.pink.shade700,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 8,
+                  letterSpacing: 0.8,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-              gradient: isPrimary
-                  ? const LinearGradient(
-                      colors: [Color(0xFF8B0000), Color(0xFFB22222)],
-                    )
-                  : null,
-              color: isPrimary ? null : Colors.pink.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: isPrimary
-                  ? null
-                  : Border.all(color: Colors.pink.withValues(alpha: 0.3)),
-              boxShadow: isPrimary
-                  ? [
-                      BoxShadow(
-                        color: Colors.red.withValues(alpha: 0.25),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Text(
-              roleTag.toUpperCase(),
-              style: GoogleFonts.inter(
-                color: isPrimary ? Colors.white : Colors.pink.shade700,
-                fontWeight: FontWeight.w700,
-                fontSize: 8,
-                letterSpacing: 0.8,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -3,3 +3,12 @@ docs/
 .pnpm-store/
 pnpm-store/
 node_modules/
+
+# Android signing keys & credentials
+*.jks
+*.keystore
+key.properties
+
+# Firebase Admin Service Account Private Keys
+*-firebase-adminsdk-*.json
+*-adminsdk-*.json

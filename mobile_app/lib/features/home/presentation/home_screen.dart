@@ -113,7 +113,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '${user?.fullName ?? 'Basant Rander'}!',
+              '${user?.fullName ?? 'Rander Parivaar '}!',
               style: GoogleFonts.inter(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -354,42 +354,53 @@ class HomeScreen extends ConsumerWidget {
                                               ],
                                             ),
                                           ],
-                                         ],
-                                       ),
-                                     ),
-                                   ],
-                                 ),
-                               ),
-                             ),
-                           );
-                         }),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
                       // Dynamic Ad Cards from home_carousel placement
                       if (carouselAds.isNotEmpty)
                         ...carouselAds.map(
                           (ad) => Container(
-                          width: MediaQuery.of(context).size.width * 0.85,
-                          margin: const EdgeInsets.only(right: 16),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                // Full image background
-                                if (resolveAdImageUrl(ad.imageUrl).isNotEmpty)
-                                  Image.network(
-                                    resolveAdImageUrl(ad.imageUrl),
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (c, e, s) => Container(
+                            width: MediaQuery.of(context).size.width * 0.85,
+                            margin: const EdgeInsets.only(right: 16),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  // Full image background
+                                  if (resolveAdImageUrl(ad.imageUrl).isNotEmpty)
+                                    Image.network(
+                                      resolveAdImageUrl(ad.imageUrl),
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (c, e, s) => Container(
+                                        color:
+                                            theme.colorScheme.primaryContainer,
+                                        child: Icon(
+                                          Icons.storefront_rounded,
+                                          color: primaryColor,
+                                          size: 48,
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    Container(
                                       color: theme.colorScheme.primaryContainer,
                                       child: Icon(
                                         Icons.storefront_rounded,
@@ -397,115 +408,105 @@ class HomeScreen extends ConsumerWidget {
                                         size: 48,
                                       ),
                                     ),
-                                  )
-                                else
+                                  // Gradient overlay from bottom
                                   Container(
-                                    color: theme.colorScheme.primaryContainer,
-                                    child: Icon(
-                                      Icons.storefront_rounded,
-                                      color: primaryColor,
-                                      size: 48,
-                                    ),
-                                  ),
-                                // Gradient overlay from bottom
-                                Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.black.withValues(alpha: 0.75),
-                                        Colors.black.withValues(alpha: 0.1),
-                                      ],
-                                      begin: Alignment.bottomCenter,
-                                      end: Alignment.topCenter,
-                                    ),
-                                  ),
-                                ),
-                                // SPONSORED badge top-left
-                                Positioned(
-                                  top: 12,
-                                  left: 12,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 7,
-                                      vertical: 3,
-                                    ),
                                     decoration: BoxDecoration(
-                                      color: Colors.amber,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      'SPONSORED',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.black.withValues(alpha: 0.75),
+                                          Colors.black.withValues(alpha: 0.1),
+                                        ],
+                                        begin: Alignment.bottomCenter,
+                                        end: Alignment.topCenter,
                                       ),
                                     ),
                                   ),
-                                ),
-                                // Title + tagline bottom
-                                Positioned(
-                                  bottom: 16,
-                                  left: 14,
-                                  right: 14,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        ad.title,
-                                        style: GoogleFonts.inter(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 17,
-                                          height: 1.2,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
+                                  // SPONSORED badge top-left
+                                  Positioned(
+                                    top: 12,
+                                    left: 12,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 3,
                                       ),
-                                      if (ad.tagline != null &&
-                                          ad.tagline!.isNotEmpty) ...[
-                                        const SizedBox(height: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'SPONSORED',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  // Title + tagline bottom
+                                  Positioned(
+                                    bottom: 16,
+                                    left: 14,
+                                    right: 14,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
                                         Text(
-                                          ad.tagline!,
+                                          ad.title,
                                           style: GoogleFonts.inter(
-                                            color: Colors.white70,
-                                            fontSize: 13,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 17,
+                                            height: 1.2,
                                           ),
-                                          maxLines: 1,
+                                          maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                         ),
-                                      ],
-                                      if (ad.location != null &&
-                                          ad.location!.isNotEmpty) ...[
-                                        const SizedBox(height: 6),
-                                        Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.location_on_outlined,
-                                              size: 13,
+                                        if (ad.tagline != null &&
+                                            ad.tagline!.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            ad.tagline!,
+                                            style: GoogleFonts.inter(
                                               color: Colors.white70,
+                                              fontSize: 13,
                                             ),
-                                            const SizedBox(width: 3),
-                                            Text(
-                                              ad.location!,
-                                              style: GoogleFonts.inter(
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                        if (ad.location != null &&
+                                            ad.location!.isNotEmpty) ...[
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.location_on_outlined,
+                                                size: 13,
                                                 color: Colors.white70,
-                                                fontSize: 12,
                                               ),
-                                            ),
-                                          ],
-                                        ),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                ad.location!,
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white70,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ],
-                                    ],
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 );

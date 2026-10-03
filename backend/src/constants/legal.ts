@@ -21,12 +21,12 @@ export const TERMS_AND_CONDITIONS: Record<'en' | 'hi', LegalDocument> = {
   en: {
     title: 'Terms & Conditions',
     lastUpdated: '2026-09-26',
-    serviceProvider: 'Basant Rander',
+    serviceProvider: 'Rander Parivaar ',
     contactEmail: 'randerparivaar@gmail.com',
     sections: [
       {
         title: 'Overview & Acceptance of Terms',
-        content: `These terms and conditions apply to the Akhil Bhartiya Rander Parivar Samaj (ABRP) app for mobile devices, together with any related services operated by Basant Rander(collectively, the "Application"). Basant Rander  is hereby referred to as the "Service Provider".
+        content: `These terms and conditions apply to the Akhil Bhartiya Rander Parivar Samaj (ABRP) app for mobile devices, together with any related services operated by Rander Parivaar (collectively, the "Application"). Rander Parivaar   is hereby referred to as the "Service Provider".
 
 By downloading or using the Application, you agree to these Terms and Conditions. You should read them carefully before using the Application.`,
       },
@@ -100,12 +100,12 @@ Contact Us: If you have any questions or suggestions, please contact the Service
   hi: {
     title: 'नियम एवं शर्तें (Terms & Conditions)',
     lastUpdated: '2026-09-26',
-    serviceProvider: 'बसंत रांदड़ ',
+    serviceProvider: 'रांदड़ परिवार ',
     contactEmail: 'randerparivaar@gmail.com',
     sections: [
       {
         title: 'नियमों की स्वीकृति एवं परिचय',
-        content: `ये नियम और शर्तें अखिल भारतीय रांदड़ परिवार समाज (ABRP) मोबाइल ऐप और बसंत रांदड़  ("सेवा प्रदाता") द्वारा संचालित संबंधित सेवाओं पर लागू होती हैं।
+        content: `ये नियम और शर्तें अखिल भारतीय रांदड़ परिवार समाज (ABRP) मोबाइल ऐप और रांदड़ परिवार  ("सेवा प्रदाता") द्वारा संचालित संबंधित सेवाओं पर लागू होती हैं।
 
 एप्लिकेशन डाउनलोड या उपयोग करके, आप इन नियमों व शर्तों से पूर्णतः सहमत होते हैं। कृपया उपयोग करने से पूर्व इन्हें ध्यानपूर्वक पढ़ें।`,
       },
@@ -155,12 +155,12 @@ export const PRIVACY_POLICY: Record<'en' | 'hi', LegalDocument> = {
   en: {
     title: 'Privacy Policy',
     lastUpdated: '2026-09-26',
-    serviceProvider: 'Basant Rander',
+    serviceProvider: 'Rander Parivaar ',
     contactEmail: 'randerparivaar@gmail.com',
     sections: [
       {
         title: 'Introduction & Scope',
-        content: `This privacy policy applies to the Akhil Bhartiya Rander Parivar Samaj (ABRP) app for mobile devices, together with any related services operated by Basant Rander (collectively, the "Application"). Basant Rander  is hereby referred to as the "Service Provider".
+        content: `This privacy policy applies to the Akhil Bhartiya Rander Parivar Samaj (ABRP) app for mobile devices, together with any related services operated by Rander Parivaar  (collectively, the "Application"). Rander Parivaar   is hereby referred to as the "Service Provider".
 
 The Service Provider is dedicated to safeguarding the privacy and confidentiality of personal data entrusted to us by community members.`,
       },
@@ -230,12 +230,12 @@ Contact Us: If you have any questions or data requests, please contact the Servi
   hi: {
     title: 'गोपनीयता नीति (Privacy Policy)',
     lastUpdated: '2026-09-26',
-    serviceProvider: 'बसंत रांदड़ ',
+    serviceProvider: 'रांदड़ परिवार ',
     contactEmail: 'randerparivaar@gmail.com',
     sections: [
       {
         title: 'प्रस्तावना एवं परिचय',
-        content: `यह गोपनीयता नीति अखिल भारतीय रांदड़ परिवार समाज (ABRP) मोबाइल एप्लिकेशन और बसंत रांदड़  ("सेवा प्रदाता") द्वारा संचालित सेवाओं पर लागू होती है।
+        content: `यह गोपनीयता नीति अखिल भारतीय रांदड़ परिवार समाज (ABRP) मोबाइल एप्लिकेशन और रांदड़ परिवार  ("सेवा प्रदाता") द्वारा संचालित सेवाओं पर लागू होती है।
 
 सेवा प्रदाता समाज बंधुओं द्वारा प्रदान की गई व्यक्तिगत जानकारी की सुरक्षा और गोपनीयता बनाए रखने हेतु पूर्ण रूप से प्रतिबद्ध है।`,
       },

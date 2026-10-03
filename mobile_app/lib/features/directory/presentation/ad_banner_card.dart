@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/constants/app_constants.dart';
 import 'directory_models.dart';
 
 String resolveAdImageUrl(String? rawUrl) {
@@ -9,13 +10,14 @@ String resolveAdImageUrl(String? rawUrl) {
   String url = rawUrl.trim();
   if (url.isEmpty) return '';
 
-  // Replace localhost or 127.0.0.1 with 10.0.2.2 for Android emulator compatibility
+  // Replace localhost or 127.0.0.1 with 10.0.2.2 for Android emulator compatibility if on local
   url = url
       .replaceAll('localhost', '10.0.2.2')
       .replaceAll('127.0.0.1', '10.0.2.2');
 
   if (url.startsWith('/')) {
-    url = 'http://10.0.2.2:8005$url';
+    final origin = AppConstants.baseUrl.replaceAll('/api/v1', '');
+    url = '$origin$url';
   }
   return url;
 }

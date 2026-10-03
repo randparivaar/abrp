@@ -6,12 +6,13 @@ class AppConstants {
   //   Vercel (release) : --dart-define=BASE_URL=https://abrp.vercel.app/api/v1
   //   Local (dev)      : --dart-define=BASE_URL=http://10.0.2.2:8005/api/v1
   //
-  // If no --dart-define is supplied the local Android emulator URL is used.
-  static const String _localUrl  = 'http://10.0.2.2:8005/api/v1';
+  // Defaults to production live backend so release builds connect automatically.
+  static const String _prodUrl  = 'https://abrp.vercel.app/api/v1';
+  static const String _localUrl = 'http://10.0.2.2:8005/api/v1';
 
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
-    defaultValue: _localUrl,
+    defaultValue: _prodUrl,
   );
 
   // Secure Storage keys

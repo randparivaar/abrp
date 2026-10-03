@@ -214,8 +214,8 @@ class _LinkMobileBottomSheetState extends ConsumerState<LinkMobileBottomSheet> {
               // ── DESCRIPTION TEXT ─────────────────────────────────────────
               Text(
                 isHindi
-                    ? 'कृपया अपना 10-अंकीय मोबाइल नंबर दर्ज करें ताकि आपके गूगल खाते को आपके परिवार के पेड़ और समाज निर्देशिका के साथ जोड़ा जा सके।'
-                    : 'Please enter your 10-digit mobile number to link your Google login to your family tree profile in the ABRP directory.',
+                    ? 'कृपया अपना 10-अंकीय मोबाइल नंबर दर्ज करें ताकि आपके खाते को आपके परिवार के पेड़ और समाज निर्देशिका के साथ जोड़ा जा सके।'
+                    : 'Please enter your 10-digit mobile number to link your account to your family tree profile in the ABRP directory.',
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   color: theme.colorScheme.onSurfaceVariant,

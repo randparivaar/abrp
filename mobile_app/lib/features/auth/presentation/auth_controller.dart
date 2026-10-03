@@ -3,7 +3,6 @@ import 'dart:io' show Platform;
 import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:mobile_app/core/constants/app_constants.dart';
 import 'package:mobile_app/core/network/api_client.dart';
@@ -33,9 +32,6 @@ class AuthState {
 @riverpod
 class Auth extends _$Auth {
   final _storage = const FlutterSecureStorage();
-  final _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile'],
-  );
 
   @override
   AuthState build() {
@@ -97,44 +93,6 @@ class Auth extends _$Auth {
     return 'android';
   }
 
-  Future<void> signInWithGoogle() async {
-    state = state.copyWith(isLoading: true);
-    try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        state = state.copyWith(isLoading: false);
-        return; // User cancelled
-      }
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final idToken = googleAuth.idToken;
-
-      if (idToken == null) {
-        throw Exception('Google Identity signature payload missing.');
-      }
-
-      final fcmToken = await _getFcmToken();
-      final deviceType = _getDeviceType();
-
-      final dio = ref.read(apiClientProvider);
-      final response = await dio.post('/auth/google', data: {
-        'idToken': idToken,
-        'fcmToken': ?fcmToken,
-        'deviceType': deviceType,
-      });
-      
-      final token = response.data['token'] as String;
-      final userData = response.data['user'];
-      final user = UserModel.fromJson(userData);
-
-      await _storage.write(key: AppConstants.tokenKey, value: token);
-      await _storage.write(key: AppConstants.userKey, value: jsonEncode(user.toJson()));
-
-      state = AuthState(user: user);
-    } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: _getErrorMessage(e));
-    }
-  }
 
   Future<void> signInWithEmail(String email, String password) async {
     state = state.copyWith(isLoading: true);
@@ -222,9 +180,6 @@ class Auth extends _$Auth {
 
   Future<void> logout() async {
     state = state.copyWith(isLoading: true);
-    try {
-      await _googleSignIn.signOut();
-    } catch (_) {}
     await _storage.delete(key: AppConstants.tokenKey);
     await _storage.delete(key: AppConstants.userKey);
     state = AuthState(user: null);
@@ -235,10 +190,6 @@ class Auth extends _$Auth {
     try {
       final dio = ref.read(apiClientProvider);
       await dio.delete('/users/me');
-
-      try {
-        await _googleSignIn.signOut();
-      } catch (_) {}
 
       await _storage.delete(key: AppConstants.tokenKey);
       await _storage.delete(key: AppConstants.userKey);

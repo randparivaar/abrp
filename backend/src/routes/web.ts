@@ -14,7 +14,7 @@ webRouter.get('/.well-known/assetlinks.json', (c) => {
       relation: ['delegate_permission/common.handle_all_urls'],
       target: {
         namespace: 'android_app',
-        package_name: 'com.abrp.mobile_app',
+        package_name: 'com.abrp.community',
         sha256_cert_fingerprints: [
           '0A:85:F3:FA:E1:AE:A5:91:6D:33:4E:95:05:D9:B4:6E:A8:AD:B5:CD:8B:75:E6:D6:DB:39:49:28:87:07:F5:32',
         ],
@@ -353,7 +353,7 @@ function renderBusinessPage(biz: any, loc: any, ownerNames: string): string {
       var appUrl = "abrp://business/" + businessId;
       var isAndroid = /Android/i.test(navigator.userAgent);
       if (isAndroid) {
-        window.location.href = "intent://business/" + businessId + "#Intent;scheme=abrp;package=com.abrp.mobile_app;end";
+        window.location.href = "intent://business/" + businessId + "#Intent;scheme=abrp;package=com.abrp.community;end";
       } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
         window.location.href = appUrl;
       }
@@ -541,7 +541,7 @@ function renderMemberPage(member: any, familyId: number, villageName: string): s
       var appUrl = "abrp://member/" + familyId + "/" + memberId;
       var isAndroid = /Android/i.test(navigator.userAgent);
       if (isAndroid) {
-        window.location.href = "intent://member/" + familyId + "/" + memberId + "#Intent;scheme=abrp;package=com.abrp.mobile_app;end";
+        window.location.href = "intent://member/" + familyId + "/" + memberId + "#Intent;scheme=abrp;package=com.abrp.community;end";
       } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
         window.location.href = appUrl;
       }

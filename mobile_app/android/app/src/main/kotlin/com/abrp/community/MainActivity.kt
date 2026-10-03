@@ -1,4 +1,4 @@
-package com.abrp.mobile_app
+package com.abrp.community
 
 import io.flutter.embedding.android.FlutterActivity
 
