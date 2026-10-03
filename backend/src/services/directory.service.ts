@@ -1,6 +1,6 @@
 import { db, dbRetry } from '../db/index.js';
 import { users, families, familyMembers, villages, regions, businessProfiles, businessMembers, businessLocations, coordinatorRegions } from '../db/schema.js';
-import { eq, sql, and, inArray, desc } from 'drizzle-orm';
+import { eq, sql, and, inArray, desc, ne } from 'drizzle-orm';
 import { OnboardFamilyRequest, AddFamilyMemberRequest } from '../types/directory.types.js';
 import { getUserDevices, sendPushNotification } from './notifications.service.js';
 
@@ -181,8 +181,17 @@ export async function addMemberToFamily(sessionUserId: string, payload: AddFamil
     status: 'pending', // Starts as pending validation
   }).returning();
 
-  // If a spouseId is provided, we should also update the target spouse's record to point back to this new member
+  // If a spouseId is provided, update target spouse bi-directionally and unlink any third person
   if (payload.spouseId && newMember.id) {
+    const targetSpouse = await db.query.familyMembers.findFirst({
+      where: eq(familyMembers.id, payload.spouseId),
+    });
+    if (targetSpouse?.spouseId && targetSpouse.spouseId !== newMember.id) {
+      await db.update(familyMembers)
+        .set({ spouseId: null })
+        .where(eq(familyMembers.id, targetSpouse.spouseId));
+    }
+
     await db.update(familyMembers)
       .set({ 
         spouseId: newMember.id,
@@ -480,6 +489,22 @@ export async function updateFamilyMember(sessionUserId: string, memberId: number
   const isFamilyApproved = familyMems.some((m: any) => m.status === 'approved');
   const targetStatus = (isFamilyApproved || member.status === 'approved') ? 'approved' : 'pending';
 
+  const oldSpouseId = member.spouseId;
+
+  // Resolve target spouse ID and marital status
+  let targetSpouseId = payload.spouseId;
+  let targetMaritalStatus = payload.maritalStatus;
+
+  if (targetSpouseId === undefined) {
+    if (targetMaritalStatus && targetMaritalStatus !== 'married') {
+      targetSpouseId = null;
+    } else {
+      targetSpouseId = member.spouseId;
+    }
+  } else if (targetSpouseId && !targetMaritalStatus) {
+    targetMaritalStatus = 'married';
+  }
+
   const [updatedMember] = await db.update(familyMembers).set({
     fullName: payload.fullName,
     gender: payload.gender,
@@ -492,7 +517,7 @@ export async function updateFamilyMember(sessionUserId: string, memberId: number
     email: payload.email,
     bloodGroup: payload.bloodGroup,
     gotra: payload.gotra,
-    maritalStatus: payload.maritalStatus,
+    maritalStatus: targetMaritalStatus,
     anniversaryDate: anniversaryDateParsed,
     currentAddress: payload.currentAddress,
     currentCity: payload.currentCity,
@@ -506,7 +531,7 @@ export async function updateFamilyMember(sessionUserId: string, memberId: number
     avatarUrl: payload.avatarUrl,
     fatherId: payload.fatherId,
     motherId: payload.motherId,
-    spouseId: payload.spouseId,
+    spouseId: targetSpouseId,
     status: targetStatus,
     validationFeedback: targetStatus === 'pending' ? null : member.validationFeedback,
   }).where(eq(familyMembers.id, memberId)).returning();
@@ -522,23 +547,58 @@ export async function updateFamilyMember(sessionUserId: string, memberId: number
     }
   }
 
-  // If a spouseId is provided and was updated, we should update the target spouse
-  if (payload.spouseId && updatedMember.id) {
+  const newSpouseId = updatedMember.spouseId;
+
+  // 1. If previous spouse was unlinked or replaced, unlink the former spouse
+  if (oldSpouseId && oldSpouseId !== newSpouseId) {
+    const formerSpouseUpdate: any = { spouseId: null };
+    if (updatedMember.maritalStatus === 'divorced') {
+      formerSpouseUpdate.maritalStatus = 'divorced';
+    } else if (updatedMember.maritalStatus === 'single') {
+      formerSpouseUpdate.maritalStatus = 'single';
+    }
+    await db.update(familyMembers)
+      .set(formerSpouseUpdate)
+      .where(and(eq(familyMembers.id, oldSpouseId), eq(familyMembers.spouseId, memberId)));
+  }
+
+  // 2. Clean up any other reverse orphan record that referenced memberId as spouse
+  if (newSpouseId) {
+    await db.update(familyMembers)
+      .set({ spouseId: null })
+      .where(and(eq(familyMembers.spouseId, memberId), ne(familyMembers.id, newSpouseId)));
+  } else {
+    const reverseUpdate: any = { spouseId: null };
+    if (updatedMember.maritalStatus === 'divorced') {
+      reverseUpdate.maritalStatus = 'divorced';
+    } else if (updatedMember.maritalStatus === 'single') {
+      reverseUpdate.maritalStatus = 'single';
+    }
+    await db.update(familyMembers)
+      .set(reverseUpdate)
+      .where(eq(familyMembers.spouseId, memberId));
+  }
+
+  // 3. Bi-directional link with new or existing spouse
+  if (newSpouseId && updatedMember.id) {
+    // If target spouse was previously pointing to someone else, unlink that third person
+    const targetSpouse = await db.query.familyMembers.findFirst({
+      where: eq(familyMembers.id, newSpouseId),
+    });
+    if (targetSpouse?.spouseId && targetSpouse.spouseId !== memberId) {
+      await db.update(familyMembers)
+        .set({ spouseId: null })
+        .where(eq(familyMembers.id, targetSpouse.spouseId));
+    }
+
+    // Set target spouse to point back to updatedMember and synchronize marital status & anniversary date
     await db.update(familyMembers)
       .set({ 
         spouseId: updatedMember.id,
         maritalStatus: 'married',
-        anniversaryDate: updatedMember.anniversaryDate
+        anniversaryDate: updatedMember.anniversaryDate,
       })
-      .where(eq(familyMembers.id, payload.spouseId));
-  } else if (updatedMember.spouseId) {
-    // If not spouseId update, but the member is married and has a spouseId, sync changes
-    await db.update(familyMembers)
-      .set({ 
-        maritalStatus: updatedMember.maritalStatus,
-        anniversaryDate: updatedMember.anniversaryDate
-      })
-      .where(eq(familyMembers.id, updatedMember.spouseId));
+      .where(eq(familyMembers.id, newSpouseId));
   }
 
   // Update or Create business profile if requested
@@ -1194,6 +1254,12 @@ export async function addMemberToBusiness(sessionUserId: string, businessId: num
     with: { member: true }
   });
 
+  // Verify caller is the creator, an existing partner/member, or an admin/moderator
+  const isOwnerOrCreator = biz.createdBy === sessionUserId || existingBizMembers.some(bm => bm.member?.userId === sessionUserId);
+  if (!isAdminOrMod && !isOwnerOrCreator) {
+    throw new Error('Unauthorized: Only the business owner or admin can add partners.');
+  }
+
   const familyIds = new Set<number>();
   for (const bm of existingBizMembers) {
     if (bm.member?.familyId) {
@@ -1208,6 +1274,11 @@ export async function addMemberToBusiness(sessionUserId: string, businessId: num
 
   if (!isAdminOrMod && familyIds.size > 0 && !familyIds.has(targetMember.familyId)) {
     throw new Error('Only family members or family head of the business owner can be added as partners.');
+  }
+
+  const alreadyLinked = existingBizMembers.some(bm => bm.memberId === targetMemberId);
+  if (alreadyLinked) {
+    throw new Error('This member is already registered as a partner in this business.');
   }
 
   // Insert link
@@ -1229,6 +1300,20 @@ export async function removeMemberFromBusiness(sessionUserId: string, businessId
     where: eq(businessProfiles.id, businessId),
   });
   if (!biz) throw new Error('Business not found');
+
+  const sessionUserRecord = await db.query.users.findFirst({ where: eq(users.id, sessionUserId) });
+  const isAdminOrMod = sessionUserRecord?.role === 'admin' || sessionUserRecord?.role === 'moderator';
+
+  const existingBizMembers = await db.query.businessMembers.findMany({
+    where: eq(businessMembers.businessId, businessId),
+    with: { member: true }
+  });
+
+  // Verify caller is the creator, an existing partner/member, or an admin/moderator
+  const isOwnerOrCreator = biz.createdBy === sessionUserId || existingBizMembers.some(bm => bm.member?.userId === sessionUserId);
+  if (!isAdminOrMod && !isOwnerOrCreator) {
+    throw new Error('Unauthorized: Only the business owner or admin can remove partners.');
+  }
 
   // Delete relationship
   await db.delete(businessMembers).where(

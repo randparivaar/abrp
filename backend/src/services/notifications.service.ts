@@ -28,6 +28,11 @@ export async function getUserDevices(userId: string) {
   return await db.select().from(devices).where(eq(devices.userId, userId));
 }
 
+export async function getMultipleUserDevices(userIds: string[]) {
+  if (!userIds || userIds.length === 0) return [];
+  return await db.select().from(devices).where(inArray(devices.userId, userIds));
+}
+
 export async function getAllDevices() {
   return await db.select().from(devices);
 }

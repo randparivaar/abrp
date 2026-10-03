@@ -5,7 +5,12 @@ import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import { hashPassword } from '../utils/crypto.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'abrp_local_development_jwt_secret_key_change_me_in_production';
+const isProd = process.env.NODE_ENV === 'production';
+const JWT_SECRET = process.env.JWT_SECRET || (isProd ? '' : 'abrp_local_development_jwt_secret_key_change_me_in_production');
+
+if (isProd && !process.env.JWT_SECRET) {
+  console.error('CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing in production!');
+}
 const googleClientIds = (process.env.GOOGLE_CLIENT_IDS || process.env.GOOGLE_CLIENT_ID || '').split(',').map(id => id.trim()).filter(Boolean);
 const oauthClient = new OAuth2Client();
 

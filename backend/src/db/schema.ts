@@ -257,11 +257,14 @@ export const coordinatorRegions = pgTable('coordinator_regions', {
  */
 export const otps = pgTable('otps', {
   id: serial('id').primaryKey(),
-  mobile: varchar('mobile', { length: 20 }).notNull(),
+  email: varchar('email', { length: 255 }),
+  mobile: varchar('mobile', { length: 20 }),
   code: varchar('code', { length: 6 }).notNull(),
+  attempts: integer('attempts').default(0).notNull(),
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
+  index('otps_email_idx').on(table.email),
   index('otps_mobile_idx').on(table.mobile),
 ]);
 

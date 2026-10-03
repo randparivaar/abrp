@@ -4,6 +4,7 @@ import {
   registerDeviceToken, 
   unregisterDeviceToken, 
   getUserDevices, 
+  getMultipleUserDevices,
   getAllDevices,
   sendPushNotification,
   dispatchDailyWishes
@@ -47,40 +48,48 @@ export async function handleUnregisterDevice(c: Context) {
 
 export async function handleSendTest(c: Context) {
   try {
-    const { targetUserId, title, body } = await c.req.json<SendTestNotificationRequest>();
+    const { targetUserId, targetUserIds, title, body } = await c.req.json<SendTestNotificationRequest>();
 
-    if (!targetUserId || !title || !body) {
-      return c.json({ error: 'Missing parameters: targetUserId, title, or body' }, 400);
+    const targetList: string[] = targetUserIds && Array.isArray(targetUserIds) && targetUserIds.length > 0
+      ? targetUserIds
+      : (targetUserId ? [targetUserId] : []);
+
+    if (targetList.length === 0 || !title || !body) {
+      return c.json({ error: 'Missing parameters: targetUserId(s), title, or body' }, 400);
     }
 
     let tokens: string[] = [];
+    const isBroadcast = targetList.includes('all');
 
-    if (targetUserId === 'all') {
+    if (isBroadcast) {
       const allDevices = await getAllDevices();
       tokens = allDevices.map(d => d.fcmToken);
     } else {
-      const userDevices = await getUserDevices(targetUserId);
+      const userDevices = await getMultipleUserDevices(targetList);
       tokens = userDevices.map(d => d.fcmToken);
     }
+
+    // Deduplicate and filter non-empty tokens
+    tokens = Array.from(new Set(tokens.filter(Boolean)));
 
     if (tokens.length === 0) {
       return c.json({
         success: false,
-        message: targetUserId === 'all'
+        message: isBroadcast
           ? 'No registered member devices found to broadcast.'
-          : 'No active device registrations found for this user. The device has not registered an FCM push token.',
+          : 'No active device registrations found for selected user(s). The member(s) have not registered push tokens yet.',
       }, 400);
     }
 
     const sent = await sendPushNotification(tokens, title, body, {
       test: 'true',
-      isBroadcast: targetUserId === 'all' ? 'true' : 'false',
+      isBroadcast: isBroadcast ? 'true' : 'false',
     });
 
     return c.json({
       success: sent,
       message: sent
-        ? (targetUserId === 'all' ? `Broadcast notification dispatched to ${tokens.length} devices.` : 'Notification dispatched successfully.')
+        ? (isBroadcast ? `Broadcast notification dispatched to ${tokens.length} devices.` : `Notification dispatched to ${tokens.length} device(s) across ${targetList.length} member(s).`)
         : 'FCM delivery failed.',
       recipientDeviceCount: tokens.length,
     });

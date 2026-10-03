@@ -4,6 +4,7 @@ import {
   getUserById, 
   updateUserProfile, 
   updateUserRole, 
+  updateUserStatus,
   listAllUsers,
   deleteUserAccount 
 } from '../services/users.service.js';
@@ -70,6 +71,36 @@ export async function handleChangeRole(c: Context) {
     return c.json({ user: updatedUser });
   } catch (error: any) {
     console.error('Error updating user role:', error);
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
+}
+
+export async function handleChangeUserStatus(c: Context) {
+  try {
+    const sessionUser = c.get('user') as UserSession;
+    const { userId, status } = await c.req.json<{ userId: string; status: 'active' | 'suspended' | 'inactive' }>();
+
+    if (!userId || !status) {
+      return c.json({ error: 'Missing required parameters: userId or status' }, 400);
+    }
+
+    if (!['active', 'suspended', 'inactive'].includes(status)) {
+      return c.json({ error: 'Invalid status. Choose from: active, suspended, inactive' }, 400);
+    }
+
+    if (sessionUser.id === userId) {
+      return c.json({ error: 'You cannot block or suspend your own account.' }, 400);
+    }
+
+    const updatedUser = await updateUserStatus(userId, status);
+
+    if (!updatedUser) {
+      return c.json({ error: 'Target user not found.' }, 404);
+    }
+
+    return c.json({ user: updatedUser, success: true });
+  } catch (error: any) {
+    console.error('Error updating user status:', error);
     return c.json({ error: 'Internal Server Error' }, 500);
   }
 }

@@ -202,6 +202,144 @@ class AppTranslations {
       AppLanguage.en: 'Donate Now',
       AppLanguage.hi: 'सहयोग करें',
     },
+    // Committee & Patron Translations
+    'committee_title': {
+      AppLanguage.en: 'Committee & Patrons',
+      AppLanguage.hi: 'कार्यकारिणी एवं प्रेरणास्रोत',
+    },
+    'committee_share_tooltip': {
+      AppLanguage.en: 'Share',
+      AppLanguage.hi: 'साझा करें',
+    },
+    'committee_share_subject': {
+      AppLanguage.en: 'ABRP Committee & Patrons',
+      AppLanguage.hi: 'अखिल भारतीय रांदड़ परिवार समिति',
+    },
+    'committee_share_text': {
+      AppLanguage.en: '🙏 Shri Akhil Bhartiya (Maheshwari) Rander Pariwar 🙏\nChief Patron & Inspiration:\nLate Shri Chandmal Ji Rander (Manglana)\n\n"Dedicated to community welfare, youth education, and social unity."',
+      AppLanguage.hi: '🙏 श्री अखिल भारतीय (माहेश्वरी) रांदड़ परिवार 🙏\nमुख्य प्रेरणास्रोत एवं भामाशाह:\nस्व. श्री चांदमल जी रांदड़ (मंगलाना)\n\n"समाज सेवा, शिक्षा संवर्धन एवं बंधुत्व ही हमारा संकल्प है।"',
+    },
+    'patron_badge': {
+      AppLanguage.en: 'CHIEF PATRON & INSPIRATION',
+      AppLanguage.hi: 'मुख्य प्रेरणास्रोत एवं भामाशाह',
+    },
+    'patron_name': {
+      AppLanguage.en: 'Late Shri Chandmal Ji Rander',
+      AppLanguage.hi: 'स्व. श्री चांदमल जी रांदड़',
+    },
+    'patron_address': {
+      AppLanguage.en: 'Manglana (Rajasthan)',
+      AppLanguage.hi: 'मंगलाना (राजस्थान)',
+    },
+    'patron_community': {
+      AppLanguage.en: 'Shri Akhil Bhartiya (Maheshwari) Rander Pariwar',
+      AppLanguage.hi: 'श्री अखिल भारतीय (माहेश्वरी) रांदड़ परिवार',
+    },
+    'patron_quote': {
+      AppLanguage.en: 'Dedication to community upliftment, education of youth, and supporting families in need.',
+      AppLanguage.hi: 'समाज की सेवा, शिक्षा का संवर्धन एवं जरूरतमंदों का उत्थान ही सबसे बड़ा धर्म है।',
+    },
+    'committee_vision_title': {
+      AppLanguage.en: 'Objectives & Core Vision',
+      AppLanguage.hi: 'समिति के मुख्य उद्देश्य एवं संकल्प',
+    },
+    'obj_family_unity_title': {
+      AppLanguage.en: 'Family Unity & Lineage',
+      AppLanguage.hi: 'पारिवारिक समन्वय एवं एकता',
+    },
+    'obj_family_unity_desc': {
+      AppLanguage.en: 'Connecting all Rander families across India and fostering matrimonial and social harmony.',
+      AppLanguage.hi: 'देशभर में बसे समस्त रांदड़ परिवारों को एक सूत्र में जोड़ना एवं परिचय सम्मेलन आयोजित करना।',
+    },
+    'obj_education_title': {
+      AppLanguage.en: 'Education & Scholarships',
+      AppLanguage.hi: 'शिक्षा संवर्धन एवं छात्रवृत्ति',
+    },
+    'obj_education_desc': {
+      AppLanguage.en: 'Providing scholarships, career counseling, and academic support to deserving youth.',
+      AppLanguage.hi: 'मेधावी एवं जरूरतमंद छात्र-छात्राओं को उच्च शिक्षा, कोचिंग एवं छात्रवृत्ति सहायता।',
+    },
+    'obj_infrastructure_title': {
+      AppLanguage.en: 'Community Infrastructure',
+      AppLanguage.hi: 'समाज भवन एवं छात्रावास',
+    },
+    'obj_infrastructure_desc': {
+      AppLanguage.en: 'Developing community halls, dharamshalas, and student hostels in pilgrimage centers.',
+      AppLanguage.hi: 'तीर्थ क्षेत्रों एवं प्रमुख नगरों में समाज भवन, धर्मशाला एवं विद्यार्थियों हेतु छात्रावास निर्माण।',
+    },
+    'obj_healthcare_title': {
+      AppLanguage.en: 'Healthcare & Social Care',
+      AppLanguage.hi: 'चिकित्सा एवं सामाजिक सहयोग',
+    },
+    'obj_healthcare_desc': {
+      AppLanguage.en: 'Emergency healthcare aid, senior citizen welfare, and community mutual aid programs.',
+      AppLanguage.hi: 'आकस्मिक स्वास्थ्य संकट में सहायता एवं वरिष्ठ नागरिकों का सम्मान व सहयोग।',
+    },
+    // Donation Screen Translations
+    'donation_title': {
+      AppLanguage.en: 'Donation Details',
+      AppLanguage.hi: 'सहयोग एवं दान राशि',
+    },
+    'donation_purpose': {
+      AppLanguage.en: 'For Community Welfare, Education & Medical Care Support',
+      AppLanguage.hi: 'समाज विकास, शिक्षा एवं चिकित्सा कल्याण सहयोग हेतु',
+    },
+    'donation_savings_account': {
+      AppLanguage.en: 'Official Savings Account (NEFT/RTGS/IMPS)',
+      AppLanguage.hi: 'आधिकारिक बचत खाता (NEFT / RTGS / IMPS)',
+    },
+    'copy_all_details': {
+      AppLanguage.en: 'Copy All Details',
+      AppLanguage.hi: 'समस्त विवरण कॉपी करें',
+    },
+    'share_action': {
+      AppLanguage.en: 'Share',
+      AppLanguage.hi: 'शेयर करें',
+    },
+    'beneficiary_label': {
+      AppLanguage.en: 'Beneficiary Name',
+      AppLanguage.hi: 'खाता धारक (Beneficiary)',
+    },
+    'account_number_label': {
+      AppLanguage.en: 'Account Number',
+      AppLanguage.hi: 'खाता संख्या (A/C No.)',
+    },
+    'ifsc_code_label': {
+      AppLanguage.en: 'IFSC Code',
+      AppLanguage.hi: 'आईएफएससी कोड (IFSC)',
+    },
+    'account_type_label': {
+      AppLanguage.en: 'Account Type',
+      AppLanguage.hi: 'खाता प्रकार',
+    },
+    'branch_label': {
+      AppLanguage.en: 'Branch',
+      AppLanguage.hi: 'शाखा (Branch)',
+    },
+    'receipt_process_title': {
+      AppLanguage.en: 'Official Receipt Process',
+      AppLanguage.hi: 'रसीद एवं पावती प्रक्रिया',
+    },
+    'receipt_step_1': {
+      AppLanguage.en: 'Transfer the contribution via Net Banking (NEFT/RTGS/IMPS).',
+      AppLanguage.hi: 'बैंक ट्रांसफर (NEFT / RTGS / IMPS / Net Banking) द्वारा राशि प्रेषित करें।',
+    },
+    'receipt_step_2': {
+      AppLanguage.en: 'Save the transaction screenshot or UTR / Reference Number.',
+      AppLanguage.hi: 'सफल ट्रांजेक्शन का स्क्रीनशॉट अथवा UTR नंबर सुरक्षित रखें।',
+    },
+    'receipt_step_3': {
+      AppLanguage.en: 'Share screenshot along with your Full Name, Father/Husband Name & City to receive the official receipt.',
+      AppLanguage.hi: 'आधिकारिक रसीद प्राप्त करने हेतु स्क्रीनशॉट, अपना पूरा नाम, पिता/पति का नाम एवं शहर/ग्राम समिति को ईमेल करें।',
+    },
+    'request_receipt_email': {
+      AppLanguage.en: 'Request Receipt via Email',
+      AppLanguage.hi: 'ईमेल द्वारा रसीद का अनुरोध करें',
+    },
+    'donation_share_subject': {
+      AppLanguage.en: 'ABRP Donation Bank Account Details',
+      AppLanguage.hi: 'रांदड़ परिवार समाज सहयोग बैंक विवरण',
+    },
   };
 
   static String get(String key, AppLanguage lang) {

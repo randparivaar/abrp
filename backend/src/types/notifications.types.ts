@@ -9,6 +9,7 @@ export interface UnregisterDeviceRequest {
 
 export interface SendTestNotificationRequest {
   targetUserId?: string;
+  targetUserIds?: string[];
   title?: string;
   body?: string;
 }

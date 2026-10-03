@@ -95,7 +95,7 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Dashboard Overview',
                         onTap: () {
                           context.pop();
-                          context.push('/admin?section=-1');
+                          context.push('/admin?section=dashboard');
                         },
                         primaryColor: primaryColor,
                       ),
@@ -104,7 +104,7 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Family Approvals',
                         onTap: () {
                           context.pop();
-                          context.push('/admin?section=0');
+                          context.push('/admin?section=families');
                         },
                         primaryColor: primaryColor,
                       ),
@@ -113,7 +113,7 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Business Approvals',
                         onTap: () {
                           context.pop();
-                          context.push('/admin?section=1');
+                          context.push('/admin?section=businesses');
                         },
                         primaryColor: primaryColor,
                       ),
@@ -123,7 +123,7 @@ class AppDrawer extends ConsumerWidget {
                           title: 'Events & Bulletins',
                           onTap: () {
                             context.pop();
-                            context.push('/admin?section=2');
+                            context.push('/admin?section=events');
                           },
                           primaryColor: primaryColor,
                         ),
@@ -132,7 +132,7 @@ class AppDrawer extends ConsumerWidget {
                           title: 'Ad Campaigns',
                           onTap: () {
                             context.pop();
-                            context.push('/admin?section=3');
+                            context.push('/admin?section=ads');
                           },
                           primaryColor: primaryColor,
                         ),
@@ -141,7 +141,7 @@ class AppDrawer extends ConsumerWidget {
                           title: 'User & Coordinator Roles',
                           onTap: () {
                             context.pop();
-                            context.push('/admin?section=4');
+                            context.push('/admin?section=users');
                           },
                           primaryColor: primaryColor,
                         ),
@@ -151,8 +151,7 @@ class AppDrawer extends ConsumerWidget {
                         title: 'Dispatch Notifications',
                         onTap: () {
                           context.pop();
-                          final notifIndex = user?.role == 'admin' ? 5 : 2;
-                          context.push('/admin?section=$notifIndex');
+                          context.push('/admin?section=notifications');
                         },
                         primaryColor: primaryColor,
                       ),

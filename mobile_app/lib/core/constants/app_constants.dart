@@ -8,7 +8,6 @@ class AppConstants {
   //
   // Defaults to production live backend so release builds connect automatically.
   static const String _prodUrl  = 'https://abrp.vercel.app/api/v1';
-  static const String _localUrl = 'http://10.0.2.2:8005/api/v1';
 
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',

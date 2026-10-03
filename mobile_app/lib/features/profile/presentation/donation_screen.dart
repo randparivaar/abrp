@@ -60,7 +60,8 @@ Email: $supportEmail''';
     _copyToClipboard(context, formatted, 'All Bank Details');
   }
 
-  void _shareDetails(bool isHindi) {
+  void _shareDetails(AppLanguage lang) {
+    final isHindi = lang == AppLanguage.hi;
     final shareText = isHindi
         ? '''🙏 श्री अखिल भारतीय (माहेश्वरी) रांदड़ परिवार 🙏
 समाज विकास, शिक्षा एवं चिकित्सा सहयोग हेतु बैंक विवरण:
@@ -90,9 +91,7 @@ Email: $supportEmail''';
     SharePlus.instance.share(
       ShareParams(
         text: shareText,
-        subject: isHindi
-            ? 'रांदड़ परिवार समाज सहयोग बैंक विवरण'
-            : 'ABRP Donation Bank Account Details',
+        subject: AppTranslations.get('donation_share_subject', lang),
       ),
     );
   }
@@ -122,7 +121,7 @@ Email: $supportEmail''';
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
         title: Text(
-          isHindi ? 'सहयोग एवं दान राशि' : 'Donation Details',
+          AppTranslations.get('donation_title', lang),
           style: GoogleFonts.outfit(
             fontWeight: FontWeight.w700,
             fontSize: 19,
@@ -131,8 +130,8 @@ Email: $supportEmail''';
         actions: [
           IconButton(
             icon: const Icon(Icons.share_outlined),
-            tooltip: isHindi ? 'साझा करें' : 'Share',
-            onPressed: () => _shareDetails(isHindi),
+            tooltip: AppTranslations.get('committee_share_tooltip', lang),
+            onPressed: () => _shareDetails(lang),
           ),
           TextButton(
             onPressed: () {
@@ -163,11 +162,11 @@ Email: $supportEmail''';
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         children: [
           // ─── Header Organization Card ───────────────────────────
-          _buildOrganizationHeader(context, isHindi),
+          _buildOrganizationHeader(context, lang),
           const SizedBox(height: 16),
 
           // ─── Bank Account Details Card ───────────────────────────
-          _buildBankDetailsCard(context, isHindi),
+          _buildBankDetailsCard(context, lang),
           const SizedBox(height: 16),
 
           // ─── Quick Action Buttons ────────────────────────────────
@@ -178,7 +177,7 @@ Email: $supportEmail''';
                   onPressed: () => _copyAllDetails(context),
                   icon: const Icon(Icons.copy_all_rounded, size: 20),
                   label: Text(
-                    isHindi ? 'समस्त विवरण कॉपी करें' : 'Copy All Details',
+                    AppTranslations.get('copy_all_details', lang),
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -192,10 +191,10 @@ Email: $supportEmail''';
               const SizedBox(width: 10),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _shareDetails(isHindi),
+                  onPressed: () => _shareDetails(lang),
                   icon: const Icon(Icons.share_rounded, size: 20),
                   label: Text(
-                    isHindi ? 'शेयर करें' : 'Share',
+                    AppTranslations.get('share_action', lang),
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -212,7 +211,7 @@ Email: $supportEmail''';
           const SizedBox(height: 20),
 
           // ─── Receipt / Acknowledgment Guide ─────────────────────
-          _buildReceiptGuideCard(context, isHindi),
+          _buildReceiptGuideCard(context, lang),
           const SizedBox(height: 24),
         ],
       ),
@@ -222,7 +221,7 @@ Email: $supportEmail''';
   // ─────────────────────────────────────────────────────────────
   // 1. Organization Header
   // ─────────────────────────────────────────────────────────────
-  Widget _buildOrganizationHeader(BuildContext context, bool isHindi) {
+  Widget _buildOrganizationHeader(BuildContext context, AppLanguage lang) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -243,9 +242,7 @@ Email: $supportEmail''';
           ),
           const SizedBox(height: 8),
           Text(
-            isHindi
-                ? 'श्री अखिल भारतीय (माहेश्वरी) रांदड़ परिवार'
-                : 'Shri Akhil Bhartiya (Maheshwari) Rander Pariwar',
+            AppTranslations.get('patron_community', lang),
             style: GoogleFonts.outfit(
               fontSize: 16.5,
               fontWeight: FontWeight.w800,
@@ -255,9 +252,7 @@ Email: $supportEmail''';
           ),
           const SizedBox(height: 4),
           Text(
-            isHindi
-                ? 'समाज विकास, शिक्षा एवं चिकित्सा कल्याण सहयोग हेतु'
-                : 'For Community Welfare, Education & Medical Care Support',
+            AppTranslations.get('donation_purpose', lang),
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.w500,
@@ -273,7 +268,7 @@ Email: $supportEmail''';
   // ─────────────────────────────────────────────────────────────
   // 2. Bank Account Details Card
   // ─────────────────────────────────────────────────────────────
-  Widget _buildBankDetailsCard(BuildContext context, bool isHindi) {
+  Widget _buildBankDetailsCard(BuildContext context, AppLanguage lang) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -327,9 +322,7 @@ Email: $supportEmail''';
                         ),
                       ),
                       Text(
-                        isHindi
-                            ? 'आधिकारिक बचत खाता (NEFT / RTGS / IMPS)'
-                            : 'Official Savings Account (NEFT/RTGS/IMPS)',
+                        AppTranslations.get('donation_savings_account', lang),
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           color: Colors.blue.shade100,
@@ -350,13 +343,13 @@ Email: $supportEmail''';
                 // Account Holder Name
                 _buildInfoTile(
                   context,
-                  label: isHindi ? 'खाता धारक (Beneficiary)' : 'Beneficiary Name',
+                  label: AppTranslations.get('beneficiary_label', lang),
                   value: beneficiaryName,
                   isBold: true,
                   onCopy: () => _copyToClipboard(
                     context,
                     beneficiaryName,
-                    isHindi ? 'खाता धारक' : 'Beneficiary Name',
+                    AppTranslations.get('beneficiary_label', lang),
                   ),
                 ),
                 const Divider(height: 20),
@@ -364,13 +357,13 @@ Email: $supportEmail''';
                 // Account Number (Highlighted)
                 _buildHighlightedTile(
                   context,
-                  label: isHindi ? 'खाता संख्या (A/C No.)' : 'Account Number',
+                  label: AppTranslations.get('account_number_label', lang),
                   value: accountNumber,
                   icon: Icons.tag,
                   onCopy: () => _copyToClipboard(
                     context,
                     accountNumber,
-                    isHindi ? 'खाता संख्या' : 'Account Number',
+                    AppTranslations.get('account_number_label', lang),
                   ),
                 ),
                 const Divider(height: 20),
@@ -378,7 +371,7 @@ Email: $supportEmail''';
                 // IFSC Code (Highlighted)
                 _buildHighlightedTile(
                   context,
-                  label: isHindi ? 'आईएफएससी कोड (IFSC)' : 'IFSC Code',
+                  label: AppTranslations.get('ifsc_code_label', lang),
                   value: ifscCode,
                   icon: Icons.qr_code_2_rounded,
                   onCopy: () => _copyToClipboard(
@@ -397,7 +390,7 @@ Email: $supportEmail''';
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            isHindi ? 'खाता प्रकार' : 'Account Type',
+                            AppTranslations.get('account_type_label', lang),
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -421,7 +414,7 @@ Email: $supportEmail''';
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            isHindi ? 'शाखा (Branch)' : 'Branch',
+                            AppTranslations.get('branch_label', lang),
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -571,19 +564,13 @@ Email: $supportEmail''';
   // ─────────────────────────────────────────────────────────────
   // 3. Receipt Acknowledgment & Process Guide
   // ─────────────────────────────────────────────────────────────
-  Widget _buildReceiptGuideCard(BuildContext context, bool isHindi) {
+  Widget _buildReceiptGuideCard(BuildContext context, AppLanguage lang) {
     final colorScheme = Theme.of(context).colorScheme;
 
     final steps = [
-      isHindi
-          ? 'बैंक ट्रांसफर (NEFT / RTGS / IMPS / Net Banking) द्वारा राशि प्रेषित करें।'
-          : 'Transfer the contribution via Net Banking (NEFT/RTGS/IMPS).',
-      isHindi
-          ? 'सफल ट्रांजेक्शन का स्क्रीनशॉट अथवा UTR नंबर सुरक्षित रखें।'
-          : 'Save the transaction screenshot or UTR / Reference Number.',
-      isHindi
-          ? 'आधिकारिक रसीद प्राप्त करने हेतु स्क्रीनशॉट, अपना पूरा नाम, पिता/पति का नाम एवं शहर/ग्राम समिति को ईमेल करें।'
-          : 'Share screenshot along with your Full Name, Father/Husband Name & City to receive the official receipt.',
+      AppTranslations.get('receipt_step_1', lang),
+      AppTranslations.get('receipt_step_2', lang),
+      AppTranslations.get('receipt_step_3', lang),
     ];
 
     return Container(
@@ -607,7 +594,7 @@ Email: $supportEmail''';
               ),
               const SizedBox(width: 8),
               Text(
-                isHindi ? 'रसीद एवं पावती प्रक्रिया' : 'Official Receipt Process',
+                AppTranslations.get('receipt_process_title', lang),
                 style: GoogleFonts.outfit(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
@@ -659,9 +646,7 @@ Email: $supportEmail''';
             onPressed: _sendEmail,
             icon: const Icon(Icons.email_outlined, size: 18),
             label: Text(
-              isHindi
-                  ? 'ईमेल द्वारा रसीद का अनुरोध करें'
-                  : 'Request Receipt via Email',
+              AppTranslations.get('request_receipt_email', lang),
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
             style: OutlinedButton.styleFrom(

@@ -1,5 +1,7 @@
 import { Context } from 'hono';
 import { db } from '../db/index.js';
+import { otps } from '../db/schema.js';
+import { eq, desc } from 'drizzle-orm';
 import { 
   findUserByEmail, 
   createUser, 
@@ -203,9 +205,6 @@ export async function handleLogin(c: Context) {
   }
 }
 
-// In-memory OTP Cache for Password Reset (valid for 15 mins)
-const otpStore = new Map<string, { otp: string; expiresAt: number }>();
-
 export async function handleForgotPassword(c: Context) {
   try {
     const { email } = await c.req.json<{ email: string }>();
@@ -222,9 +221,18 @@ export async function handleForgotPassword(c: Context) {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 15 * 60 * 1000;
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    otpStore.set(cleanEmail, { otp, expiresAt });
+    // Delete any previous active OTPs for this email to avoid collisions
+    await db.delete(otps).where(eq(otps.email, cleanEmail));
+
+    // Persist OTP in PostgreSQL for stateless Vercel Serverless compatibility
+    await db.insert(otps).values({
+      email: cleanEmail,
+      code: otp,
+      attempts: 0,
+      expiresAt,
+    });
 
     console.log(`[AUTH] Password Reset OTP generated for ${cleanEmail}`);
 
@@ -284,15 +292,45 @@ export async function handleResetPassword(c: Context) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    const storedOtpData = otpStore.get(cleanEmail);
+    const cleanOtp = otp.trim();
 
-    if (!storedOtpData || storedOtpData.otp !== otp.trim()) {
+    // Fetch the latest OTP record from DB
+    const [storedOtp] = await db
+      .select()
+      .from(otps)
+      .where(eq(otps.email, cleanEmail))
+      .orderBy(desc(otps.createdAt))
+      .limit(1);
+
+    if (!storedOtp) {
       return c.json({ error: 'Invalid or expired OTP code.' }, 400);
     }
 
-    if (Date.now() > storedOtpData.expiresAt) {
-      otpStore.delete(cleanEmail);
+    // Check expiration
+    if (new Date() > new Date(storedOtp.expiresAt)) {
+      await db.delete(otps).where(eq(otps.id, storedOtp.id));
       return c.json({ error: 'OTP code has expired. Please request a new one.' }, 400);
+    }
+
+    // Check maximum attempts (Brute-force protection: max 5 attempts)
+    if (storedOtp.attempts >= 5) {
+      await db.delete(otps).where(eq(otps.id, storedOtp.id));
+      return c.json({ error: 'Too many incorrect attempts. Please request a new OTP code.' }, 400);
+    }
+
+    // Check OTP match
+    if (storedOtp.code !== cleanOtp) {
+      const nextAttempts = storedOtp.attempts + 1;
+      if (nextAttempts >= 5) {
+        await db.delete(otps).where(eq(otps.id, storedOtp.id));
+        return c.json({ error: 'Too many incorrect attempts. Please request a new OTP code.' }, 400);
+      } else {
+        await db.update(otps).set({ attempts: nextAttempts }).where(eq(otps.id, storedOtp.id));
+        const remaining = 5 - nextAttempts;
+        return c.json({ 
+          error: `Invalid OTP code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.` 
+        }, 400);
+      }
     }
 
     const user = await findUserByEmail(cleanEmail);
@@ -304,7 +342,8 @@ export async function handleResetPassword(c: Context) {
     const newPasswordHash = await hashPassword(newPassword);
     await updateUserPassword(user.id, newPasswordHash);
 
-    otpStore.delete(cleanEmail);
+    // Delete used OTP
+    await db.delete(otps).where(eq(otps.id, storedOtp.id));
 
     return c.json({
       message: 'Password updated successfully. Please log in with your new password.',

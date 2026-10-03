@@ -4,6 +4,7 @@ import {
   handleGetMyProfile, 
   handleUpdateMyProfile, 
   handleChangeRole, 
+  handleChangeUserStatus,
   handleListUsers,
   handleDeleteMyAccount,
   handleDeleteUserByAdmin 
@@ -23,6 +24,7 @@ usersRouter.get('/', roleGuard(['admin', 'moderator']), handleListUsers);
 
 // Admin only routes
 usersRouter.patch('/change-role', roleGuard(['admin']), handleChangeRole);
+usersRouter.patch('/change-status', roleGuard(['admin']), handleChangeUserStatus);
 usersRouter.delete('/:id', roleGuard(['admin']), handleDeleteUserByAdmin);
 
 export { usersRouter };

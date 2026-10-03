@@ -68,6 +68,25 @@ export async function updateUserRole(userId: string, newRole: 'admin' | 'member'
   return updatedUser;
 }
 
+export async function updateUserStatus(userId: string, newStatus: 'active' | 'suspended' | 'inactive') {
+  const [updatedUser] = await db.update(users)
+    .set({ status: newStatus, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning();
+
+  if (newStatus === 'suspended' || newStatus === 'inactive') {
+    // Immediately remove device tokens so push notifications stop
+    try {
+      const { devices } = await import('../db/schema.js');
+      await dbRetry(() => db.delete(devices).where(eq(devices.userId, userId)));
+    } catch (e) {
+      console.warn('Error clearing device tokens on user status change:', e);
+    }
+  }
+
+  return updatedUser;
+}
+
 export async function listAllUsers(search?: string, page: number = 1, limit: number = 10) {
   const { coordinatorRegions, regions } = await import('../db/schema.js');
   

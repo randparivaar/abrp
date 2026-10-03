@@ -12,6 +12,11 @@ export async function handleGetPresignedUrl(c: Context) {
       return c.json({ error: 'Missing required parameters: filename, contentType' }, 400);
     }
 
+    const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/jpg'];
+    if (!ALLOWED_MIME_TYPES.includes(contentType.toLowerCase().trim())) {
+      return c.json({ error: 'Invalid file type. Only JPG, PNG, and WebP images are allowed.' }, 400);
+    }
+
     // Sanitize filename to avoid folder path injection
     const cleanFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
     

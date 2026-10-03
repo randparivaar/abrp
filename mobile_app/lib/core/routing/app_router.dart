@@ -105,6 +105,7 @@ GoRouter appRouter(Ref ref) {
       return null; // Continue to the requested path
     },
     routes: [
+      // ── Auth flow: top-level (no back-stack parent needed) ──
       GoRoute(
         path: '/splash',
         builder: (context, state) => const SplashScreen(),
@@ -121,14 +122,7 @@ GoRouter appRouter(Ref ref) {
         path: '/forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const HomeScreen(),
-      ),
-      GoRoute(
-        path: '/profile',
-        builder: (context, state) => const ProfileScreen(),
-      ),
+      // Legal pages at top-level for unauthenticated access (from login screen)
       GoRoute(
         path: '/privacy-policy',
         builder: (context, state) => const PrivacyPolicyScreen(),
@@ -141,62 +135,73 @@ GoRouter appRouter(Ref ref) {
         path: '/help-support',
         builder: (context, state) => const FaqSupportScreen(),
       ),
+
+      // ── Main app: nested under '/' so back gesture pops to Home ──
       GoRoute(
-        path: '/donate',
-        builder: (context, state) => const DonationScreen(),
-      ),
-      GoRoute(
-        path: '/committee',
-        builder: (context, state) => const CommitteeScreen(),
-      ),
-      GoRoute(
-        path: '/directory',
-        builder: (context, state) => const DirectoryScreen(),
-      ),
-      GoRoute(
-        path: '/admin',
-        builder: (context, state) {
-          final secParam = state.uri.queryParameters['section'];
-          final initialSection = secParam != null ? int.tryParse(secParam) ?? -1 : -1;
-          return AdminScreen(initialSection: initialSection);
-        },
-      ),
-      GoRoute(
-        path: '/onboard-family',
-        builder: (context, state) => const FamilyOnboardingScreen(),
-      ),
-      GoRoute(
-        path: '/family/:familyId/tree',
-        builder: (context, state) => FamilyTreeScreen(
-          familyId: int.parse(state.pathParameters['familyId']!),
-        ),
-      ),
-      GoRoute(
-        path: '/member/:familyId/:memberId',
-        builder: (context, state) {
-          final familyId = int.parse(state.pathParameters['familyId']!);
-          final memberId = int.parse(state.pathParameters['memberId']!);
-          return _MemberDeepLinkScreen(familyId: familyId, memberId: memberId);
-        },
-      ),
-      GoRoute(
-        path: '/business-directory',
-        builder: (context, state) => const BusinessDirectoryScreen(),
-      ),
-      GoRoute(
-        path: '/ads',
-        builder: (context, state) => const ActiveAdsScreen(),
-      ),
-      GoRoute(
-        path: '/events',
-        builder: (context, state) => const EventsListScreen(),
-      ),
-      GoRoute(
-        path: '/business/:businessId',
-        builder: (context, state) {
-          final businessId = int.parse(state.pathParameters['businessId']!);
-          return _BusinessDeepLinkScreen(businessId: businessId);
-        },
+        path: '/',
+        builder: (context, state) => const HomeScreen(),
+        routes: [
+          GoRoute(
+            path: 'profile',
+            builder: (context, state) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: 'donate',
+            builder: (context, state) => const DonationScreen(),
+          ),
+          GoRoute(
+            path: 'committee',
+            builder: (context, state) => const CommitteeScreen(),
+          ),
+          GoRoute(
+            path: 'directory',
+            builder: (context, state) => const DirectoryScreen(),
+          ),
+          GoRoute(
+            path: 'admin',
+            builder: (context, state) {
+              final secParam = state.uri.queryParameters['section'];
+              return AdminScreen(section: secParam);
+            },
+          ),
+          GoRoute(
+            path: 'onboard-family',
+            builder: (context, state) => const FamilyOnboardingScreen(),
+          ),
+          GoRoute(
+            path: 'family/:familyId/tree',
+            builder: (context, state) => FamilyTreeScreen(
+              familyId: int.parse(state.pathParameters['familyId']!),
+            ),
+          ),
+          GoRoute(
+            path: 'member/:familyId/:memberId',
+            builder: (context, state) {
+              final familyId = int.parse(state.pathParameters['familyId']!);
+              final memberId = int.parse(state.pathParameters['memberId']!);
+              return _MemberDeepLinkScreen(familyId: familyId, memberId: memberId);
+            },
+          ),
+          GoRoute(
+            path: 'business-directory',
+            builder: (context, state) => const BusinessDirectoryScreen(),
+          ),
+          GoRoute(
+            path: 'ads',
+            builder: (context, state) => const ActiveAdsScreen(),
+          ),
+          GoRoute(
+            path: 'events',
+            builder: (context, state) => const EventsListScreen(),
+          ),
+          GoRoute(
+            path: 'business/:businessId',
+            builder: (context, state) {
+              final businessId = int.parse(state.pathParameters['businessId']!);
+              return _BusinessDeepLinkScreen(businessId: businessId);
+            },
+          ),
+        ],
       ),
     ],
   );
