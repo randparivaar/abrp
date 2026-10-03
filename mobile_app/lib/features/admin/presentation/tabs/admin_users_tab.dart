@@ -120,56 +120,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
     }
   }
 
-  Future<void> _toggleUserStatus(Map<String, dynamic> userItem) async {
-    final userId = userItem['id'] as String;
-    final currentStatus = (userItem['status'] as String? ?? 'active').toLowerCase();
-    final userName = (userItem['fullName'] as String? ?? 'User').toTitleCase();
-    final isBlocking = currentStatus != 'suspended';
-    final newStatus = isBlocking ? 'suspended' : 'active';
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-              isBlocking ? Icons.block_rounded : Icons.check_circle_outline_rounded,
-              color: isBlocking ? Colors.red : Colors.green,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(isBlocking ? 'Block User Account?' : 'Unblock User Account?'),
-            ),
-          ],
-        ),
-        content: Text(
-          isBlocking
-              ? 'Are you sure you want to block "$userName"?\n\n'
-                '• Active sessions will be terminated immediately (instant logout).\n'
-                '• Push notification tokens will be revoked.\n'
-                '• The user will be denied login access until unblocked.'
-              : 'Are you sure you want to unblock "$userName"?\n\nThe user will regain access to log in and use the application.',
-          style: const TextStyle(fontSize: 14, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isBlocking ? Colors.red : Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(isBlocking ? 'Block User' : 'Unblock User'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
+  Future<void> _updateStatusDirect(String userId, String newStatus) async {
     try {
       final dio = ref.read(apiClientProvider);
       final response = await dio.patch('/users/change-status', data: {
@@ -180,12 +131,10 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
       if (response.statusCode == 200 && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              isBlocking
-                  ? 'User "$userName" has been blocked and logged out.'
-                  : 'User "$userName" has been unblocked successfully.',
-            ),
-            backgroundColor: isBlocking ? Colors.red : Colors.green,
+            content: Text('User status updated to ${newStatus.toUpperCase()}.'),
+            backgroundColor: newStatus == 'suspended'
+                ? Colors.red
+                : (newStatus == 'inactive' ? Colors.orange.shade800 : Colors.green),
           ),
         );
         _fetchUsers();
@@ -193,14 +142,12 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update user status: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Failed to update status: $e'), backgroundColor: Colors.red),
         );
       }
     }
   }
+
 
   Future<void> _deleteUserByAdmin(String userId, String userName) async {
     try {
@@ -225,9 +172,10 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
   }
 
   Future<void> _confirmDeleteUserByAdmin(Map<String, dynamic> userItem) async {
-    final name = (userItem['fullName'] as String? ?? 'User').toTitleCase();
-    final email = userItem['email'] as String? ?? userItem['mobile'] as String? ?? '';
-    final userId = userItem['id'] as String;
+    final rawName = (userItem['fullName']?.toString() ?? '').trim();
+    final name = rawName.isNotEmpty ? rawName.toTitleCase() : 'User';
+    final email = userItem['email']?.toString() ?? userItem['mobile']?.toString() ?? '';
+    final userId = userItem['id']?.toString() ?? '';
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -260,9 +208,13 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
       ),
     );
 
-    if (confirmed == true && mounted) {
+    if (confirmed == true && mounted && userId.isNotEmpty) {
       await _deleteUserByAdmin(userId, name);
     }
+  }
+
+  bool _areSetsEqual(Set<int> a, Set<int> b) {
+    return a.length == b.length && a.containsAll(b);
   }
 
   Widget _buildRoleChip(String label, String value, String selectedValue, ValueChanged<String> onSelected) {
@@ -305,16 +257,65 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
     );
   }
 
+  Widget _buildStatusChip(String label, String value, String selectedValue, ValueChanged<String> onSelected) {
+    final isSelected = value == selectedValue;
+    final color = value == 'suspended'
+        ? Colors.red
+        : (value == 'inactive' ? Colors.orange.shade800 : Colors.green);
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onSelected(value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? color : color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color, width: isSelected ? 2 : 1),
+          ),
+          child: Column(
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value.toUpperCase(),
+                style: TextStyle(
+                  color: isSelected ? Colors.white70 : color.withValues(alpha: 0.7),
+                  fontSize: 9,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _showChangeRoleModal(Map<String, dynamic> userItem) async {
     if (_regionsList.isEmpty && !_isLoadingRegions) {
       await _fetchRegions();
     }
 
-    String roleVal = (userItem['role'] as String? ?? 'member').toLowerCase();
+    String roleVal = (userItem['role']?.toString() ?? 'member').toLowerCase();
     if (!['member', 'moderator', 'admin'].contains(roleVal)) {
       roleVal = 'member';
     }
+    final initialRole = roleVal;
     String selectedRole = roleVal;
+
+    final initialStatus = (userItem['status']?.toString() ?? 'active').toLowerCase();
+    String selectedStatus = initialStatus;
+    if (!['active', 'inactive', 'suspended'].contains(selectedStatus)) {
+      selectedStatus = 'active';
+    }
 
     final existingAssigned = (userItem['assignedRegions'] as List<dynamic>?) ?? [];
     final Set<int> selectedRegionIds = existingAssigned
@@ -326,7 +327,11 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
         })
         .whereType<int>()
         .toSet();
+    final initialRegionIds = Set<int>.from(selectedRegionIds);
 
+    final currentUserId = ref.read(authProvider).user?.id.toString();
+    final targetUserId = userItem['id']?.toString() ?? '';
+    final isSelf = targetUserId.isNotEmpty && targetUserId == currentUserId;
     final lang = ref.read(languageStateProvider);
 
     if (!mounted) return;
@@ -340,8 +345,9 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             final theme = Theme.of(context);
-            final userName = (userItem['fullName'] as String? ?? 'User').toTitleCase();
-            final userEmail = userItem['email'] as String? ?? userItem['mobile'] as String? ?? '';
+            final rawName = (userItem['fullName']?.toString() ?? '').trim();
+            final userName = rawName.isNotEmpty ? rawName.toTitleCase() : 'User';
+            final userEmail = userItem['email']?.toString() ?? userItem['mobile']?.toString() ?? '';
 
             return Container(
               decoration: BoxDecoration(
@@ -445,20 +451,46 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                         ),
                     ],
 
+                    if (!isSelf) ...[
+                      const SizedBox(height: 20),
+                      const Text('Account Status / खाता स्थिति:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          _buildStatusChip('Active', 'active', selectedStatus, (s) => setModalState(() => selectedStatus = s)),
+                          const SizedBox(width: 8),
+                          _buildStatusChip('Inactive', 'inactive', selectedStatus, (s) => setModalState(() => selectedStatus = s)),
+                          const SizedBox(width: 8),
+                          _buildStatusChip('Blocked', 'suspended', selectedStatus, (s) => setModalState(() => selectedStatus = s)),
+                        ],
+                      ),
+                    ],
+
                     const SizedBox(height: 28),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () async {
                           Navigator.pop(ctx);
-                          await _updateUserRole(
-                            userItem['id'] as String,
-                            selectedRole,
-                            selectedRole == 'moderator' ? selectedRegionIds.toList() : null,
-                          );
+                          final roleChanged = selectedRole != initialRole;
+                          final regionsChanged = (selectedRole == 'moderator') &&
+                              (roleChanged || !_areSetsEqual(selectedRegionIds, initialRegionIds));
+                          final statusChanged = !isSelf && selectedStatus != initialStatus;
+
+                          if ((roleChanged || regionsChanged) && targetUserId.isNotEmpty) {
+                            await _updateUserRole(
+                              targetUserId,
+                              selectedRole,
+                              selectedRole == 'moderator' ? selectedRegionIds.toList() : null,
+                            );
+                          }
+
+                          if (statusChanged && targetUserId.isNotEmpty) {
+                            await _updateStatusDirect(targetUserId, selectedStatus);
+                          }
                         },
                         icon: const Icon(Icons.check, color: Colors.white),
-                        label: const Text('Save User Role & Permissions', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        label: const Text('Save Role & Status', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: theme.colorScheme.primary,
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -479,6 +511,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final currentUserId = ref.watch(authProvider).user?.id.toString();
 
     return Column(
       children: [
@@ -573,19 +606,37 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                       itemCount: _usersList.length,
                       separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
-                        final item = _usersList[index] as Map<String, dynamic>;
-                        final role = (item['role'] as String? ?? 'member').toLowerCase();
-                        final status = (item['status'] as String? ?? 'active').toLowerCase();
+                        final rawItem = _usersList[index];
+                        final item = rawItem is Map<String, dynamic>
+                            ? rawItem
+                            : rawItem is Map
+                                ? Map<String, dynamic>.from(rawItem)
+                                : <String, dynamic>{};
+
+                        final role = (item['role']?.toString() ?? 'member').toLowerCase();
+                        final status = (item['status']?.toString() ?? 'active').toLowerCase();
                         final isSuspended = status == 'suspended';
                         final isInactive = status == 'inactive';
                         final assignedRegs = (item['assignedRegions'] as List<dynamic>?) ?? [];
-                        final regNames = assignedRegs.map((r) => r['name'] as String).toList();
+                        final regNames = assignedRegs
+                            .map((r) => (r is Map ? r['name']?.toString() : null) ?? '')
+                            .where((name) => name.isNotEmpty)
+                            .toList();
 
                         final roleColor = role == 'admin'
                             ? Colors.red
                             : role == 'moderator'
                                 ? Colors.indigo
                                 : theme.colorScheme.primary;
+
+                        final rawName = (item['fullName']?.toString() ?? '').trim();
+                        final displayName = rawName.isNotEmpty ? rawName.toTitleCase() : 'User';
+                        final avatarLetter = rawName.isNotEmpty ? rawName[0].toUpperCase() : 'U';
+                        final avatarUrl = item['avatarUrl']?.toString();
+                        final hasValidAvatar = avatarUrl != null && avatarUrl.trim().isNotEmpty && avatarUrl.startsWith('http');
+                        final contactInfo = item['email']?.toString() ?? item['mobile']?.toString() ?? 'No contact info';
+                        final itemId = item['id']?.toString() ?? '';
+                        final isCurrentUser = itemId.isNotEmpty && itemId == currentUserId;
 
                         return Card(
                           elevation: 1.5,
@@ -606,11 +657,11 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                                   children: [
                                     CircleAvatar(
                                       radius: 22,
-                                      backgroundImage: item['avatarUrl'] != null ? NetworkImage(item['avatarUrl'] as String) : null,
+                                      backgroundImage: hasValidAvatar ? NetworkImage(avatarUrl) : null,
                                       backgroundColor: roleColor.withValues(alpha: 0.1),
-                                      child: item['avatarUrl'] == null
+                                      child: !hasValidAvatar
                                           ? Text(
-                                              (item['fullName'] as String? ?? 'U')[0].toUpperCase(),
+                                              avatarLetter,
                                               style: TextStyle(fontWeight: FontWeight.bold, color: roleColor),
                                             )
                                           : null,
@@ -621,7 +672,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            (item['fullName'] as String? ?? '').toTitleCase(),
+                                            displayName,
                                             style: const TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
@@ -629,7 +680,7 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
-                                            item['email'] as String? ?? item['mobile'] as String? ?? 'No contact info',
+                                            contactInfo,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
@@ -742,41 +793,18 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                                     Expanded(
                                       child: OutlinedButton.icon(
                                         onPressed: () => _showChangeRoleModal(item),
-                                        icon: const Icon(Icons.edit_outlined, size: 15),
-                                        label: const Text('Edit Role & Zones', style: TextStyle(fontSize: 12)),
+                                        icon: const Icon(Icons.edit_outlined, size: 16),
+                                        label: const Text('Edit Role & Status', style: TextStyle(fontSize: 12)),
                                         style: OutlinedButton.styleFrom(
+                                          foregroundColor: theme.colorScheme.primary,
+                                          side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                         ),
                                       ),
                                     ),
-                                    if (item['id'] != ref.watch(authProvider).user?.id) ...[
-                                      const SizedBox(width: 8),
-                                      OutlinedButton.icon(
-                                        onPressed: () => _toggleUserStatus(item),
-                                        icon: Icon(
-                                          isSuspended ? Icons.check_circle_outline : Icons.block,
-                                          size: 15,
-                                          color: isSuspended ? Colors.green : Colors.red,
-                                        ),
-                                        label: Text(
-                                          isSuspended ? 'Unblock' : 'Block',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: isSuspended ? Colors.green : Colors.red,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: isSuspended ? Colors.green : Colors.red,
-                                          side: BorderSide(
-                                            color: isSuspended ? Colors.green.shade300 : Colors.red.shade300,
-                                          ),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
+                                    const SizedBox(width: 8),
+                                    if (!isCurrentUser) ...[
                                       IconButton.outlined(
                                         onPressed: () => _confirmDeleteUserByAdmin(item),
                                         icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
@@ -786,6 +814,18 @@ class _AdminUsersTabState extends ConsumerState<AdminUsersTab> {
                                           side: BorderSide(color: Colors.red.shade200),
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                           padding: const EdgeInsets.all(8),
+                                        ),
+                                      ),
+                                    ] else ...[
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: theme.colorScheme.surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          'You (Current Admin)',
+                                          style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
                                         ),
                                       ),
                                     ],

@@ -1,28 +1,38 @@
-import admin from 'firebase-admin';
+import { initializeApp, cert, getApps, type App } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-let fcmApp: any = null;
+let fcmApp: App | null = null;
 
-function getFcmApp() {
+function getFcmApp(): App | null {
   if (fcmApp) return fcmApp;
+
+  const existingApp = getApps().find((app) => app.name === 'abrp-fcm');
+  if (existingApp) {
+    fcmApp = existingApp;
+    return fcmApp;
+  }
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
   if (!projectId || !clientEmail || !privateKey) {
     console.warn('Firebase Cloud Messaging credentials are incomplete in environment variables.');
     return null;
   }
 
-  // Format private key correctly (replace escaped newlines if they are passed as raw \n)
+  // Handle potential surrounding quotes and escaped newlines
+  if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+    privateKey = privateKey.slice(1, -1);
+  }
   const formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
 
   try {
-    fcmApp = admin.initializeApp({
-      credential: (admin as any).credential.cert({
+    fcmApp = initializeApp({
+      credential: cert({
         projectId,
         clientEmail,
         privateKey: formattedPrivateKey,
@@ -48,7 +58,7 @@ export const fcmService = {
     if (!app) return false;
 
     try {
-      await app.messaging().send({
+      await getMessaging(app).send({
         token,
         notification: {
           title,
@@ -85,7 +95,7 @@ export const fcmService = {
     if (!app || tokens.length === 0) return false;
 
     try {
-      const response = await app.messaging().sendEachForMulticast({
+      const response = await getMessaging(app).sendEachForMulticast({
         tokens,
         notification: {
           title,
@@ -100,3 +110,4 @@ export const fcmService = {
     }
   },
 };
+
