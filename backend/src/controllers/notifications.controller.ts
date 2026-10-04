@@ -104,6 +104,14 @@ export async function handleSendTest(c: Context) {
  */
 export async function handleDailyWishesCron(c: Context) {
   try {
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret) {
+      const authHeader = c.req.header('authorization');
+      if (authHeader !== `Bearer ${cronSecret}`) {
+        return c.json({ error: 'Unauthorized: Invalid cron authorization' }, 401);
+      }
+    }
+
     const result = await dispatchDailyWishes();
     return c.json({
       success: true,

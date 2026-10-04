@@ -16,6 +16,9 @@ webRouter.get('/.well-known/assetlinks.json', (c) => {
         namespace: 'android_app',
         package_name: 'com.abrp.community',
         sha256_cert_fingerprints: [
+          // Production / Upload Keystore Fingerprint (upload-keystore.jks)
+          'CB:C6:BF:C6:B5:99:DE:8A:9C:0E:3B:2C:F4:EA:5E:C3:38:05:20:95:2A:84:12:A8:75:3A:5A:EA:44:E2:5A:83',
+          // Local Debug Keystore Fingerprint
           '0A:85:F3:FA:E1:AE:A5:91:6D:33:4E:95:05:D9:B4:6E:A8:AD:B5:CD:8B:75:E6:D6:DB:39:49:28:87:07:F5:32',
         ],
       },
