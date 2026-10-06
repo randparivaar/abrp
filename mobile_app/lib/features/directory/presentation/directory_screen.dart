@@ -40,6 +40,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
   final List<String> _alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
   int _totalFamiliesCount = 0;
   int _totalMembersCount = 0;
+  Map<int, int> _familyMemberCounts = {};
 
   List<dynamic> get _displayedMembers {
     if (_searchQuery.trim().isNotEmpty) {
@@ -180,6 +181,14 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
           totalMembers = membersList.length;
         }
 
+        final counts = <int, int>{};
+        for (final m in membersList) {
+          final fId = (m['familyId'] as num?)?.toInt();
+          if (fId != null) {
+            counts[fId] = (counts[fId] ?? 0) + 1;
+          }
+        }
+
         membersList.sort((a, b) {
           final nameA = (a['fullName'] as String? ?? '').toLowerCase();
           final nameB = (b['fullName'] as String? ?? '').toLowerCase();
@@ -188,6 +197,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
 
         setState(() {
           _members = membersList;
+          _familyMemberCounts = counts;
           _totalFamiliesCount = totalFamilies;
           _totalMembersCount = totalMembers;
           _villages = responses[1].data['villages'] as List<dynamic>;
@@ -216,6 +226,14 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
       final totalFamilies = statsData?['totalFamilies'] as int?;
       final totalMembers = statsData?['totalMembers'] as int?;
 
+      final counts = <int, int>{};
+      for (final m in membersList) {
+        final fId = (m['familyId'] as num?)?.toInt();
+        if (fId != null) {
+          counts[fId] = (counts[fId] ?? 0) + 1;
+        }
+      }
+
       membersList.sort((a, b) {
         final nameA = (a['fullName'] as String? ?? '').toLowerCase();
         final nameB = (b['fullName'] as String? ?? '').toLowerCase();
@@ -225,6 +243,9 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
       if (mounted) {
         setState(() {
           _members = membersList;
+          if (_familyMemberCounts.isEmpty || _searchQuery.isEmpty) {
+            _familyMemberCounts = counts;
+          }
           if (totalFamilies != null && totalFamilies > 0) {
             _totalFamiliesCount = totalFamilies;
           }
@@ -602,7 +623,8 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                         final familyHeadName = (member['familyHeadName'] as String? ?? '').toTitleCase();
                         final gotra = member['gotra'] as String?;
                         final occupation = member['occupationType'] as String?;
-                        final memberCount = member['familyMemberCount'] as int?;
+                        final int fId = (member['familyId'] as num?)?.toInt() ?? -1;
+                        final int memberCount = (member['familyMemberCount'] as num?)?.toInt() ?? _familyMemberCounts[fId] ?? 1;
 
                         return Card(
                           margin: EdgeInsets.zero,
@@ -693,28 +715,53 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                                                   ],
                                                 ),
                                               ),
-                                              if (memberCount != null && memberCount > 1) ...[
-                                                const SizedBox(width: 4),
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: colorScheme.secondaryContainer.withValues(alpha: 0.3),
-                                                    borderRadius: BorderRadius.circular(6),
-                                                  ),
-                                                  child: Text(
-                                                    '$memberCount सदस्य',
-                                                    style: GoogleFonts.inter(
-                                                      fontSize: 10,
-                                                      fontWeight: FontWeight.w600,
-                                                      color: secondaryColor,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
                                             ],
                                           ],
                                         ),
-                                        const SizedBox(height: 4),
+
+                                        // Family Head Member Count Badge Row
+                                        if (isHead) ...[
+                                          const SizedBox(height: 5),
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                                                decoration: BoxDecoration(
+                                                  color: isDark
+                                                      ? colorScheme.surfaceContainerHighest
+                                                      : const Color(0xFFFFF6E5),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  border: Border.all(
+                                                    color: const Color(0xFFD4AF37).withValues(alpha: 0.5),
+                                                    width: 0.8,
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.groups_rounded,
+                                                      size: 13,
+                                                      color: Color(0xFFB8860B),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      '$memberCount सदस्य',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: isDark ? colorScheme.onSurface : const Color(0xFF8B5A00),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                        ] else ...[
+                                          const SizedBox(height: 4),
+                                        ],
 
                                         // Family Head Name Row (if not self head)
                                         if (!isHead && familyHeadName.isNotEmpty) ...[
