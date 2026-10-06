@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,6 +35,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
   String? _selectedVillageName;
   String _searchQuery = '';
   Timer? _debounce;
+  CancelToken? _cancelToken;
   bool _isFabVisible = true;
   String? _activeLetter;
   Timer? _letterIndicatorTimer;
@@ -133,6 +135,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
     _searchController.dispose();
     _scrollController.dispose();
     _debounce?.cancel();
+    _cancelToken?.cancel('Disposed');
     super.dispose();
   }
 
@@ -215,12 +218,19 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
   }
 
   Future<void> _fetchMembersOnly() async {
+    _cancelToken?.cancel('New search query');
+    _cancelToken = CancelToken();
+
     try {
       final dio = ref.read(apiClientProvider);
-      final response = await dio.get('/directory/members', queryParameters: {
-        if (_searchQuery.isNotEmpty) 'q': _searchQuery,
-        if (_selectedVillageId != null) 'villageId': _selectedVillageId,
-      });
+      final response = await dio.get(
+        '/directory/members',
+        queryParameters: {
+          if (_searchQuery.isNotEmpty) 'q': _searchQuery,
+          if (_selectedVillageId != null) 'villageId': _selectedVillageId,
+        },
+        cancelToken: _cancelToken,
+      );
       final membersList = List<dynamic>.from(response.data['members'] as List<dynamic>);
       final statsData = response.data['stats'] as Map<String, dynamic>?;
       final totalFamilies = statsData?['totalFamilies'] as int?;
@@ -254,6 +264,16 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
           }
         });
       }
+    } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) {
+        // Request cancelled by newer search input or reset, safely ignore
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          _members = [];
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -264,9 +284,22 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
   }
 
   void _onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      setState(() => _searchQuery = query);
+    final trimmed = query.trim();
+    if (trimmed == _searchQuery) return;
+
+    _debounce?.cancel();
+
+    // If query was cleared, reset immediately without waiting
+    if (trimmed.isEmpty) {
+      _cancelToken?.cancel('Search cleared');
+      setState(() => _searchQuery = '');
+      _fetchMembersOnly();
+      return;
+    }
+
+    // Debounce for 600ms before making API request
+    _debounce = Timer(const Duration(milliseconds: 600), () {
+      setState(() => _searchQuery = trimmed);
       _fetchMembersOnly();
     });
   }
