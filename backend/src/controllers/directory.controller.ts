@@ -426,8 +426,8 @@ export async function handleGetMembers(c: Context) {
     const villageIdStr = c.req.query('villageId') || '';
     const villageId = villageIdStr ? parseInt(villageIdStr, 10) : undefined;
 
-    const members = await getMembersList(q, villageId);
-    return c.json({ members });
+    const { members, stats } = await getMembersList(q, villageId);
+    return c.json({ members, stats });
   } catch (error: any) {
     console.error('Error in handleGetMembers:', error);
     return c.json({ error: 'Internal Server Error' }, 500);

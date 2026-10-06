@@ -38,6 +38,57 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
   String? _activeLetter;
   Timer? _letterIndicatorTimer;
   final List<String> _alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  int _totalFamiliesCount = 0;
+  int _totalMembersCount = 0;
+
+  List<dynamic> get _displayedMembers {
+    if (_searchQuery.trim().isNotEmpty) {
+      // Searching: show ALL matching members (heads and non-heads)
+      return _members;
+    }
+    // Default: show ONLY Family Heads
+    return _members.where((m) {
+      final relationToHead = (m['relationshipToHead'] as String? ?? m['relationToHead'] as String? ?? '').toLowerCase();
+      return m['isHead'] == true || relationToHead == 'head' || relationToHead == 'self';
+    }).toList();
+  }
+
+  String _formatRelationLabel(String relation) {
+    switch (relation.toLowerCase()) {
+      case 'self':
+        return 'Head / मुखिया';
+      case 'spouse':
+        return 'Spouse / जीवनसाथी';
+      case 'father':
+        return 'Father / पिता';
+      case 'mother':
+        return 'Mother / माता';
+      case 'grandfather':
+      case 'paternal_grandfather':
+        return 'Grandfather / दादाजी';
+      case 'grandmother':
+      case 'paternal_grandmother':
+        return 'Grandmother / दादीजी';
+      case 'son':
+        return 'Son / पुत्र';
+      case 'daughter':
+        return 'Daughter / पुत्री';
+      case 'brother':
+        return 'Brother / भाई';
+      case 'sister':
+        return 'Sister / बहन';
+      case 'daughter_in_law':
+        return 'Daughter-in-law / पुत्रवधू';
+      case 'son_in_law':
+        return 'Son-in-law / दामाद';
+      case 'grandson':
+        return 'Grandson / पौत्र';
+      case 'granddaughter':
+        return 'Granddaughter / पौत्री';
+      default:
+        return relation.replaceAll('_', ' ').toTitleCase();
+    }
+  }
 
   @override
   void initState() {
@@ -58,8 +109,8 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
       }
     });
 
-    // Find index of first member starting with letter
-    final targetIndex = _members.indexWhere((m) {
+    // Find index of first member starting with letter in currently displayed list
+    final targetIndex = _displayedMembers.indexWhere((m) {
       final name = (m['fullName'] as String? ?? '').trim().toUpperCase();
       return name.startsWith(letter);
     });
@@ -112,6 +163,23 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
 
       if (mounted) {
         final membersList = List<dynamic>.from(responses[0].data['members'] as List<dynamic>);
+        final statsData = responses[0].data['stats'] as Map<String, dynamic>?;
+        int totalFamilies = statsData?['totalFamilies'] as int? ?? 0;
+        int totalMembers = statsData?['totalMembers'] as int? ?? 0;
+
+        if (totalFamilies == 0) {
+          totalFamilies = membersList.where((m) {
+            final rel = (m['relationshipToHead'] as String? ?? m['relationToHead'] as String? ?? '').toLowerCase();
+            return m['isHead'] == true || rel == 'head' || rel == 'self';
+          }).length;
+          if (totalFamilies == 0) {
+            totalFamilies = membersList.map((m) => m['familyId']).toSet().length;
+          }
+        }
+        if (totalMembers == 0) {
+          totalMembers = membersList.length;
+        }
+
         membersList.sort((a, b) {
           final nameA = (a['fullName'] as String? ?? '').toLowerCase();
           final nameB = (b['fullName'] as String? ?? '').toLowerCase();
@@ -120,6 +188,8 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
 
         setState(() {
           _members = membersList;
+          _totalFamiliesCount = totalFamilies;
+          _totalMembersCount = totalMembers;
           _villages = responses[1].data['villages'] as List<dynamic>;
           _isLoading = false;
         });
@@ -142,6 +212,10 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
         if (_selectedVillageId != null) 'villageId': _selectedVillageId,
       });
       final membersList = List<dynamic>.from(response.data['members'] as List<dynamic>);
+      final statsData = response.data['stats'] as Map<String, dynamic>?;
+      final totalFamilies = statsData?['totalFamilies'] as int?;
+      final totalMembers = statsData?['totalMembers'] as int?;
+
       membersList.sort((a, b) {
         final nameA = (a['fullName'] as String? ?? '').toLowerCase();
         final nameB = (b['fullName'] as String? ?? '').toLowerCase();
@@ -151,6 +225,12 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
       if (mounted) {
         setState(() {
           _members = membersList;
+          if (totalFamilies != null && totalFamilies > 0) {
+            _totalFamiliesCount = totalFamilies;
+          }
+          if (totalMembers != null && totalMembers > 0) {
+            _totalMembersCount = totalMembers;
+          }
         });
       }
     } catch (e) {
@@ -421,34 +501,58 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                 const SizedBox(height: 12),
               ],
 
+              // Community Stats Card (Total Families & Total Members)
+              _buildCommunityStatsCard(colorScheme, primaryColor, secondaryColor, isDark),
+
               // Directory Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Members',
-                    style: GoogleFonts.inter(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: secondaryColor,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${_members.length} Members',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: colorScheme.onSurfaceVariant,
+              Builder(
+                builder: (context) {
+                  final displayedList = _displayedMembers;
+                  final isSearching = _searchQuery.trim().isNotEmpty;
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isSearching ? 'Search Results' : 'Family Heads',
+                            style: GoogleFonts.inter(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: secondaryColor,
+                            ),
+                          ),
+                          Text(
+                            isSearching ? 'खोज परिणाम' : 'परिवार के मुखिया',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-                ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          isSearching
+                              ? '${displayedList.length} Found'
+                              : '${displayedList.length} Families',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 12),
 
@@ -460,15 +564,16 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                     child: CircularProgressIndicator(),
                   ),
                 )
-              else if (_members.isEmpty)
+              else if (_displayedMembers.isEmpty)
                 _buildEmptyState(context, colorScheme, primaryColor, secondaryColor, isDark)
               else
                 Builder(
                   builder: (context) {
+                    final displayedList = _displayedMembers;
                     final dynamicAds = ref.watch(adsByPlacementProvider('directory_feed')).value ?? [];
                     const int adFrequency = 4; // User requested 1 ad after every 4 member cards
-                    final int totalAdCount = _members.length ~/ adFrequency;
-                    final int totalItemCount = _members.length + (dynamicAds.isEmpty ? 0 : totalAdCount);
+                    final int totalAdCount = displayedList.length ~/ adFrequency;
+                    final int totalItemCount = displayedList.length + (dynamicAds.isEmpty ? 0 : totalAdCount);
                     final int modulus = adFrequency + 1;
 
                     return ListView.separated(
@@ -485,7 +590,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                         }
 
                         final memberIndex = index - (index ~/ modulus);
-                        final member = _members[memberIndex];
+                        final member = displayedList[memberIndex];
                         final String rawName = (member['fullName'] as String? ?? '').toTitleCase();
                         final village = member['village']?['name'] as String?;
                         final titleText = village != null
@@ -497,6 +602,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                         final familyHeadName = (member['familyHeadName'] as String? ?? '').toTitleCase();
                         final gotra = member['gotra'] as String?;
                         final occupation = member['occupationType'] as String?;
+                        final memberCount = member['familyMemberCount'] as int?;
 
                         return Card(
                           margin: EdgeInsets.zero,
@@ -577,7 +683,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                                                     ),
                                                     const SizedBox(width: 2),
                                                     Text(
-                                                      'Family Head',
+                                                      'Family Head / मुखिया',
                                                       style: GoogleFonts.inter(
                                                         fontSize: 10,
                                                         fontWeight: FontWeight.bold,
@@ -587,6 +693,24 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                                                   ],
                                                 ),
                                               ),
+                                              if (memberCount != null && memberCount > 1) ...[
+                                                const SizedBox(width: 4),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: colorScheme.secondaryContainer.withValues(alpha: 0.3),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: Text(
+                                                    '$memberCount सदस्य',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: secondaryColor,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ],
                                           ],
                                         ),
@@ -604,7 +728,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                                               const SizedBox(width: 4),
                                               Expanded(
                                                 child: Text(
-                                                  'Head: $familyHeadName',
+                                                  'Head: $familyHeadName • ${_formatRelationLabel(relationToHead)}',
                                                   style: GoogleFonts.inter(
                                                     fontSize: 12,
                                                     fontWeight: FontWeight.w600,
@@ -700,7 +824,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
         ),
 
         // ── Right Side A-Z Fast Scroll Sidebar ─────────────────
-        if (!_isLoading && _members.isNotEmpty)
+        if (!_isLoading && _displayedMembers.isNotEmpty)
           Positioned(
             right: 2,
             top: 20,
@@ -724,7 +848,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: _alphabet.map((letter) {
-                      final bool isAvailable = _members.any((m) {
+                      final bool isAvailable = _displayedMembers.any((m) {
                         final name = (m['fullName'] as String? ?? '').trim().toUpperCase();
                         return name.startsWith(letter);
                       });
@@ -814,6 +938,174 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
     );
   }
 
+  Widget _buildCommunityStatsCard(ColorScheme colorScheme, Color primaryColor, Color secondaryColor, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        gradient: isDark
+            ? LinearGradient(
+                colors: [colorScheme.surfaceContainerHigh, colorScheme.surfaceContainer],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : const LinearGradient(
+                colors: [Color(0xFFFFFDF5), Color(0xFFFBF4E4)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFD4AF37).withValues(alpha: 0.4),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFD4AF37).withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Total Families
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF8B0000), Color(0xFFB22222)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withValues(alpha: 0.25),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.family_restroom_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$_totalFamiliesCount',
+                        style: GoogleFonts.outfit(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF2C1D11),
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'कुल परिवार',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? colorScheme.primary : secondaryColor,
+                        ),
+                      ),
+                      Text(
+                        'Registered Families',
+                        style: GoogleFonts.inter(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Vertical Divider
+          Container(
+            width: 1,
+            height: 44,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            color: const Color(0xFFD4AF37).withValues(alpha: 0.35),
+          ),
+
+          // Total Members
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFB8860B), Color(0xFFDAA520)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFB8860B).withValues(alpha: 0.25),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.groups_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$_totalMembersCount',
+                        style: GoogleFonts.outfit(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF2C1D11),
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'कुल सदस्य',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? colorScheme.primary : secondaryColor,
+                        ),
+                      ),
+                      Text(
+                        'Total Population',
+                        style: GoogleFonts.inter(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildDynamicAdCard(BuildContext context, AdvertisementModel ad, Color primaryColor, Color secondaryColor, ColorScheme colorScheme) {
     return AdBannerCard(

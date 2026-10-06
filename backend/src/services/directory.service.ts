@@ -1366,23 +1366,38 @@ export async function getMembersList(search?: string, villageId?: number) {
 
   filtered.sort((a, b) => a.fullName.localeCompare(b.fullName, undefined, { sensitivity: 'base' }));
 
-  return filtered.map(m => ({
-    id: m.id,
-    fullName: m.fullName,
-    avatarUrl: m.avatarUrl,
-    occupationType: m.occupationType,
-    occupationDetail: m.occupationDetail,
-    gotra: m.gotra,
-    mobile: m.mobile,
-    gender: m.gender,
-    relationshipToHead: m.relationshipToHead,
-    familyId: m.familyId,
-    familyCode: m.family?.familyCode || '',
-    village: m.family?.village || null,
-    city: m.family?.city || null,
-    familyHeadName: m.family?.head?.fullName || '',
-    isHead: m.family?.familyHeadId === m.id || m.relationshipToHead === 'self',
-  }));
+  const familyMemberCounts = new Map<number, number>();
+  for (const m of allMembers) {
+    familyMemberCounts.set(m.familyId, (familyMemberCounts.get(m.familyId) || 0) + 1);
+  }
+
+  const totalFamilies = new Set(allMembers.map(m => m.familyId)).size;
+  const totalMembers = allMembers.length;
+
+  return {
+    members: filtered.map(m => ({
+      id: m.id,
+      fullName: m.fullName,
+      avatarUrl: m.avatarUrl,
+      occupationType: m.occupationType,
+      occupationDetail: m.occupationDetail,
+      gotra: m.gotra,
+      mobile: m.mobile,
+      gender: m.gender,
+      relationshipToHead: m.relationshipToHead,
+      familyId: m.familyId,
+      familyCode: m.family?.familyCode || '',
+      village: m.family?.village || null,
+      city: m.family?.city || null,
+      familyHeadName: m.family?.head?.fullName || '',
+      isHead: m.family?.familyHeadId === m.id || m.relationshipToHead === 'self',
+      familyMemberCount: familyMemberCounts.get(m.familyId) || 1,
+    })),
+    stats: {
+      totalFamilies,
+      totalMembers,
+    },
+  };
 }
 
 /**
