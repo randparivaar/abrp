@@ -192,13 +192,53 @@ export async function addMemberToFamily(sessionUserId: string, payload: AddFamil
         .where(eq(familyMembers.id, targetSpouse.spouseId));
     }
 
+    const effectiveAnniversary = anniversaryDateParsed ?? targetSpouse?.anniversaryDate;
+
     await db.update(familyMembers)
       .set({ 
         spouseId: newMember.id,
         maritalStatus: 'married',
-        anniversaryDate: anniversaryDateParsed,
+        anniversaryDate: effectiveAnniversary,
       })
       .where(eq(familyMembers.id, payload.spouseId));
+
+    if (!anniversaryDateParsed && targetSpouse?.anniversaryDate) {
+      await db.update(familyMembers)
+        .set({ anniversaryDate: targetSpouse.anniversaryDate })
+        .where(eq(familyMembers.id, newMember.id));
+    }
+  } else if (payload.relationshipToHead === 'spouse' && newMember.id) {
+    // If adding a member with relation 'spouse' without explicit spouseId, link to family head
+    const head = await db.query.familyMembers.findFirst({
+      where: and(
+        eq(familyMembers.familyId, payload.familyId),
+        eq(familyMembers.relationshipToHead, 'self')
+      ),
+    });
+    if (head) {
+      if (head.spouseId && head.spouseId !== newMember.id) {
+        await db.update(familyMembers)
+          .set({ spouseId: null })
+          .where(eq(familyMembers.id, head.spouseId));
+      }
+      const effectiveAnniversary = anniversaryDateParsed ?? head.anniversaryDate;
+
+      await db.update(familyMembers)
+        .set({
+          spouseId: newMember.id,
+          maritalStatus: 'married',
+          anniversaryDate: effectiveAnniversary,
+        })
+        .where(eq(familyMembers.id, head.id));
+
+      await db.update(familyMembers)
+        .set({
+          spouseId: head.id,
+          maritalStatus: 'married',
+          anniversaryDate: effectiveAnniversary,
+        })
+        .where(eq(familyMembers.id, newMember.id));
+    }
   }
 
   // Auto-link parent relationships for head/elders
@@ -580,10 +620,39 @@ export async function updateFamilyMember(sessionUserId: string, memberId: number
   }
 
   // 3. Bi-directional link with new or existing spouse
-  if (newSpouseId && updatedMember.id) {
+  let effectiveSpouseId = newSpouseId;
+  if (!effectiveSpouseId && updatedMember.relationshipToHead === 'spouse') {
+    const head = await db.query.familyMembers.findFirst({
+      where: and(
+        eq(familyMembers.familyId, updatedMember.familyId),
+        eq(familyMembers.relationshipToHead, 'self')
+      ),
+    });
+    if (head) {
+      effectiveSpouseId = head.id;
+      await db.update(familyMembers)
+        .set({ spouseId: head.id })
+        .where(eq(familyMembers.id, updatedMember.id));
+    }
+  } else if (!effectiveSpouseId && updatedMember.relationshipToHead === 'self') {
+    const spouse = await db.query.familyMembers.findFirst({
+      where: and(
+        eq(familyMembers.familyId, updatedMember.familyId),
+        eq(familyMembers.relationshipToHead, 'spouse')
+      ),
+    });
+    if (spouse) {
+      effectiveSpouseId = spouse.id;
+      await db.update(familyMembers)
+        .set({ spouseId: spouse.id })
+        .where(eq(familyMembers.id, updatedMember.id));
+    }
+  }
+
+  if (effectiveSpouseId && updatedMember.id) {
     // If target spouse was previously pointing to someone else, unlink that third person
     const targetSpouse = await db.query.familyMembers.findFirst({
-      where: eq(familyMembers.id, newSpouseId),
+      where: eq(familyMembers.id, effectiveSpouseId),
     });
     if (targetSpouse?.spouseId && targetSpouse.spouseId !== memberId) {
       await db.update(familyMembers)
@@ -591,14 +660,24 @@ export async function updateFamilyMember(sessionUserId: string, memberId: number
         .where(eq(familyMembers.id, targetSpouse.spouseId));
     }
 
+    const effectiveAnniversary = updatedMember.anniversaryDate !== undefined
+      ? updatedMember.anniversaryDate
+      : targetSpouse?.anniversaryDate;
+
     // Set target spouse to point back to updatedMember and synchronize marital status & anniversary date
     await db.update(familyMembers)
       .set({ 
         spouseId: updatedMember.id,
         maritalStatus: 'married',
-        anniversaryDate: updatedMember.anniversaryDate,
+        anniversaryDate: effectiveAnniversary,
       })
-      .where(eq(familyMembers.id, newSpouseId));
+      .where(eq(familyMembers.id, effectiveSpouseId));
+
+    if (updatedMember.anniversaryDate === undefined && targetSpouse?.anniversaryDate) {
+      await db.update(familyMembers)
+        .set({ anniversaryDate: targetSpouse.anniversaryDate })
+        .where(eq(familyMembers.id, updatedMember.id));
+    }
   }
 
   // Update or Create business profile if requested
@@ -1540,41 +1619,9 @@ export async function associateUserWithFamilyMemberByMobile(userId: string, mobi
         .where(eq(users.id, userId));
     }
   } else {
-    // 3. No matching family member found -> Automatically create a NEW Family and Family Head record!
-    try {
-      const defaultVillage = await db.query.villages.findFirst();
-      if (!defaultVillage) {
-        console.warn('No village found in database to attach new auto-created family.');
-        return;
-      }
-
-      const familyCode = await generateUniqueFamilyCode();
-      const [newFamily] = await db.insert(families).values({
-        familyCode,
-        address: 'Address Pending Update',
-        villageId: defaultVillage.id,
-      }).returning();
-
-      const [newHead] = await db.insert(familyMembers).values({
-        familyId: newFamily.id,
-        userId: userId,
-        fullName: userRec.fullName,
-        gender: 'other',
-        relationshipToHead: 'self',
-        mobile: cleanMobile,
-        avatarUrl: userRec.avatarUrl || null,
-        createdBy: userId,
-        status: 'approved',
-      }).returning();
-
-      await db.update(families)
-        .set({ familyHeadId: newHead.id })
-        .where(eq(families.id, newFamily.id));
-
-      console.log(`Auto-created new family unit ${familyCode} for user ${userRec.fullName} (${userId})`);
-    } catch (err) {
-      console.error('Error auto-creating family for newly linked mobile user:', err);
-    }
+    // 3. No matching family member found: user does not belong to an existing family yet.
+    // Do NOT auto-create a dummy family. User can onboard their own family via the standard flow.
+    console.log(`No existing family member found matching mobile ${cleanMobile} for user ${userRec.fullName} (${userId}). Ready for onboarding.`);
   }
 }
 

@@ -8,6 +8,8 @@ node_modules/
 *.jks
 *.keystore
 key.properties
+play_store_signing_backup/
+*.zip
 
 # Firebase Admin Service Account Private Keys
 *-firebase-adminsdk-*.json

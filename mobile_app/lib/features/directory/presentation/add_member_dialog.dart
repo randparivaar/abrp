@@ -79,11 +79,23 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
   DateTime? _selectedBirthDate;
   String _maritalStatus = 'single';
   DateTime? _selectedAnniversaryDate;
+  bool _hasAutoFilledAnniversaryDate = false;
   String? _avatarUrl;
   bool _isAvatarUploading = false;
   int? _fatherId;
   int? _motherId;
   int? _spouseId;
+
+  void _syncSpouseAndAnniversary(int? spouseId, List<MemberNode> familyMembers) {
+    _spouseId = spouseId;
+    if (spouseId != null) {
+      _maritalStatus = 'married';
+      final target = familyMembers.where((m) => m.id == spouseId).firstOrNull;
+      if (target?.anniversaryDate != null) {
+        _selectedAnniversaryDate = target!.anniversaryDate;
+      }
+    }
+  }
 
   // Business Profile State & Controllers
   bool _createBusinessProfile = false;
@@ -692,6 +704,27 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
     final treeAsync = ref.watch(familyTreeProvider(widget.familyId));
     final familyMembers = treeAsync.value?.members ?? [];
 
+    if (!_hasAutoFilledAnniversaryDate && widget.memberToEdit == null && familyMembers.isNotEmpty) {
+      _hasAutoFilledAnniversaryDate = true;
+      int? targetId = _spouseId;
+      if (targetId == null && _relationship == 'spouse') {
+        final head = familyMembers.where((m) => m.relationshipToHead == 'self' || m.relationshipToHead == 'head').firstOrNull;
+        if (head != null) {
+          targetId = head.id;
+          _spouseId = head.id;
+          if (_gender == 'male' && head.gender == 'male') {
+            _gender = 'female';
+          }
+        }
+      }
+      if (targetId != null) {
+        final target = familyMembers.where((m) => m.id == targetId).firstOrNull;
+        if (target?.anniversaryDate != null && _selectedAnniversaryDate == null) {
+          _selectedAnniversaryDate = target!.anniversaryDate;
+        }
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -808,31 +841,44 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
               : (val) {
                   setState(() {
                     _relationship = val ?? 'son';
-                    _spouseId = null;
                     _fatherId = null;
                     _motherId = null;
 
-                    // Auto-set gender based on relationship
-                    if (_relationship == 'son' || 
-                        _relationship == 'father' || 
-                        _relationship == 'grandfather' || 
-                        _relationship == 'brother' || 
-                        _relationship == 'son_in_law' || 
-                        _relationship == 'grandson') {
-                      _gender = 'male';
-                    } else if (_relationship == 'daughter' || 
-                               _relationship == 'mother' || 
-                               _relationship == 'grandmother' || 
-                               _relationship == 'sister' || 
-                               _relationship == 'daughter_in_law' || 
-                               _relationship == 'granddaughter') {
-                      _gender = 'female';
-                    }
-
-                    if (_relationship == 'spouse' || _relationship == 'daughter_in_law' || _relationship == 'son_in_law' || _relationship == 'grandfather' || _relationship == 'grandmother') { 
+                    if (_relationship == 'spouse') {
                       _maritalStatus = 'married';
+                      final head = familyMembers.where((m) => m.relationshipToHead == 'self' || m.relationshipToHead == 'head').firstOrNull;
+                      if (head != null) {
+                        _spouseId = head.id;
+                        _gender = head.gender == 'male' ? 'female' : 'male';
+                        if (head.anniversaryDate != null) {
+                          _selectedAnniversaryDate = head.anniversaryDate;
+                        }
+                      }
                     } else {
-                      _maritalStatus = 'single';
+                      _spouseId = null;
+
+                      // Auto-set gender based on relationship
+                      if (_relationship == 'son' || 
+                          _relationship == 'father' || 
+                          _relationship == 'grandfather' || 
+                          _relationship == 'brother' || 
+                          _relationship == 'son_in_law' || 
+                          _relationship == 'grandson') {
+                        _gender = 'male';
+                      } else if (_relationship == 'daughter' || 
+                                 _relationship == 'mother' || 
+                                 _relationship == 'grandmother' || 
+                                 _relationship == 'sister' || 
+                                 _relationship == 'daughter_in_law' || 
+                                 _relationship == 'granddaughter') {
+                        _gender = 'female';
+                      }
+
+                      if (_relationship == 'daughter_in_law' || _relationship == 'son_in_law' || _relationship == 'grandfather' || _relationship == 'grandmother') { 
+                        _maritalStatus = 'married';
+                      } else {
+                        _maritalStatus = 'single';
+                      }
                     }
                   });
                 },
@@ -1201,7 +1247,7 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
         },
         onChanged: (val) {
           setState(() {
-            _spouseId = val;
+            _syncSpouseAndAnniversary(val, familyMembers);
           });
         },
       );
@@ -1235,7 +1281,7 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
         },
         onChanged: (val) {
           setState(() {
-            _spouseId = val;
+            _syncSpouseAndAnniversary(val, familyMembers);
           });
         },
       );
@@ -1460,10 +1506,7 @@ class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
         ],
         onChanged: (val) {
           setState(() {
-            _spouseId = val;
-            if (val != null) {
-              _maritalStatus = 'married';
-            }
+            _syncSpouseAndAnniversary(val, familyMembers);
           });
         },
       ),

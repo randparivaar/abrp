@@ -624,6 +624,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                 Builder(
                   builder: (context) {
                     final displayedList = _displayedMembers;
+                    final isSearching = _searchQuery.trim().isNotEmpty;
                     final dynamicAds = ref.watch(adsByPlacementProvider('directory_feed')).value ?? [];
                     const int adFrequency = 4; // User requested 1 ad after every 4 member cards
                     final int totalAdCount = displayedList.length ~/ adFrequency;
@@ -711,7 +712,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                                                 overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
-                                            if (isHead) ...[
+                                            if (isHead && isSearching) ...[
                                               const SizedBox(width: 6),
                                               Container(
                                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
