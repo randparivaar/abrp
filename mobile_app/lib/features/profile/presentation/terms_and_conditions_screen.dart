@@ -37,7 +37,7 @@ class _TermsAndConditionsScreenState extends ConsumerState<TermsAndConditionsScr
   }
 
   Future<void> _openWebPage() async {
-    final uri = Uri.parse('https://abrp.vercel.app/terms-and-conditions');
+    final uri = Uri.parse('https://api.abrp.walogics.in/terms-and-conditions');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }

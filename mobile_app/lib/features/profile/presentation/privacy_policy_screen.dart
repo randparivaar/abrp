@@ -37,7 +37,7 @@ class _PrivacyPolicyScreenState extends ConsumerState<PrivacyPolicyScreen> {
   }
 
   Future<void> _openWebPage() async {
-    final uri = Uri.parse('https://abrp.vercel.app/privacy-policy');
+    final uri = Uri.parse('https://api.abrp.walogics.in/privacy-policy');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }

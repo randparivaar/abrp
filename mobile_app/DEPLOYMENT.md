@@ -8,7 +8,7 @@ This document provides step-by-step instructions for building, signing, and publ
 
 * **Package Name / Application ID**: `com.abrp.community`
 * **Framework**: Flutter (Dart)
-* **Production API Base URL**: `https://abrp.vercel.app/api/v1`
+* **Production API Base URL**: `https://api.abrp.walogics.in/v1/`
 * **Keystore Location**: `android/app/upload-keystore.jks`
 * **Key Properties**: `android/key.properties`
 
@@ -53,7 +53,7 @@ version: 1.0.0+1
 Run from the `mobile_app` directory:
 
 ```bash
-flutter build appbundle --release --dart-define=BASE_URL="https://abrp.vercel.app/api/v1"
+flutter build appbundle --release --dart-define=BASE_URL="https://api.abrp.walogics.in/v1/"
 ```
 
 * **Output Location**: `mobile_app/build/app/outputs/bundle/release/app-release.aab`
@@ -63,7 +63,7 @@ flutter build appbundle --release --dart-define=BASE_URL="https://abrp.vercel.ap
 ### Option B: Build Release APK (.apk) – *For Direct Distribution / Testing*
 
 ```bash
-flutter build apk --release --dart-define=BASE_URL="https://abrp.vercel.app/api/v1"
+flutter build apk --release --dart-define=BASE_URL="https://api.abrp.walogics.in/v1/"
 ```
 
 * **Output Location**: `mobile_app/build/app/outputs/flutter-apk/app-release.apk`

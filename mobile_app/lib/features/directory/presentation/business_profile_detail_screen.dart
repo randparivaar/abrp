@@ -126,7 +126,7 @@ class _BusinessProfileDetailScreenState extends ConsumerState<BusinessProfileDet
   }
 
   void _shareBusinessProfile() {
-    final webLink = 'https://abrp.vercel.app/business/${widget.business.id}';
+    final webLink = 'https://api.abrp.walogics.in/business/${widget.business.id}';
     final deepLink = 'abrp://business/${widget.business.id}';
     final addressText = [widget.business.address, widget.business.city]
         .where((s) => s.trim().isNotEmpty)

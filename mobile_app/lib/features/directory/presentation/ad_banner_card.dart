@@ -16,7 +16,10 @@ String resolveAdImageUrl(String? rawUrl) {
       .replaceAll('127.0.0.1', '10.0.2.2');
 
   if (url.startsWith('/')) {
-    final origin = AppConstants.baseUrl.replaceAll('/api/v1', '');
+    final uri = Uri.tryParse(AppConstants.baseUrl);
+    final origin = (uri != null && uri.hasScheme && uri.host.isNotEmpty)
+        ? '${uri.scheme}://${uri.host}${uri.hasPort ? ':${uri.port}' : ''}'
+        : AppConstants.baseUrl.replaceAll(RegExp(r'/(?:api/)?v1/?$'), '');
     url = '$origin$url';
   }
   return url;

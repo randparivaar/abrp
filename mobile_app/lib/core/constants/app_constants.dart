@@ -3,11 +3,11 @@ class AppConstants {
 
   // ── API Base URL ──────────────────────────────────────────────────────────
   // Injected at build/run time via --dart-define=BASE_URL=<url>
-  //   Vercel (release) : --dart-define=BASE_URL=https://abrp.vercel.app/api/v1
-  //   Local (dev)      : --dart-define=BASE_URL=http://10.0.2.2:8005/api/v1
+  //   Production (release): --dart-define=BASE_URL=https://api.abrp.walogics.in/v1/
+  //   Local (dev)         : --dart-define=BASE_URL=http://10.0.2.2:8005/v1/
   //
   // Defaults to production live backend so release builds connect automatically.
-  static const String _prodUrl  = 'https://abrp.vercel.app/api/v1';
+  static const String _prodUrl  = 'https://api.abrp.walogics.in/v1/';
 
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',

@@ -194,7 +194,7 @@ function renderBusinessPage(biz: any, loc: any, ownerNames: string): string {
   <meta property="og:title" content="${name} (${category})">
   <meta property="og:description" content="${desc}">
   ${logo ? `<meta property="og:image" content="${logo}">` : ''}
-  <meta property="og:url" content="https://abrp.vercel.app/business/${biz.id}">
+  <meta property="og:url" content="https://api.abrp.walogics.in/business/${biz.id}">
   <meta property="og:site_name" content="Akhil Bhartiya Rander Parivar">
 
   <!-- Twitter Meta -->
@@ -420,7 +420,7 @@ function renderMemberPage(member: any, familyId: number, villageName: string): s
   <meta property="og:title" content="${name} - ABRP Samaj Profile">
   <meta property="og:description" content="View ${name}'s family tree & profile on Akhil Bhartiya Rander Parivar Samaj.">
   ${photo ? `<meta property="og:image" content="${photo}">` : ''}
-  <meta property="og:url" content="https://abrp.vercel.app/member/${familyId}/${member.id}">
+  <meta property="og:url" content="https://api.abrp.walogics.in/member/${familyId}/${member.id}">
   <meta property="og:site_name" content="Akhil Bhartiya Rander Parivar">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">

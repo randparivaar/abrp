@@ -144,7 +144,7 @@ class LegalRepository {
         ),
         LegalSectionModel(
           title: '4. Account Deletion & Re-registration (Google Play Policy)',
-          content: 'You can permanently delete your user account directly inside the app via Profile > Delete Account, or submit a request on our web portal https://abrp.vercel.app/delete-account. Your credentials and tokens are removed, freeing your phone and email for clean re-registration.',
+          content: 'You can permanently delete your user account directly inside the app via Profile > Delete Account, or submit a request on our web portal https://api.abrp.walogics.in/delete-account. Your credentials and tokens are removed, freeing your phone and email for clean re-registration.',
         ),
         LegalSectionModel(
           title: '5. Contact',

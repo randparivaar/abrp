@@ -35,11 +35,13 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="abrp"/>
             </intent-filter>
-            <!-- Web App Links: https://abrp.vercel.app/business/* and /member/* -->
+            <!-- Web App Links: api.abrp.walogics.in & abrp.vercel.app (/business/* and /member/*) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="api.abrp.walogics.in" android:pathPrefix="/business"/>
+                <data android:scheme="https" android:host="api.abrp.walogics.in" android:pathPrefix="/member"/>
                 <data android:scheme="https" android:host="abrp.vercel.app" android:pathPrefix="/business"/>
                 <data android:scheme="https" android:host="abrp.vercel.app" android:pathPrefix="/member"/>
             </intent-filter>

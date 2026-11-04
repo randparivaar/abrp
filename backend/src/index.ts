@@ -71,15 +71,31 @@ app.get('/health', async (c) => {
   }, statusCode);
 });
 
-// API Routes
-app.route('/api/v1/auth', authRouter);
-app.route('/api/v1/upload', uploadRouter);
-app.route('/api/v1/notifications', notificationsRouter);
-app.route('/api/v1/users', usersRouter);
-app.route('/api/v1/directory', directoryRouter);
-app.route('/api/v1/ads', adsRouter);
-app.route('/api/v1/events', eventsRouter);
-app.route('/api/v1/legal', legalRouter);
+// API Routes (mounted under both /v1 and /api/v1 for custom domain & backward compatibility)
+app.get('/v1', (c) => {
+  return c.json({
+    app: 'Akhil Bhartiya Rander Parivar Samaj API',
+    version: 'v1',
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+const apiRouters = [
+  ['/auth', authRouter],
+  ['/upload', uploadRouter],
+  ['/notifications', notificationsRouter],
+  ['/users', usersRouter],
+  ['/directory', directoryRouter],
+  ['/ads', adsRouter],
+  ['/events', eventsRouter],
+  ['/legal', legalRouter],
+] as const;
+
+for (const [routePath, router] of apiRouters) {
+  app.route(`/v1${routePath}`, router as any);
+  app.route(`/api/v1${routePath}`, router as any);
+}
 
 // Web Landing Pages & Deep Links
 app.route('/', webRouter);

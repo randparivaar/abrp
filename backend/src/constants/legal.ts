@@ -191,7 +191,7 @@ The Service Provider does not sell, rent, or trade your personal data to externa
         title: 'Account Deletion & Data Rights (Google Play Policy)',
         content: `In strict compliance with Google Play Developer policies, you have complete control over your account and data:
 • In-App Deletion: You can permanently delete your user account directly inside the app at any time by navigating to Profile > Account Management > Delete Account.
-• Web-Based Deletion Request: If you have uninstalled the app or lost access to your device, you can submit an account deletion request via our public web portal at https://abrp.vercel.app/delete-account or by emailing randerparivaar@gmail.com.
+• Web-Based Deletion Request: If you have uninstalled the app or lost access to your device, you can submit an account deletion request via our public web portal at https://api.abrp.walogics.in/delete-account or by emailing randerparivaar@gmail.com.
 • Effect of Account Deletion & Re-Registration:
   1. Your login credentials, email address, password hash, Google account links, and registered mobile links are permanently purged.
   2. All device sessions and Firebase Cloud Messaging (FCM) push notification tokens are deleted.
@@ -262,7 +262,7 @@ Contact Us: If you have any questions or data requests, please contact the Servi
         title: 'खाता हटाने का अधिकार एवं पुनः पंजीकरण (Account Deletion & Re-registration)',
         content: `गूगल प्ले स्टोर के नियमों के अनुसार आपको अपना खाता और डेटा हटाने का पूर्ण अधिकार है:
 • ऐप के माध्यम से: आप ऐप में Profile > Account Management > Delete Account पर जाकर तुरंत अपना खाता हटा सकते हैं।
-• वेब पोर्टल के माध्यम से: यदि आपने ऐप अनइंस्टॉल कर दिया है, तो आप हमारी वेबसाइट https://abrp.vercel.app/delete-account पर जाकर या randerparivaar@gmail.com पर ईमेल भेजकर अनुरोध कर सकते हैं।
+• वेब पोर्टल के माध्यम से: यदि आपने ऐप अनइंस्टॉल कर दिया है, तो आप हमारी वेबसाइट https://api.abrp.walogics.in/delete-account पर जाकर या randerparivaar@gmail.com पर ईमेल भेजकर अनुरोध कर सकते हैं।
 • खाता हटाने का प्रभाव:
   1. आपका लॉगिन खाता, पासवर्ड, ईमेल और मोबाइल लिंक स्थायी रूप से हटा दिए जाते हैं।
   2. आपके डिवाइस से जुड़े नोटिफिकेशन टोकन नष्ट कर दिए जाते हैं।
@@ -313,7 +313,7 @@ export const FAQS: Record<'en' | 'hi', FaqItem[]> = {
     {
       category: 'Account Management',
       question: 'How can I delete my account, and can I re-register later?',
-      answer: 'You can delete your account at any time by going to Profile > Delete Account, or submitting a request at https://abrp.vercel.app/delete-account. All your login credentials, FCM notification tokens, and mobile links will be immediately deleted, freeing your phone number and email. You can freely register again as a new user anytime in the future.',
+      answer: 'You can delete your account at any time by going to Profile > Delete Account, or submitting a request at https://api.abrp.walogics.in/delete-account. All your login credentials, FCM notification tokens, and mobile links will be immediately deleted, freeing your phone number and email. You can freely register again as a new user anytime in the future.',
     },
     {
       category: 'Support',
@@ -345,7 +345,7 @@ export const FAQS: Record<'en' | 'hi', FaqItem[]> = {
     {
       category: 'खाता प्रबंधन',
       question: 'मैं अपना खाता कैसे हटा सकता हूँ और क्या मैं बाद में दोबारा पंजीकरण कर सकता हूँ?',
-      answer: 'आप प्रोफ़ाइल स्क्रीन में नीचे "Delete Account" पर जाकर अपना खाता हटा सकते हैं या https://abrp.vercel.app/delete-account पर अनुरोध कर सकते हैं। आपका लॉगिन विवरण तुरंत हटा दिया जाता है और आप कभी भी उसी ईमेल अथवा फ़ोन से पुनः नया पंजीकरण कर सकते हैं।',
+      answer: 'आप प्रोफ़ाइल स्क्रीन में नीचे "Delete Account" पर जाकर अपना खाता हटा सकते हैं या https://api.abrp.walogics.in/delete-account पर अनुरोध कर सकते हैं। आपका लॉगिन विवरण तुरंत हटा दिया जाता है और आप कभी भी उसी ईमेल अथवा फ़ोन से पुनः नया पंजीकरण कर सकते हैं।',
     },
     {
       category: 'सहायता एवं संपर्क',
