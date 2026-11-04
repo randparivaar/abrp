@@ -16,7 +16,8 @@ pnpm-store/
 
 # env
 .env
-.env.production
+.env.*
+!.env.example
 
 # logs
 logs/
