@@ -94,8 +94,10 @@ export const families = pgTable('families', {
   familyCode: varchar('family_code', { length: 50 }).notNull().unique(), // e.g. "ABRP-10001"
   address: text('address').notNull(),
   city: varchar('city', { length: 100 }),
+  district: varchar('district', { length: 100 }),
   state: varchar('state', { length: 100 }),
   pincode: varchar('pincode', { length: 15 }),
+  country: varchar('country', { length: 100 }).default('India'),
   villageId: integer('village_id').references(() => villages.id, { onDelete: 'restrict' }).notNull(), // Linked to specific village
   importBatchId: uuid('import_batch_id'), // Used to rollback a bulk onboarding import batch if errors occur
   createdAt: timestamp('created_at').defaultNow().notNull(),

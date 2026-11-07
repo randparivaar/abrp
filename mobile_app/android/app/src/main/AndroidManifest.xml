@@ -46,6 +46,16 @@
                 <data android:scheme="https" android:host="abrp.vercel.app" android:pathPrefix="/member"/>
             </intent-filter>
         </activity>
+        <!-- Google AdMob Application ID -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-4387759468023618~1854025108" />
+
+        <!-- Disable Impeller to prevent host emulator GPU SIGSEGV crashes (exit code -11) on Linux -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

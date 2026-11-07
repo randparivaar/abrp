@@ -34,8 +34,10 @@ export interface OnboardFamilyRequest {
   family: {
     address: string;
     city?: string;
+    district?: string;
     state?: string;
     pincode?: string;
+    country?: string;
     villageId: number;
   };
   head: {

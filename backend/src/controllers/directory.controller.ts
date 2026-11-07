@@ -4,6 +4,7 @@ import { extractErrorDetails } from '../db/index.js';
 import { 
   getVillagesList, 
   getRegionsList,
+  createOrGetVillage,
   onboardNewFamily, 
   addMemberToFamily, 
   getFamilyTreeData,
@@ -40,6 +41,28 @@ export async function handleGetVillages(c: Context) {
     const details = extractErrorDetails(error);
     console.error(`[DirectoryController] error in handleGetVillages (reqId: ${c.get('requestId')}):`, details);
     return c.json({ error: 'Internal Server Error' }, 500);
+  }
+}
+
+/**
+ * Handle adding a new village
+ */
+export async function handleCreateVillage(c: Context) {
+  try {
+    const body = await c.req.json();
+    const name = body.name?.trim();
+    const regionId = body.regionId ? parseInt(body.regionId, 10) : undefined;
+
+    if (!name) {
+      return c.json({ error: 'Village name is required' }, 400);
+    }
+
+    const village = await createOrGetVillage(name, regionId);
+    return c.json({ success: true, village });
+  } catch (error: any) {
+    const details = extractErrorDetails(error);
+    console.error(`[DirectoryController] error in handleCreateVillage (reqId: ${c.get('requestId')}):`, details);
+    return c.json({ error: error.message || 'Failed to create village' }, 500);
   }
 }
 

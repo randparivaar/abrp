@@ -7,6 +7,7 @@ import 'package:mobile_app/core/localization/app_translations.dart';
 import 'package:mobile_app/features/events/domain/event_model.dart';
 import 'package:mobile_app/features/events/presentation/event_detail_screen.dart';
 import 'package:mobile_app/features/events/presentation/events_provider.dart';
+import '../../../core/widgets/admob_banner_widget.dart';
 
 class EventsListScreen extends ConsumerStatefulWidget {
   const EventsListScreen({super.key});
@@ -201,6 +202,9 @@ class _EventsListScreenState extends ConsumerState<EventsListScreen>
       ),
       body: Column(
         children: [
+          // Top Banner Ad
+          const AdmobBannerWidget(margin: EdgeInsets.symmetric(vertical: 4)),
+
           // ── CATEGORY FILTER CHIPS ───────────────────────────────────────────
           Container(
             height: 52,
@@ -277,6 +281,7 @@ class _EventsListScreenState extends ConsumerState<EventsListScreen>
                 return RefreshIndicator(
                   onRefresh: () async {
                     ref.invalidate(activeEventsProvider);
+                    await ref.read(activeEventsProvider.future);
                   },
                   child: _buildEventsList(
                     events: filtered,

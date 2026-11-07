@@ -162,6 +162,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final secondaryColor = theme.colorScheme.secondary; // Deep Maroon
     final backgroundColor = theme.colorScheme.surface; // Light Cream (#fbf9f8)
 
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next.isAuthenticated && previous?.isAuthenticated != true) {
+        if (_isSignUp) {
+          context.go('/onboard-family');
+        } else {
+          context.go('/');
+        }
+      }
+    });
+
     return Scaffold(
       backgroundColor: backgroundColor,
       body: Stack(

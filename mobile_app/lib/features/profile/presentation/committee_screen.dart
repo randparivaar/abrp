@@ -64,17 +64,24 @@ class CommitteeScreen extends ConsumerWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        children: [
-          // ─── 1. Late Shri Chandmal Ji Rander (Manglana) Hero Tribute ───────
-          _buildBhamashahHeroCard(context, lang),
-          const SizedBox(height: 18),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          // Provide smooth feedback on pull to refresh
+          await Future.delayed(const Duration(milliseconds: 500));
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          children: [
+            // ─── 1. Late Shri Chandmal Ji Rander (Manglana) Hero Tribute ───────
+            _buildBhamashahHeroCard(context, lang),
+            const SizedBox(height: 18),
 
-          // ─── 2. Organization Vision & Mission ───────────────────
-          _buildVisionSection(context, lang),
-          const SizedBox(height: 24),
-        ],
+            // ─── 2. Organization Vision & Mission ───────────────────
+            _buildVisionSection(context, lang),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
@@ -151,6 +158,8 @@ class CommitteeScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(13),
               child: Image.asset(
                 'assets/images/chandmal_ji_rander.jpeg',
+                cacheWidth: 330,
+                cacheHeight: 405,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => Container(
                   color: Colors.amber.shade100,

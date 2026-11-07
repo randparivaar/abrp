@@ -10,8 +10,10 @@ import '../../directory/presentation/app_drawer.dart';
 import '../../directory/presentation/app_bottom_navigation.dart';
 import '../../directory/presentation/ads_provider.dart';
 import '../../directory/presentation/ad_banner_card.dart';
+import '../../../core/widgets/admob_banner_widget.dart';
 import '../../events/presentation/events_provider.dart';
 import '../../events/presentation/event_detail_screen.dart';
+import '../../directory/presentation/my_family_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -97,12 +99,27 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
       drawer: const AppDrawer(),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
-        child: Column(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.wait([
+            ref.read(authProvider.notifier).refreshProfile(),
+            ref.refresh(activeEventsProvider.future),
+            ref.refresh(adsByPlacementProvider('home_carousel').future),
+            ref.refresh(adsByPlacementProvider('home_bottom_banner').future),
+            ref.refresh(myFamilyProvider.future),
+          ]);
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Top Banner Ad
+            const AdmobBannerWidget(margin: EdgeInsets.only(bottom: 12)),
+
             // Greeting Section
             Text(
               'Jai Shree Krishna,',
@@ -650,7 +667,7 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 24),
             ],
 
-            // Dynamic Home Bottom Ad Banner — with common AdBannerCard
+            // Dynamic Home Bottom Ad Banner / AdMob Banner
             Consumer(
               builder: (context, ref, _) {
                 final bottomAds =
@@ -658,7 +675,12 @@ class HomeScreen extends ConsumerWidget {
                         .watch(adsByPlacementProvider('home_bottom_banner'))
                         .value ??
                     [];
-                if (bottomAds.isEmpty) return const SizedBox.shrink();
+                if (bottomAds.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.only(bottom: 24),
+                    child: AdmobBannerWidget(),
+                  );
+                }
                 return AdBannerCarousel(
                   ads: bottomAds,
                   height: 120,
@@ -668,6 +690,7 @@ class HomeScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
       ),
       bottomNavigationBar: const AppBottomNavigation(currentIndex: 0),
     );

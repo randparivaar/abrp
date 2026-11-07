@@ -11,6 +11,8 @@ import 'directory_models.dart';
 import 'directory_constants.dart';
 import 'app_bottom_navigation.dart';
 import 'business_favorites_provider.dart';
+import 'ads_provider.dart';
+import '../../../core/widgets/admob_banner_widget.dart';
 
 class BusinessDirectoryScreen extends ConsumerStatefulWidget {
   const BusinessDirectoryScreen({super.key});
@@ -62,6 +64,7 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
 
   Future<void> _loadBusinesses() async {
     setState(() => _isLoading = true);
+    ref.invalidate(adsByPlacementProvider('directory_feed'));
     try {
       final dio = ref.read(apiClientProvider);
       final response = await dio.get('/directory/businesses', queryParameters: {
@@ -154,6 +157,9 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Top Banner Ad
+              const AdmobBannerWidget(margin: EdgeInsets.only(bottom: 12)),
+
               // Search Input
               Container(
                 height: 48,
@@ -299,20 +305,34 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
                   ),
                 )
               else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: displayedBusinesses.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final biz = displayedBusinesses[index];
-                    final isFavorited = favorites.contains(biz['id']);
-                    final String name = (biz['businessName'] as String? ?? 'Business').toTitleCase();
-                    final String category = biz['industryCategory'] ?? 'Other';
-                    final String city = biz['city'] ?? '';
-                    final String? logoUrl = biz['logoUrl'];
-                    final String mobile = biz['contactMobile'] ?? '';
-                    final List<dynamic> owners = biz['owners'] ?? [];
+                Builder(
+                  builder: (context) {
+                    const int adFrequency = 7;
+                    final int totalAdCount = displayedBusinesses.length >= adFrequency
+                        ? (displayedBusinesses.length ~/ adFrequency)
+                        : 0;
+                    final int totalItemCount = displayedBusinesses.length + totalAdCount;
+                    const int modulus = adFrequency + 1;
+
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: totalItemCount,
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        if (totalAdCount > 0 && (index + 1) % modulus == 0) {
+                          return const AdmobBannerWidget();
+                        }
+
+                        final bizIndex = totalAdCount > 0 ? (index - (index ~/ modulus)) : index;
+                        final biz = displayedBusinesses[bizIndex];
+                        final isFavorited = favorites.contains(biz['id']);
+                        final String name = (biz['businessName'] as String? ?? 'Business').toTitleCase();
+                        final String category = biz['industryCategory'] ?? 'Other';
+                        final String city = biz['city'] ?? '';
+                        final String? logoUrl = biz['logoUrl'];
+                        final String mobile = biz['contactMobile'] ?? '';
+                        final List<dynamic> owners = biz['owners'] ?? [];
 
                     return Card(
                       margin: EdgeInsets.zero,
@@ -452,7 +472,9 @@ class _BusinessDirectoryScreenState extends ConsumerState<BusinessDirectoryScree
                       ),
                     );
                   },
-                ),
+                );
+              },
+            ),
             ],
           ),
         ),

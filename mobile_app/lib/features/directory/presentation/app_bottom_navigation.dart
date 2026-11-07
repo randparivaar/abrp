@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_app/features/directory/presentation/my_family_provider.dart';
+import '../../../core/widgets/admob_banner_widget.dart';
 
 class AppBottomNavigation extends ConsumerWidget {
   final int currentIndex;
@@ -16,17 +17,21 @@ class AppBottomNavigation extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.bottomNavigationBarTheme.backgroundColor,
-        border: Border(
-          top: BorderSide(
-            color: colorScheme.secondary.withValues(alpha: 0.15),
-            width: 1,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const AdmobBannerWidget(margin: EdgeInsets.symmetric(vertical: 4)),
+        Container(
+          decoration: BoxDecoration(
+            color: theme.bottomNavigationBarTheme.backgroundColor,
+            border: Border(
+              top: BorderSide(
+                color: colorScheme.secondary.withValues(alpha: 0.15),
+                width: 1,
+              ),
+            ),
           ),
-        ),
-      ),
-      child: BottomNavigationBar(
+          child: BottomNavigationBar(
         currentIndex: currentIndex,
         elevation: 0,
         type: BottomNavigationBarType.fixed,
@@ -103,6 +108,8 @@ class AppBottomNavigation extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    ),
+  ],
+);
   }
 }

@@ -10,6 +10,7 @@ import adsRouter from './routes/ads.js';
 import eventsRouter from './routes/events.js';
 import { legalRouter } from './routes/legal.js';
 import { webRouter } from './routes/web.js';
+import { appConfigRouter, appVersionConfig } from './routes/appConfig.js';
 import { dbHealthCheck } from './db/index.js';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
@@ -35,6 +36,12 @@ app.use('*', async (c, next) => {
 
 // Global Middleware
 app.use('*', logger());
+app.use('*', async (c, next) => {
+  await next();
+  c.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  c.header('Pragma', 'no-cache');
+  c.header('Expires', '0');
+});
 app.use('*', cors({
   origin: '*', // Adjust to match client configurations in production
   allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -81,8 +88,48 @@ app.get('/v1', (c) => {
   });
 });
 
+// App Version Enforcement Middleware (Layer 2 API Guard)
+// Blocks older deprecated client builds with HTTP 426 Upgrade Required
+app.use('*', async (c, next) => {
+  const path = c.req.path;
+  if (
+    (!path.startsWith('/v1') && !path.startsWith('/api/v1')) ||
+    path.includes('/app-config') ||
+    path.endsWith('/health') ||
+    path === '/v1' ||
+    path === '/api/v1'
+  ) {
+    return next();
+  }
+
+  const appBuildHeader = c.req.header('x-app-build');
+  const appPlatform = (c.req.header('x-app-platform') || 'android').toLowerCase() === 'ios' ? 'ios' : 'android';
+
+  if (appBuildHeader) {
+    const clientBuild = parseInt(appBuildHeader, 10);
+    const minRequired = appVersionConfig[appPlatform].minRequiredBuild;
+    if (!isNaN(clientBuild) && clientBuild < minRequired) {
+      return c.json(
+        {
+          error: 'UPGRADE_REQUIRED',
+          code: 426,
+          message: appVersionConfig[appPlatform].message.en,
+          title: appVersionConfig[appPlatform].title.en,
+          minRequiredBuild: minRequired,
+          minRequiredVersion: appVersionConfig[appPlatform].minRequiredVersion,
+          updateUrl: appVersionConfig[appPlatform].updateUrl,
+        },
+        426
+      );
+    }
+  }
+
+  return next();
+});
+
 const apiRouters = [
   ['/auth', authRouter],
+  ['/app-config', appConfigRouter],
   ['/upload', uploadRouter],
   ['/notifications', notificationsRouter],
   ['/users', usersRouter],

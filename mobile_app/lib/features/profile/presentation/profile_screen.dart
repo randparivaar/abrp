@@ -17,6 +17,8 @@ import '../../directory/presentation/family_member_detail_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../directory/presentation/app_drawer.dart';
+import '../../../core/services/admob_service.dart';
+import '../../../core/widgets/admob_banner_widget.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -120,10 +122,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       appBar: AppBar(
         title: Text(AppTranslations.get('profile', lang)),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.wait([
+            ref.read(authProvider.notifier).refreshProfile(),
+            ref.refresh(myFamilyProvider.future),
+          ]);
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
           children: [
+            // Top Banner Ad
+            const AdmobBannerWidget(margin: EdgeInsets.only(bottom: 16)),
+
             // User Avatar Section
             Center(
               child: Stack(
@@ -340,6 +353,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 child: Column(
                   children: [
                     ListTile(
+                      leading: Icon(Icons.stars_rounded, color: Colors.amber.shade700),
+                      title: const Text('Support Samaj (Watch an Ad)'),
+                      subtitle: const Text('Help keep community services running'),
+                      trailing: const Icon(Icons.play_circle_fill_rounded, color: Colors.amber, size: 24),
+                      onTap: () {
+                        AdmobService.instance.showRewardedAd(
+                          onUserEarnedReward: (reward) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('🙏 Thank you for supporting Akhil Bhartiya Rander Parivar Samaj!'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
                       leading: Icon(Icons.volunteer_activism_outlined, color: colorScheme.primary),
                       title: Text(AppTranslations.get('donate', lang)),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -432,6 +464,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 32),
           ],
         ),
+      ),
       ),
       bottomNavigationBar: const AppBottomNavigation(currentIndex: 4),
     );

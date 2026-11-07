@@ -42,6 +42,51 @@ export async function getRegionsList() {
   );
 }
 
+/**
+ * Create a new village or return existing one if already present
+ */
+export async function createOrGetVillage(name: string, regionId?: number) {
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    throw new Error('Village name cannot be empty');
+  }
+
+  // 1. Check if village already exists (case-insensitive)
+  const allVillages = await getVillagesList();
+  const existing = allVillages.find(
+    (v: any) => v.name.toLowerCase() === trimmedName.toLowerCase()
+  );
+  if (existing) {
+    return existing;
+  }
+
+  // 2. Resolve regionId
+  let targetRegionId = regionId;
+  if (!targetRegionId) {
+    // Find "Other" region or fallback to first region
+    const allRegions = await getRegionsList();
+    const otherRegion = allRegions.find(
+      (r: any) => r.name.toLowerCase().includes('other') || r.name.toLowerCase().includes('प्रवासी')
+    );
+    targetRegionId = otherRegion ? otherRegion.id : (allRegions.length > 0 ? allRegions[0].id : 1);
+  }
+
+  // 3. Insert new village
+  const [newVillage] = await db.insert(villages).values({
+    name: trimmedName,
+    regionId: targetRegionId,
+  }).returning();
+
+  const reg = await db.query.regions.findFirst({
+    where: eq(regions.id, targetRegionId),
+  });
+
+  return {
+    ...newVillage,
+    region: reg ?? { id: targetRegionId, name: 'Other / अन्य' },
+  };
+}
+
 
 /**
  * Onboard a new family
@@ -73,8 +118,10 @@ export async function onboardNewFamily(sessionUserId: string, payload: OnboardFa
     familyCode,
     address: payload.family.address,
     city: payload.family.city || null,
+    district: payload.family.district || null,
     state: payload.family.state || null,
     pincode: payload.family.pincode || null,
+    country: payload.family.country || 'India',
     villageId: payload.family.villageId,
   }).returning();
 

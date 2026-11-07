@@ -56,6 +56,8 @@ class Auth extends _$Auth {
     }
   }
 
+  Future<void> refreshProfile() => _refreshProfile();
+
   Future<void> _refreshProfile() async {
     try {
       final dio = ref.read(apiClientProvider);

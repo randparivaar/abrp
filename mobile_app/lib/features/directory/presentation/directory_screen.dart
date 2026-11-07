@@ -16,6 +16,7 @@ import 'business_directory_screen.dart';
 import 'app_drawer.dart';
 import 'ads_provider.dart';
 import 'ad_banner_card.dart';
+import '../../../core/widgets/admob_banner_widget.dart';
 
 class DirectoryScreen extends ConsumerStatefulWidget {
   const DirectoryScreen({super.key});
@@ -153,6 +154,8 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
+    ref.invalidate(adsByPlacementProvider('directory_feed'));
+    ref.invalidate(myFamilyProvider);
     try {
       final dio = ref.read(apiClientProvider);
       
@@ -446,6 +449,9 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
               child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Top Banner Ad
+              const AdmobBannerWidget(margin: EdgeInsets.only(bottom: 12)),
+
               // Search & Filter Bar
               Row(
                 children: [
@@ -626,9 +632,12 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                     final displayedList = _displayedMembers;
                     final isSearching = _searchQuery.trim().isNotEmpty;
                     final dynamicAds = ref.watch(adsByPlacementProvider('directory_feed')).value ?? [];
-                    const int adFrequency = 4; // User requested 1 ad after every 4 member cards
-                    final int totalAdCount = displayedList.length ~/ adFrequency;
-                    final int totalItemCount = displayedList.length + (dynamicAds.isEmpty ? 0 : totalAdCount);
+                    final bool hasDynamicAds = dynamicAds.isNotEmpty;
+
+                    // Waterfall ad logic: Samaj ads every 4 items; if none, backfill Google AdMob every 7 items
+                    final int adFrequency = hasDynamicAds ? 4 : 7;
+                    final int totalAdCount = displayedList.length >= adFrequency ? (displayedList.length ~/ adFrequency) : 0;
+                    final int totalItemCount = displayedList.length + totalAdCount;
                     final int modulus = adFrequency + 1;
 
                     return ListView.separated(
@@ -637,20 +646,23 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
                       itemCount: totalItemCount,
                       separatorBuilder: (context, index) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
-                        // Insert Ad after every 4 members only if real ads exist
-                        if (dynamicAds.isNotEmpty && (index + 1) % modulus == 0) {
-                          final adIndex = ((index + 1) ~/ modulus - 1) % dynamicAds.length;
-                          final ad = dynamicAds[adIndex];
-                          return _buildDynamicAdCard(context, ad, primaryColor, secondaryColor, colorScheme);
+                        // Insert ad slot if item index lands on an ad interval
+                        if (totalAdCount > 0 && (index + 1) % modulus == 0) {
+                          if (hasDynamicAds) {
+                            final adIndex = ((index + 1) ~/ modulus - 1) % dynamicAds.length;
+                            final ad = dynamicAds[adIndex];
+                            return _buildDynamicAdCard(context, ad, primaryColor, secondaryColor, colorScheme);
+                          } else {
+                            // Backfill with Google AdMob Banner
+                            return const AdmobBannerWidget();
+                          }
                         }
 
-                        final memberIndex = index - (index ~/ modulus);
+                        // Member index: calculated cleanly so no item repeats and last item is never hidden
+                        final memberIndex = totalAdCount > 0 ? (index - (index ~/ modulus)) : index;
                         final member = displayedList[memberIndex];
                         final String rawName = (member['fullName'] as String? ?? '').toTitleCase();
-                        final village = member['village']?['name'] as String?;
-                        final titleText = village != null
-                            ? '$rawName ($village)'
-                            : rawName;
+                        final titleText = rawName;
                         final avatarUrl = member['avatarUrl'] as String?;
                         final relationToHead = (member['relationshipToHead'] as String? ?? member['relationToHead'] as String? ?? '').toUpperCase();
                         final bool isHead = relationToHead == 'HEAD' || relationToHead == 'SELF' || member['isHead'] == true;

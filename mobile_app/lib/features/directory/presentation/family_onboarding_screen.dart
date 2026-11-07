@@ -61,11 +61,12 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
   // Step 1: Origin & Address
   final _addressController = TextEditingController();
   final _cityController = TextEditingController();
+  final _districtController = TextEditingController();
   final _stateController = TextEditingController();
   final _pincodeController = TextEditingController();
   final _countryController = TextEditingController(text: 'India');
   bool _isAutoFilling = false;
-  bool _isAddressEditable = false;
+  bool _isAddressEditable = true;
   Village? _selectedVillage;
 
   Future<void> _fetchAddressFromPincode(String pincode) async {
@@ -87,15 +88,47 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
           final postOffices = data['PostOffice'] as List<dynamic>;
           if (postOffices.isNotEmpty) {
             final first = postOffices[0];
-            final city = first['District'] ?? '';
-            final state = first['State'] ?? '';
-            final country = first['Country'] ?? 'India';
+            final district = (first['District'] ?? '').toString();
+            final state = (first['State'] ?? '').toString();
+            final country = (first['Country'] ?? 'India').toString();
+
+            // Smart Exact City Extraction:
+            // 1. Look for Head Post Office or Sub Post Office with Delivery status
+            String city = '';
+            for (final po in postOffices) {
+              final branchType = po['BranchType']?.toString() ?? '';
+              final deliveryStatus = po['DeliveryStatus']?.toString() ?? '';
+              final name = po['Name']?.toString().trim() ?? '';
+
+              if (branchType == 'Head Post Office' ||
+                  (branchType == 'Sub Post Office' && deliveryStatus == 'Delivery')) {
+                city = name;
+                break;
+              }
+            }
+
+            // 2. Fallback to Block if city is still empty
+            if (city.isEmpty) {
+              for (final po in postOffices) {
+                final block = po['Block']?.toString().trim() ?? '';
+                if (block.isNotEmpty && block.toUpperCase() != 'NA') {
+                  city = block;
+                  break;
+                }
+              }
+            }
+
+            // 3. Fallback to first post office name
+            if (city.isEmpty) {
+              city = (first['Name'] ?? district).toString();
+            }
 
             setState(() {
               _cityController.text = city;
+              _districtController.text = district;
               _stateController.text = state;
               _countryController.text = country;
-              _isAddressEditable = false;
+              _isAddressEditable = true;
             });
             _saveDraft();
           }
@@ -174,6 +207,7 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
   void dispose() {
     _addressController.dispose();
     _cityController.dispose();
+    _districtController.dispose();
     _stateController.dispose();
     _pincodeController.dispose();
     _countryController.dispose();
@@ -250,10 +284,11 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
       // Step 1
       _addressController.text = draft['address'] ?? '';
       _cityController.text = draft['city'] ?? '';
+      _districtController.text = draft['district'] ?? '';
       _stateController.text = draft['state'] ?? '';
       _pincodeController.text = draft['pincode'] ?? '';
       _countryController.text = draft['country'] ?? 'India';
-      _isAddressEditable = draft['isAddressEditable'] ?? false;
+      _isAddressEditable = draft['isAddressEditable'] ?? true;
       final savedVillageId = draft['villageId'] as int?;
       
       // Step 2
@@ -278,14 +313,14 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
         _parsedIncome = IncomeParser.parse(_incomeController.text);
       }
 
-      // Try matching selected village if villages are loaded
+      // Try matching selected village if villages are loaded (never fallback to Makrana)
       final villagesAsync = ref.read(villagesProvider);
       villagesAsync.whenData((villagesList) {
         if (savedVillageId != null) {
-          _selectedVillage = villagesList.firstWhere(
-            (v) => v.id == savedVillageId,
-            orElse: () => villagesList.first,
-          );
+          final matched = villagesList.where((v) => v.id == savedVillageId);
+          if (matched.isNotEmpty) {
+            _selectedVillage = matched.first;
+          }
         }
       });
     });
@@ -297,6 +332,7 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
       // Step 1
       'address': _addressController.text,
       'city': _cityController.text,
+      'district': _districtController.text,
       'state': _stateController.text,
       'pincode': _pincodeController.text,
       'country': _countryController.text,
@@ -374,6 +410,7 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
         'family': {
           'address': _addressController.text.trim(),
           'city': _cityController.text.trim().isNotEmpty ? _cityController.text.trim() : null,
+          'district': _districtController.text.trim().isNotEmpty ? _districtController.text.trim() : null,
           'state': _stateController.text.trim().isNotEmpty ? _stateController.text.trim() : null,
           'pincode': _pincodeController.text.trim().isNotEmpty ? _pincodeController.text.trim() : null,
           'country': _countryController.text.trim().isNotEmpty ? _countryController.text.trim() : null,
@@ -593,15 +630,15 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
           ),
           const SizedBox(height: 16),
 
-          // City & State Row
+          // City & District Row
           Row(
             children: [
               Expanded(
                 child: TextFormField(
                   controller: _cityController,
-                  enabled: _isAddressEditable,
+                  enabled: true,
                   decoration: const InputDecoration(
-                    labelText: 'City / शहर *',
+                    labelText: 'City / कस्बा / शहर *',
                     prefixIcon: Icon(Icons.location_city_outlined),
                   ),
                   onChanged: (val) => _saveDraft(),
@@ -614,14 +651,15 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
               const SizedBox(width: 12),
               Expanded(
                 child: TextFormField(
-                  controller: _stateController,
-                  enabled: _isAddressEditable,
+                  controller: _districtController,
+                  enabled: true,
                   decoration: const InputDecoration(
-                    labelText: 'State / राज्य *',
+                    labelText: 'District / जिला *',
+                    prefixIcon: Icon(Icons.map_outlined),
                   ),
                   onChanged: (val) => _saveDraft(),
                   validator: (val) {
-                    if (val == null || val.trim().isEmpty) return 'Please enter state';
+                    if (val == null || val.trim().isEmpty) return 'Please enter district';
                     return null;
                   },
                 ),
@@ -630,19 +668,41 @@ class _FamilyOnboardingScreenState extends ConsumerState<FamilyOnboardingScreen>
           ),
           const SizedBox(height: 16),
 
-          // Country
-          TextFormField(
-            controller: _countryController,
-            enabled: _isAddressEditable,
-            decoration: const InputDecoration(
-              labelText: 'Country / देश *',
-              prefixIcon: Icon(Icons.public_outlined),
-            ),
-            onChanged: (val) => _saveDraft(),
-            validator: (val) {
-              if (val == null || val.trim().isEmpty) return 'Please enter country';
-              return null;
-            },
+          // State & Country Row
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _stateController,
+                  enabled: true,
+                  decoration: const InputDecoration(
+                    labelText: 'State / राज्य *',
+                    prefixIcon: Icon(Icons.terrain_outlined),
+                  ),
+                  onChanged: (val) => _saveDraft(),
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) return 'Please enter state';
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: _countryController,
+                  enabled: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Country / देश *',
+                    prefixIcon: Icon(Icons.public_outlined),
+                  ),
+                  onChanged: (val) => _saveDraft(),
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) return 'Please enter country';
+                    return null;
+                  },
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
 
@@ -1238,7 +1298,7 @@ class _VillagePickerTile extends StatelessWidget {
   }
 }
 
-class _VillageSearchSheet extends StatefulWidget {
+class _VillageSearchSheet extends ConsumerStatefulWidget {
   final List<Village> villages;
   final Village? selected;
   final ValueChanged<Village> onSelected;
@@ -1250,12 +1310,13 @@ class _VillageSearchSheet extends StatefulWidget {
   });
 
   @override
-  State<_VillageSearchSheet> createState() => _VillageSearchSheetState();
+  ConsumerState<_VillageSearchSheet> createState() => _VillageSearchSheetState();
 }
 
-class _VillageSearchSheetState extends State<_VillageSearchSheet> {
+class _VillageSearchSheetState extends ConsumerState<_VillageSearchSheet> {
   final _searchController = TextEditingController();
   List<Village> _filtered = [];
+  bool _isAdding = false;
 
   @override
   void initState() {
@@ -1281,6 +1342,46 @@ class _VillageSearchSheetState extends State<_VillageSearchSheet> {
                   v.regionName.toLowerCase().contains(query))
               .toList();
     });
+  }
+
+  Future<void> _addNewVillage(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+
+    setState(() => _isAdding = true);
+    try {
+      final dio = ref.read(apiClientProvider);
+      final response = await dio.post('/directory/villages', data: {
+        'name': trimmed,
+      });
+
+      if (response.data?['village'] != null) {
+        final newVillageData = response.data['village'];
+        final newVillage = Village(
+          id: newVillageData['id'],
+          name: newVillageData['name'],
+          regionName: (newVillageData['region']?['name'] ?? 'Other / अन्य') as String,
+        );
+        ref.invalidate(villagesProvider);
+        if (mounted) {
+          widget.onSelected(newVillage);
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add village: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isAdding = false);
+      }
+    }
   }
 
   /// Groups filtered villages by regionName
@@ -1386,6 +1487,54 @@ class _VillageSearchSheetState extends State<_VillageSearchSheet> {
                 ),
               ),
 
+              // Add village option if not an exact match
+              if (_searchController.text.trim().isNotEmpty &&
+                  !_filtered.any((v) =>
+                      v.name.toLowerCase() ==
+                      _searchController.text.trim().toLowerCase()))
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: InkWell(
+                    onTap: _isAdding
+                        ? null
+                        : () => _addNewVillage(_searchController.text.trim()),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.add_location_alt_outlined,
+                              color: theme.colorScheme.primary, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Add "${_searchController.text.trim()}" as a new village\n+ नया गांव जोड़ें',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                          if (_isAdding)
+                            const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2))
+                          else
+                            Icon(Icons.chevron_right, color: theme.colorScheme.primary),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
               const Divider(height: 1),
 
               // Results count
@@ -1405,16 +1554,46 @@ class _VillageSearchSheetState extends State<_VillageSearchSheet> {
               Expanded(
                 child: _filtered.isEmpty
                     ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.search_off, size: 48, color: Colors.grey.shade400),
-                            const SizedBox(height: 12),
-                            Text(
-                              'No villages found',
-                              style: TextStyle(color: Colors.grey.shade500),
-                            ),
-                          ],
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.location_off_outlined,
+                                  size: 48, color: Colors.grey.shade400),
+                              const SizedBox(height: 12),
+                              Text(
+                                '"${_searchController.text.trim()}" not found in list',
+                                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: _isAdding
+                                    ? null
+                                    : () =>
+                                        _addNewVillage(_searchController.text.trim()),
+                                icon: _isAdding
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2, color: Colors.white))
+                                    : const Icon(Icons.add_location_alt_outlined,
+                                        color: Colors.white),
+                                label: Text(
+                                  'Add "${_searchController.text.trim()}" as New Village\n+ नया गांव जोड़ें',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: theme.colorScheme.primary,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 12),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       )
                     : ListView.builder(
