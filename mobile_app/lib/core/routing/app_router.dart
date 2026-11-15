@@ -84,6 +84,10 @@ GoRouter appRouter(Ref ref) {
       // Allow splash, onboarding, forgot password, and legal screens to display without redirection
       if (isSplash || isOnboarding || isForgotPassword || isPrivacy || isTerms || isHelpSupport) return null;
 
+      // If auth state is still loading from secure storage, do not prematurely redirect to /login
+      // This protects incoming deep links (e.g. /business/:id or /member/:familyId/:memberId) from getting wiped on cold start
+      if (authState.isLoading) return null;
+
       // 1. If not authenticated and not currently on login page, send to /login
       if (!isAuthenticated && !isLoggingIn) {
         return '/login';

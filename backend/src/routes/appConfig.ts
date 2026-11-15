@@ -26,13 +26,13 @@ export interface AppVersionState {
 // In-memory version state seeded from environment variables with sensible production defaults
 export const appVersionConfig: AppVersionState = {
   android: {
-    latestVersion: process.env.APP_LATEST_ANDROID_VERSION || '1.0.1',
-    latestBuild: parseInt(process.env.APP_LATEST_ANDROID_BUILD || '2', 10),
+    latestVersion: process.env.APP_LATEST_ANDROID_VERSION || '1.0.2',
+    latestBuild: parseInt(process.env.APP_LATEST_ANDROID_BUILD || '3', 10),
     minRequiredVersion: process.env.APP_MIN_ANDROID_VERSION || '1.0.0',
     minRequiredBuild: parseInt(process.env.APP_MIN_ANDROID_BUILD || '1', 10),
     updateUrl:
       process.env.APP_UPDATE_URL_ANDROID ||
-      'https://play.google.com/store/apps/details?id=com.abrp.mobile',
+      'https://play.google.com/store/apps/details?id=com.abrp.community',
     title: {
       en: 'App Update Required',
       hi: 'ऐप अपडेट आवश्यक है',
