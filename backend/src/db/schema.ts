@@ -395,7 +395,52 @@ export const eventsRelations = relations(events, ({ one }) => ({
   }),
 }));
 
+// ==========================================
+// In-App Notification Center & Wishes History
+// ==========================================
+export const notifications = pgTable('notifications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  body: text('body').notNull(),
+  imageUrl: text('image_url'), // Poster image URL (R2 or dynamic)
+  type: varchar('type', { length: 50 }).default('general').notNull(), // 'festival', 'birthday', 'anniversary', 'announcement', 'general'
+  targetType: varchar('target_type', { length: 50 }).default('all').notNull(), // 'all', 'family', 'user'
+  targetId: varchar('target_id', { length: 100 }), // familyId or userId if targeted
+  metadata: jsonb('metadata'), // e.g. { memberName, familyId, posterUrl, actionUrl }
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('notifications_created_at_idx').on(table.createdAt),
+  index('notifications_type_idx').on(table.type),
+  index('notifications_target_idx').on(table.targetType, table.targetId),
+]);
 
+export const notificationReads = pgTable('notification_reads', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  notificationId: uuid('notification_id').references(() => notifications.id, { onDelete: 'cascade' }).notNull(),
+  readAt: timestamp('read_at').defaultNow().notNull(),
+}, (table) => [
+  index('notification_reads_user_idx').on(table.userId),
+  uniqueIndex('notification_reads_user_notif_unique').on(table.userId, table.notificationId),
+]);
 
+export const notificationsRelations = relations(notifications, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [notifications.createdBy],
+    references: [users.id],
+  }),
+  reads: many(notificationReads),
+}));
 
+export const notificationReadsRelations = relations(notificationReads, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationReads.userId],
+    references: [users.id],
+  }),
+  notification: one(notifications, {
+    fields: [notificationReads.notificationId],
+    references: [notifications.id],
+  }),
+}));
 

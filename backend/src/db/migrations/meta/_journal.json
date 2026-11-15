@@ -43,6 +43,13 @@
       "when": 1791047830383,
       "tag": "0005_overjoyed_darkstar",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794729852276,
+      "tag": "0006_young_barracuda",
+      "breakpoints": true
     }
   ]
 }

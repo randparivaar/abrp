@@ -366,7 +366,7 @@ class _DirectoryScreenState extends ConsumerState<DirectoryScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.notifications_outlined, color: colorScheme.onSurfaceVariant),
-            onPressed: () {},
+            onPressed: () => context.push('/notifications'),
           ),
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert, color: primaryColor),

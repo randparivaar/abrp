@@ -142,6 +142,7 @@ const apiRouters = [
 for (const [routePath, router] of apiRouters) {
   app.route(`/v1${routePath}`, router as any);
   app.route(`/api/v1${routePath}`, router as any);
+  app.route(routePath, router as any);
 }
 
 // Web Landing Pages & Deep Links

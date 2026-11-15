@@ -52,8 +52,9 @@ export const fcmService = {
    * @param title Title of the message
    * @param body Content description of the message
    * @param data Optional payload key-value pairs
+   * @param imageUrl Optional poster image URL for BigPicture notifications
    */
-  async sendNotification(token: string, title: string, body: string, data?: Record<string, string>) {
+  async sendNotification(token: string, title: string, body: string, data?: Record<string, string>, imageUrl?: string) {
     const app = getFcmApp();
     if (!app) return false;
 
@@ -63,12 +64,18 @@ export const fcmService = {
         notification: {
           title,
           body,
+          imageUrl: imageUrl || undefined,
         },
-        data: data || {},
+        data: {
+          ...(data || {}),
+          ...(imageUrl ? { imageUrl, posterUrl: imageUrl } : {}),
+        },
         android: {
           priority: 'high',
           notification: {
             sound: 'default',
+            channelId: 'abrp_announcements',
+            imageUrl: imageUrl || undefined,
           },
         },
         apns: {
@@ -76,8 +83,10 @@ export const fcmService = {
             aps: {
               sound: 'default',
               badge: 1,
+              'mutable-content': 1,
             },
           },
+          fcmOptions: imageUrl ? { imageUrl } : undefined,
         },
       });
       return true;
@@ -88,9 +97,9 @@ export const fcmService = {
   },
 
   /**
-   * Send notification to a list of tokens.
+   * Send notification to a list of tokens with image and rich sound.
    */
-  async sendMulticast(tokens: string[], title: string, body: string, data?: Record<string, string>) {
+  async sendMulticast(tokens: string[], title: string, body: string, data?: Record<string, string>, imageUrl?: string) {
     const app = getFcmApp();
     if (!app || tokens.length === 0) return false;
 
@@ -100,8 +109,30 @@ export const fcmService = {
         notification: {
           title,
           body,
+          imageUrl: imageUrl || undefined,
         },
-        data: data || {},
+        data: {
+          ...(data || {}),
+          ...(imageUrl ? { imageUrl, posterUrl: imageUrl } : {}),
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            sound: 'default',
+            channelId: 'abrp_announcements',
+            imageUrl: imageUrl || undefined,
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: 'default',
+              badge: 1,
+              'mutable-content': 1,
+            },
+          },
+          fcmOptions: imageUrl ? { imageUrl } : undefined,
+        },
       });
       return response.successCount > 0;
     } catch (error) {

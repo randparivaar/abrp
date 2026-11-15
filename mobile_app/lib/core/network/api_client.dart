@@ -36,6 +36,12 @@ Dio apiClient(Ref ref) {
         options.headers['x-app-platform'] = Platform.isIOS ? 'ios' : 'android';
         options.headers['x-app-version'] = VersionService.currentVersion;
         options.headers['x-app-build'] = VersionService.currentBuildNumber.toString();
+
+        // Strip leading slash from path so Dio resolves against baseUrl's path prefix (e.g. /v1/)
+        if (options.path.startsWith('/') && !options.path.startsWith('//')) {
+          options.path = options.path.substring(1);
+        }
+
         return handler.next(options);
       },
       onError: (DioException e, handler) {

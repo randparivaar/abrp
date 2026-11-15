@@ -56,13 +56,7 @@ class HomeScreen extends ConsumerWidget {
               Icons.notifications_outlined,
               color: theme.colorScheme.onSurfaceVariant,
             ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Notifications will be available soon.'),
-                ),
-              );
-            },
+            onPressed: () => context.push('/notifications'),
           ),
           GestureDetector(
             onTap: () => context.push('/profile'),

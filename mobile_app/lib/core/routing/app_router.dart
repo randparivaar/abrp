@@ -24,6 +24,9 @@ import 'package:mobile_app/features/profile/presentation/terms_and_conditions_sc
 import 'package:mobile_app/features/profile/presentation/faq_support_screen.dart';
 import 'package:mobile_app/features/profile/presentation/donation_screen.dart';
 import 'package:mobile_app/features/profile/presentation/committee_screen.dart';
+import 'package:mobile_app/features/notifications/presentation/notifications_screen.dart';
+import 'package:mobile_app/features/notifications/presentation/wish_poster_screen.dart';
+import 'package:mobile_app/core/services/notification_service.dart';
 
 part 'app_router.g.dart';
 
@@ -48,7 +51,7 @@ class _AuthRouterNotifier extends ChangeNotifier {
 GoRouter appRouter(Ref ref) {
   final notifier = _AuthRouterNotifier(ref);
 
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/splash',
     // Handle custom deep link scheme: abrp://member/{familyId}/{memberId}
     // and abrp://business/{id}
@@ -205,10 +208,57 @@ GoRouter appRouter(Ref ref) {
               return _BusinessDeepLinkScreen(businessId: businessId);
             },
           ),
+          GoRoute(
+            path: 'notifications',
+            builder: (context, state) => const NotificationsScreen(),
+          ),
+          GoRoute(
+            path: 'poster-view',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              final q = state.uri.queryParameters;
+              return WishPosterScreen(
+                posterUrl: extra['posterUrl'] as String? ?? q['posterUrl'],
+                title: extra['title'] as String? ?? q['title'] ?? 'ABRP Samaj',
+                body: extra['body'] as String? ?? q['body'],
+                wishType: extra['wishType'] as String? ?? q['wishType'],
+                memberName: extra['memberName'] as String? ?? q['memberName'],
+                spouseName: extra['spouseName'] as String? ?? q['spouseName'],
+                avatarUrl: extra['avatarUrl'] as String? ?? q['avatarUrl'],
+                coupleNames: extra['coupleNames'] as String? ?? q['coupleNames'],
+              );
+            },
+          ),
         ],
       ),
     ],
   );
+
+  NotificationService.instance.onNotificationTapped = (data) {
+    final posterUrl = data['posterUrl'] as String? ?? data['imageUrl'] as String?;
+    final title = data['title'] as String? ?? 'ABRP Samaj';
+    final body = data['body'] as String? ?? '';
+    final type = data['type'] as String? ?? 'general';
+
+    if ((posterUrl != null && posterUrl.isNotEmpty) || 
+        type == 'festival_wish' || 
+        type == 'birthday_wish' || 
+        type == 'anniversary_wish') {
+      router.push('/poster-view', extra: {
+        'posterUrl': posterUrl,
+        'title': title,
+        'body': body,
+        'wishType': type.replaceAll('_wish', ''),
+        'memberName': data['memberName'],
+        'coupleNames': data['coupleNames'],
+        'avatarUrl': data['avatarUrl'],
+      });
+    } else {
+      router.push('/notifications');
+    }
+  };
+
+  return router;
 }
 
 /// Handles deep link navigation to a specific member profile.

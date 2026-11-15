@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:mobile_app/core/constants/app_constants.dart';
 import 'package:mobile_app/core/network/api_client.dart';
+import 'package:mobile_app/core/services/notification_service.dart';
 import 'package:mobile_app/features/auth/domain/user_model.dart';
 
 part 'auth_controller.g.dart';
@@ -48,6 +49,7 @@ class Auth extends _$Auth {
         final user = UserModel.fromJson(jsonDecode(userJson));
         state = AuthState(user: user);
         _refreshProfile();
+        NotificationService.instance.registerDeviceTokenWithBackend(null);
       } else {
         state = AuthState(user: null);
       }
@@ -118,6 +120,7 @@ class Auth extends _$Auth {
       await _storage.write(key: AppConstants.userKey, value: jsonEncode(user.toJson()));
 
       state = AuthState(user: user);
+      NotificationService.instance.registerDeviceTokenWithBackend(fcmToken);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: _getErrorMessage(e));
     }
@@ -147,6 +150,7 @@ class Auth extends _$Auth {
       await _storage.write(key: AppConstants.userKey, value: jsonEncode(user.toJson()));
 
       state = AuthState(user: user);
+      NotificationService.instance.registerDeviceTokenWithBackend(fcmToken);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: _getErrorMessage(e));
     }
@@ -182,6 +186,7 @@ class Auth extends _$Auth {
 
   Future<void> logout() async {
     state = state.copyWith(isLoading: true);
+    await NotificationService.instance.unregisterDeviceToken();
     await _storage.delete(key: AppConstants.tokenKey);
     await _storage.delete(key: AppConstants.userKey);
     state = AuthState(user: null);
@@ -191,6 +196,7 @@ class Auth extends _$Auth {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final dio = ref.read(apiClientProvider);
+      await NotificationService.instance.unregisterDeviceToken();
       await dio.delete('/users/me');
 
       await _storage.delete(key: AppConstants.tokenKey);
