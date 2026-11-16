@@ -13,7 +13,8 @@ class AdminNotificationsTab extends ConsumerStatefulWidget {
   const AdminNotificationsTab({super.key, this.lang});
 
   @override
-  ConsumerState<AdminNotificationsTab> createState() => _AdminNotificationsTabState();
+  ConsumerState<AdminNotificationsTab> createState() =>
+      _AdminNotificationsTabState();
 }
 
 class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
@@ -28,7 +29,8 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
 
   // Mode: 0 = Festival / Daily Wish Poster, 1 = General Announcement
   int _selectedMode = 0;
-  String _selectedWishType = 'festival'; // 'festival', 'birthday', 'anniversary', 'announcement'
+  String _selectedWishType =
+      'festival'; // 'festival', 'birthday', 'anniversary', 'announcement'
   String? _selectedPosterUrl;
   String? _selectedPosterName;
 
@@ -85,7 +87,9 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
   Future<void> _dispatchNotification() async {
     if (!_sendNotificationToAll && _selectedRecipients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one recipient member.')),
+        const SnackBar(
+          content: Text('Please select at least one recipient member.'),
+        ),
       );
       return;
     }
@@ -94,9 +98,9 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
     final body = _bodyController.text.trim();
     final imageUrl = _selectedPosterUrl ?? _imageUrlController.text.trim();
 
-    if (title.isEmpty || body.isEmpty) {
+    if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill out Title and Message.')),
+        const SnackBar(content: Text('Please enter a Notification Title.')),
       );
       return;
     }
@@ -108,20 +112,28 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
 
     try {
       final dio = ref.read(apiClientProvider);
-      final endpoint = _selectedMode == 0 ? '/notifications/send-wish' : '/notifications/send-test';
+      final endpoint = _selectedMode == 0
+          ? '/notifications/send-wish'
+          : '/notifications/send-test';
 
-      final response = await dio.post(endpoint, data: {
-        'title': title,
-        'body': body,
-        'imageUrl': imageUrl.isNotEmpty ? imageUrl : null,
-        'type': _selectedWishType,
-        'targetType': _sendNotificationToAll ? 'all' : 'user',
-        'targetIds': _sendNotificationToAll ? ['all'] : _selectedRecipients.keys.toList(),
-      });
+      final response = await dio.post(
+        endpoint,
+        data: {
+          'title': title,
+          'body': body,
+          'imageUrl': imageUrl.isNotEmpty ? imageUrl : null,
+          'type': _selectedWishType,
+          'targetType': _sendNotificationToAll ? 'all' : 'user',
+          'targetIds': _sendNotificationToAll
+              ? ['all']
+              : _selectedRecipients.keys.toList(),
+        },
+      );
 
       setState(() {
         _isSendingNotification = false;
-        _statusMessage = response.data['message'] ?? 'Notification dispatched successfully!';
+        _statusMessage =
+            response.data['message'] ?? 'Notification dispatched successfully!';
       });
 
       _titleController.clear();
@@ -140,7 +152,8 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
         } else if (data is Map && data['error'] != null) {
           errorMessage = 'Failed: ${data['error']}';
         } else {
-          errorMessage = 'Failed (${e.response?.statusCode ?? 'network'}): ${e.message}';
+          errorMessage =
+              'Failed (${e.response?.statusCode ?? 'network'}): ${e.message}';
         }
       } else {
         errorMessage = 'Failed: $e';
@@ -181,11 +194,18 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         color: _selectedMode == 0
-                            ? (isDark ? theme.colorScheme.primary : Colors.white)
+                            ? (isDark
+                                  ? theme.colorScheme.primary
+                                  : Colors.white)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: _selectedMode == 0
-                            ? [const BoxShadow(color: Colors.black12, blurRadius: 4)]
+                            ? [
+                                const BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                ),
+                              ]
                             : null,
                       ),
                       child: Text(
@@ -193,7 +213,9 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
                         textAlign: TextAlign.center,
                         style: GoogleFonts.outfit(
                           fontSize: 13,
-                          fontWeight: _selectedMode == 0 ? FontWeight.bold : FontWeight.w500,
+                          fontWeight: _selectedMode == 0
+                              ? FontWeight.bold
+                              : FontWeight.w500,
                           color: _selectedMode == 0
                               ? (isDark ? Colors.white : Colors.black87)
                               : Colors.grey.shade600,
@@ -210,11 +232,18 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         color: _selectedMode == 1
-                            ? (isDark ? theme.colorScheme.primary : Colors.white)
+                            ? (isDark
+                                  ? theme.colorScheme.primary
+                                  : Colors.white)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: _selectedMode == 1
-                            ? [const BoxShadow(color: Colors.black12, blurRadius: 4)]
+                            ? [
+                                const BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                ),
+                              ]
                             : null,
                       ),
                       child: Text(
@@ -222,7 +251,9 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
                         textAlign: TextAlign.center,
                         style: GoogleFonts.outfit(
                           fontSize: 13,
-                          fontWeight: _selectedMode == 1 ? FontWeight.bold : FontWeight.w500,
+                          fontWeight: _selectedMode == 1
+                              ? FontWeight.bold
+                              : FontWeight.w500,
                           color: _selectedMode == 1
                               ? (isDark ? Colors.white : Colors.black87)
                               : Colors.grey.shade600,
@@ -240,7 +271,11 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
           if (_selectedMode == 0) ...[
             Text(
               'त्वरित शुभकामना टेम्पलेट / Presets:',
-              style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade700),
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade700,
+              ),
             ),
             const SizedBox(height: 8),
             SingleChildScrollView(
@@ -296,7 +331,10 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
           if (_selectedMode == 0) ...[
             Text(
               'पोस्टर चयन / Poster Image:',
-              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold),
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Row(
@@ -305,7 +343,9 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       side: BorderSide(color: theme.colorScheme.primary),
                     ),
                     onPressed: _openR2PosterPickerDialog,
@@ -314,7 +354,10 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
                       _selectedPosterName != null
                           ? 'पोस्टर: $_selectedPosterName'
                           : 'R2 स्टोरेज से पोस्टर चुनें / Select from R2',
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -352,11 +395,18 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.preview_rounded, size: 16, color: Colors.amber),
+                        const Icon(
+                          Icons.preview_rounded,
+                          size: 16,
+                          color: Colors.amber,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Live Poster Preview (Notification Popup)',
-                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -368,8 +418,10 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
                         height: 200,
                         width: double.infinity,
                         fit: BoxFit.cover,
-                        placeholder: (ctx, url) => const Center(child: CircularProgressIndicator()),
-                        errorWidget: (ctx, url, err) => const Icon(Icons.broken_image, size: 40),
+                        placeholder: (ctx, url) =>
+                            const Center(child: CircularProgressIndicator()),
+                        errorWidget: (ctx, url, err) =>
+                            const Icon(Icons.broken_image, size: 40),
                       ),
                     ),
                   ],
@@ -390,12 +442,14 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
               ChoiceChip(
                 label: const Text('📢 All Members / सभी सदस्य'),
                 selected: _sendNotificationToAll,
-                onSelected: (val) => setState(() => _sendNotificationToAll = true),
+                onSelected: (val) =>
+                    setState(() => _sendNotificationToAll = true),
               ),
               ChoiceChip(
                 label: const Text('👤 Specific Members'),
                 selected: !_sendNotificationToAll,
-                onSelected: (val) => setState(() => _sendNotificationToAll = false),
+                onSelected: (val) =>
+                    setState(() => _sendNotificationToAll = false),
               ),
             ],
           ),
@@ -405,7 +459,9 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
             ElevatedButton.icon(
               onPressed: _openRecipientSelectorSheet,
               icon: const Icon(Icons.person_add_alt_1),
-              label: Text('Select Members (${_selectedRecipients.length} selected)'),
+              label: Text(
+                'Select Members (${_selectedRecipients.length} selected)',
+              ),
             ),
             const SizedBox(height: 12),
           ],
@@ -422,13 +478,15 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
           ),
           const SizedBox(height: 16),
 
-          // ── Body Message Input ──
+          // ── Body Message Input (Optional) ──
           TextField(
             controller: _bodyController,
             maxLines: 4,
             decoration: InputDecoration(
-              labelText: AppTranslations.get('notification_body', lang),
-              hintText: 'Enter full greeting or notification content...',
+              labelText:
+                  '${AppTranslations.get('notification_body', lang)} (Optional / ऐच्छिक)',
+              hintText:
+                  'Enter greeting text (or leave empty to send poster image only)...',
               border: const OutlineInputBorder(),
               alignLabelWithHint: true,
               prefixIcon: const Padding(
@@ -447,23 +505,31 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFD97706),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: _isSendingNotification ? null : _dispatchNotification,
               icon: _isSendingNotification
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Icon(Icons.send_rounded),
               label: Text(
                 _isSendingNotification
                     ? 'Dispatching...'
                     : (_selectedMode == 0
-                        ? '🚀 शुभकामना पोस्टर भेजें / Dispatch Wish Poster'
-                        : '📢 सूचना भेजें / Dispatch Notice'),
-                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold),
+                          ? '🚀 शुभकामना पोस्टर भेजें / Dispatch Wish Poster'
+                          : '📢 सूचना भेजें / Dispatch Notice'),
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -474,24 +540,34 @@ class _AdminNotificationsTabState extends ConsumerState<AdminNotificationsTab> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: _statusMessage!.startsWith('Failed') ? Colors.red.shade50 : Colors.green.shade50,
+                color: _statusMessage!.startsWith('Failed')
+                    ? Colors.red.shade50
+                    : Colors.green.shade50,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: _statusMessage!.startsWith('Failed') ? Colors.red.shade200 : Colors.green.shade200,
+                  color: _statusMessage!.startsWith('Failed')
+                      ? Colors.red.shade200
+                      : Colors.green.shade200,
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
-                    _statusMessage!.startsWith('Failed') ? Icons.error_outline : Icons.check_circle_outline,
-                    color: _statusMessage!.startsWith('Failed') ? Colors.red : Colors.green,
+                    _statusMessage!.startsWith('Failed')
+                        ? Icons.error_outline
+                        : Icons.check_circle_outline,
+                    color: _statusMessage!.startsWith('Failed')
+                        ? Colors.red
+                        : Colors.green,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       _statusMessage!,
                       style: TextStyle(
-                        color: _statusMessage!.startsWith('Failed') ? Colors.red.shade800 : Colors.green.shade800,
+                        color: _statusMessage!.startsWith('Failed')
+                            ? Colors.red.shade800
+                            : Colors.green.shade800,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -512,7 +588,8 @@ class _R2PosterPickerSheet extends ConsumerStatefulWidget {
   const _R2PosterPickerSheet({required this.onPosterSelected});
 
   @override
-  ConsumerState<_R2PosterPickerSheet> createState() => _R2PosterPickerSheetState();
+  ConsumerState<_R2PosterPickerSheet> createState() =>
+      _R2PosterPickerSheetState();
 }
 
 class _R2PosterPickerSheetState extends ConsumerState<_R2PosterPickerSheet> {
@@ -541,11 +618,16 @@ class _R2PosterPickerSheetState extends ConsumerState<_R2PosterPickerSheet> {
 
     try {
       final dio = ref.read(apiClientProvider);
-      final response = await dio.get('/notifications/posters', queryParameters: {
-        if (search.trim().isNotEmpty) 'search': search.trim(),
-      });
+      final response = await dio.get(
+        '/notifications/posters',
+        queryParameters: {
+          if (search.trim().isNotEmpty) 'search': search.trim(),
+        },
+      );
 
-      final list = List<Map<String, dynamic>>.from(response.data['posters'] ?? []);
+      final list = List<Map<String, dynamic>>.from(
+        response.data['posters'] ?? [],
+      );
       setState(() {
         _posters = list;
         _isLoading = false;
@@ -591,7 +673,10 @@ class _R2PosterPickerSheetState extends ConsumerState<_R2PosterPickerSheet> {
             children: [
               Text(
                 'Cloudflare R2 पोस्टर गैलरी',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18),
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
               const Spacer(),
               IconButton(
@@ -612,8 +697,13 @@ class _R2PosterPickerSheetState extends ConsumerState<_R2PosterPickerSheet> {
                 icon: const Icon(Icons.arrow_forward_rounded),
                 onPressed: () => _loadPosters(_searchController.text),
               ),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
             ),
             onSubmitted: (val) => _loadPosters(val),
           ),
@@ -624,73 +714,90 @@ class _R2PosterPickerSheetState extends ConsumerState<_R2PosterPickerSheet> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                    ? Center(child: Text(_error!))
-                    : _posters.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.image_not_supported_outlined, size: 48, color: Colors.grey),
-                                const SizedBox(height: 8),
-                                Text('No posters found in R2 bucket', style: GoogleFonts.inter()),
-                              ],
-                            ),
-                          )
-                        : GridView.builder(
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: 0.85,
-                            ),
-                            itemCount: _posters.length,
-                            itemBuilder: (ctx, index) {
-                              final p = _posters[index];
-                              final url = p['publicUrl'] as String;
-                              final name = p['filename'] as String? ?? p['key'] as String;
+                ? Center(child: Text(_error!))
+                : _posters.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.image_not_supported_outlined,
+                          size: 48,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No posters found in R2 bucket',
+                          style: GoogleFonts.inter(),
+                        ),
+                      ],
+                    ),
+                  )
+                : GridView.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.85,
+                        ),
+                    itemCount: _posters.length,
+                    itemBuilder: (ctx, index) {
+                      final p = _posters[index];
+                      final url = p['publicUrl'] as String;
+                      final name =
+                          p['filename'] as String? ?? p['key'] as String;
 
-                              return InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () {
-                                  widget.onPosterSelected(url, name);
-                                  Navigator.of(context).pop();
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey.shade300),
-                                    borderRadius: BorderRadius.circular(12),
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          widget.onPosterSelected(url, name);
+                          Navigator.of(context).pop();
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(11),
                                   ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                    children: [
-                                      Expanded(
-                                        child: ClipRRect(
-                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
-                                          child: CachedNetworkImage(
-                                            imageUrl: url,
-                                            fit: BoxFit.cover,
-                                            placeholder: (ctx, url) => const Center(
-                                              child: CircularProgressIndicator(strokeWidth: 2),
-                                            ),
-                                            errorWidget: (ctx, url, err) => const Icon(Icons.broken_image),
-                                          ),
-                                        ),
+                                  child: CachedNetworkImage(
+                                    imageUrl: url,
+                                    fit: BoxFit.cover,
+                                    placeholder: (ctx, url) => const Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
                                       ),
-                                      Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Text(
-                                          name,
-                                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
+                                    ),
+                                    errorWidget: (ctx, url, err) =>
+                                        const Icon(Icons.broken_image),
                                   ),
                                 ),
-                              );
-                            },
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  name,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

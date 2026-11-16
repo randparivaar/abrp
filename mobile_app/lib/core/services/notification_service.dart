@@ -1,16 +1,19 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, HttpClient, File;
 import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 import '../constants/app_constants.dart';
 
 /// Top-level background message handler required by Firebase Messaging
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint('FCM Background message received: ${message.messageId} - ${message.data}');
+  debugPrint(
+    'FCM Background message received: ${message.messageId} - ${message.data}',
+  );
 }
 
 class NotificationService {
@@ -18,11 +21,13 @@ class NotificationService {
   static final NotificationService instance = NotificationService._();
 
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotif = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotif =
+      FlutterLocalNotificationsPlugin();
 
   static const String channelId = 'abrp_announcements';
   static const String channelName = 'ABRP Wishes & Announcements';
-  static const String channelDesc = 'Festival greetings, birthday and anniversary wishes, and community notices.';
+  static const String channelDesc =
+      'Festival greetings, birthday and anniversary wishes, and community notices.';
 
   bool _isInitialized = false;
   String? _lastRegisteredToken;
@@ -56,11 +61,15 @@ class NotificationService {
       );
 
       await _localNotif.initialize(
-        settings: const InitializationSettings(android: androidInit, iOS: iosInit),
+        settings: const InitializationSettings(
+          android: androidInit,
+          iOS: iosInit,
+        ),
         onDidReceiveNotificationResponse: (response) {
           if (response.payload != null && response.payload!.isNotEmpty) {
             try {
-              final data = jsonDecode(response.payload!) as Map<String, dynamic>;
+              final data =
+                  jsonDecode(response.payload!) as Map<String, dynamic>;
               onNotificationTapped?.call(data);
             } catch (e) {
               debugPrint('Error parsing notification payload: $e');
@@ -80,7 +89,9 @@ class NotificationService {
       );
 
       await _localNotif
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.createNotificationChannel(androidChannel);
 
       // 4. Foreground notification presentation options on iOS & Android
@@ -92,7 +103,9 @@ class NotificationService {
 
       // 5. Handle foreground message presentation via local notification
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('FCM Foreground message received: ${message.notification?.title}');
+        debugPrint(
+          'FCM Foreground message received: ${message.notification?.title}',
+        );
         _showLocalNotification(message);
       });
 
@@ -124,6 +137,25 @@ class NotificationService {
     }
   }
 
+  Future<String?> _downloadAndSaveImage(String url, String filename) async {
+    try {
+      final directory = await getTemporaryDirectory();
+      final filePath = '${directory.path}/$filename';
+      final request = await HttpClient().getUrl(Uri.parse(url));
+      final response = await request.close();
+      if (response.statusCode == 200) {
+        final bytes = await consolidateHttpClientResponseBytes(response);
+        final file = File(filePath);
+        await file.writeAsBytes(bytes);
+        return filePath;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error downloading notification image: $e');
+      return null;
+    }
+  }
+
   /// Displays a rich local notification banner with image support when app is in foreground
   Future<void> _showLocalNotification(RemoteMessage message) async {
     try {
@@ -131,6 +163,27 @@ class NotificationService {
       final data = message.data;
       final title = notif?.title ?? data['title'] ?? 'ABRP Samaj';
       final body = notif?.body ?? data['body'] ?? '';
+      final imageUrl =
+          notif?.android?.imageUrl ?? data['imageUrl'] ?? data['posterUrl'];
+
+      BigPictureStyleInformation? bigPictureStyleInformation;
+      String? localImagePath;
+
+      if (imageUrl != null && imageUrl.toString().trim().isNotEmpty) {
+        localImagePath = await _downloadAndSaveImage(
+          imageUrl.toString().trim(),
+          'notif_${message.hashCode}.jpg',
+        );
+        if (localImagePath != null) {
+          bigPictureStyleInformation = BigPictureStyleInformation(
+            FilePathAndroidBitmap(localImagePath),
+            largeIcon: FilePathAndroidBitmap(localImagePath),
+            contentTitle: title,
+            summaryText: body.isNotEmpty ? body : null,
+            hideExpandedLargeIcon: true,
+          );
+        }
+      }
 
       final androidDetails = AndroidNotificationDetails(
         channelId,
@@ -141,19 +194,26 @@ class NotificationService {
         playSound: true,
         enableVibration: true,
         icon: '@mipmap/ic_launcher',
+        styleInformation: bigPictureStyleInformation,
       );
 
-      const iosDetails = DarwinNotificationDetails(
+      final iosDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
+        attachments: localImagePath != null
+            ? [DarwinNotificationAttachment(localImagePath)]
+            : null,
       );
 
       await _localNotif.show(
         id: message.hashCode,
         title: title,
         body: body,
-        notificationDetails: NotificationDetails(android: androidDetails, iOS: iosDetails),
+        notificationDetails: NotificationDetails(
+          android: androidDetails,
+          iOS: iosDetails,
+        ),
         payload: jsonEncode(data),
       );
     } catch (e) {
@@ -175,22 +235,28 @@ class NotificationService {
         return;
       }
 
-      final client = dio ?? Dio(BaseOptions(
-        baseUrl: AppConstants.baseUrl,
-        headers: {
-          'Authorization': 'Bearer $jwt',
-          'Content-Type': 'application/json',
-        },
-      ));
+      final client =
+          dio ??
+          Dio(
+            BaseOptions(
+              baseUrl: AppConstants.baseUrl,
+              headers: {
+                'Authorization': 'Bearer $jwt',
+                'Content-Type': 'application/json',
+              },
+            ),
+          );
 
       final deviceType = Platform.isIOS ? 'ios' : 'android';
-      await client.post('notifications/register', data: {
-        'fcmToken': fcmToken,
-        'deviceType': deviceType,
-      });
+      await client.post(
+        'notifications/register',
+        data: {'fcmToken': fcmToken, 'deviceType': deviceType},
+      );
 
       _lastRegisteredToken = fcmToken;
-      debugPrint('✅ FCM token registered with backend successfully ($deviceType).');
+      debugPrint(
+        '✅ FCM token registered with backend successfully ($deviceType).',
+      );
     } catch (e) {
       debugPrint('Failed to register FCM token with backend: $e');
     }
@@ -206,17 +272,22 @@ class NotificationService {
       final jwt = await storage.read(key: AppConstants.tokenKey);
       if (jwt == null) return;
 
-      final client = dio ?? Dio(BaseOptions(
-        baseUrl: AppConstants.baseUrl,
-        headers: {
-          'Authorization': 'Bearer $jwt',
-          'Content-Type': 'application/json',
-        },
-      ));
+      final client =
+          dio ??
+          Dio(
+            BaseOptions(
+              baseUrl: AppConstants.baseUrl,
+              headers: {
+                'Authorization': 'Bearer $jwt',
+                'Content-Type': 'application/json',
+              },
+            ),
+          );
 
-      await client.post('notifications/unregister', data: {
-        'fcmToken': fcmToken,
-      });
+      await client.post(
+        'notifications/unregister',
+        data: {'fcmToken': fcmToken},
+      );
       _lastRegisteredToken = null;
       debugPrint('FCM token unregistered from backend.');
     } catch (e) {
