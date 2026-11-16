@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "691584846651",
-    "project_id": "abrp-samaj-app",
-    "storage_bucket": "abrp-samaj-app.firebasestorage.app"
+    "project_number": "765851837012",
+    "project_id": "abrp-e8da0",
+    "storage_bucket": "abrp-e8da0.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:691584846651:android:4f1ca493735030ae7bc51e",
+        "mobilesdk_app_id": "1:765851837012:android:3d8737a901bbda858a43c1",
         "android_client_info": {
           "package_name": "com.abrp.community"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBHVU_C-FFLgitfGrKtxmekaeMeW8pyK8U"
+          "current_key": "AIzaSyBLU9154guKdC_qQ-57VE77K3RBT6Z3UoI"
         }
       ],
       "services": {

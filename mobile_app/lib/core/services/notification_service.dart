@@ -184,7 +184,7 @@ class NotificationService {
       ));
 
       final deviceType = Platform.isIOS ? 'ios' : 'android';
-      await client.post('/notifications/register', data: {
+      await client.post('notifications/register', data: {
         'fcmToken': fcmToken,
         'deviceType': deviceType,
       });
@@ -214,7 +214,7 @@ class NotificationService {
         },
       ));
 
-      await client.post('/notifications/unregister', data: {
+      await client.post('notifications/unregister', data: {
         'fcmToken': fcmToken,
       });
       _lastRegisteredToken = null;

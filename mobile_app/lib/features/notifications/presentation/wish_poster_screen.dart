@@ -245,18 +245,20 @@ class _WishPosterScreenState extends State<WishPosterScreen> {
   }
 
   Widget _buildDynamicWishCard(bool isDark) {
-    final isAnniversary = widget.wishType == 'anniversary';
+    final type = widget.wishType ?? 'general';
+    final isAnniversary = type == 'anniversary';
+    final isBirthday = type == 'birthday';
     final hasAvatar = widget.avatarUrl != null && widget.avatarUrl!.trim().isNotEmpty;
-    final name = widget.coupleNames ?? widget.memberName ?? 'आदरणीय स्वजन';
+    final specificName = widget.coupleNames ?? widget.memberName;
+    final titleText = _resolveGreetingTitle(type, widget.title);
+    final sealEmoji = _resolveSealEmoji(type, widget.title);
 
     return Container(
       width: double.infinity,
       constraints: const BoxConstraints(maxWidth: 420),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isAnniversary
-              ? [const Color(0xFF6B1139), const Color(0xFF9F1239), const Color(0xFF4C0519)]
-              : [const Color(0xFF1E3A8A), const Color(0xFF1E40AF), const Color(0xFF0F172A)],
+          colors: _resolveGradient(type),
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -309,7 +311,7 @@ class _WishPosterScreenState extends State<WishPosterScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Center Photo Frame (or Floral Seal if no image uploaded)
+                // Center Photo Frame (or Festive Seal if no image uploaded)
                 if (hasAvatar)
                   Container(
                     width: 128,
@@ -330,64 +332,78 @@ class _WishPosterScreenState extends State<WishPosterScreen> {
                         imageUrl: widget.avatarUrl!,
                         fit: BoxFit.cover,
                         placeholder: (ctx, url) => const Center(child: CircularProgressIndicator()),
-                        errorWidget: (ctx, url, err) => _buildDefaultSeal(isAnniversary),
+                        errorWidget: (ctx, url, err) => _buildDefaultSeal(sealEmoji),
                       ),
                     ),
                   )
                 else
-                  _buildDefaultSeal(isAnniversary),
+                  _buildDefaultSeal(sealEmoji),
 
                 const SizedBox(height: 18),
 
                 // Greeting Title
                 Text(
-                  isAnniversary
-                      ? 'वैवाहिक वर्षगांठ की हार्दिक शुभकामनाएँ'
-                      : 'जन्मदिन की हार्दिक शुभकामनाएँ',
+                  titleText,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.outfit(
                     color: const Color(0xFFFDE68A),
-                    fontSize: 21,
+                    fontSize: 22,
                     fontWeight: FontWeight.w800,
+                    height: 1.25,
                   ),
                 ),
-                const SizedBox(height: 12),
 
-                // Member Name / Couple Name Banner
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFFDE68A).withValues(alpha: 0.4)),
-                  ),
-                  child: Text(
-                    name,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.3,
+                // Member Name / Couple Name Banner (shown when targeted to specific member/couple)
+                if (specificName != null && specificName.trim().isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFFDE68A).withValues(alpha: 0.4)),
+                    ),
+                    child: Text(
+                      specificName,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
+                      ),
                     ),
                   ),
-                ),
+                ],
+
                 const SizedBox(height: 14),
 
                 // Body Message
-                Text(
-                  widget.body ??
-                      (isAnniversary
-                          ? 'ईश्वर आपके दांपत्य जीवन को सदैव सुख, शांति, समृद्धि एवं उत्तम स्वास्थ्य से परिपूर्ण रखे।'
-                          : 'ईश्वर से आपके उत्तम स्वास्थ्य, दीर्घायु एवं मंगलमय जीवन की प्रार्थना करते हैं।'),
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFFE2E8F0),
-                    fontSize: 14,
-                    height: 1.45,
+                if (widget.body != null && widget.body!.trim().isNotEmpty)
+                  Text(
+                    widget.body!,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFFE2E8F0),
+                      fontSize: 14,
+                      height: 1.45,
+                    ),
+                  )
+                else
+                  Text(
+                    isAnniversary
+                        ? 'ईश्वर आपके दांपत्य जीवन को सदैव सुख, शांति, समृद्धि एवं उत्तम स्वास्थ्य से परिपूर्ण रखे।'
+                        : (isBirthday
+                            ? 'ईश्वर से आपके उत्तम स्वास्थ्य, दीर्घायु एवं मंगलमय जीवन की प्रार्थना करते हैं।'
+                            : 'समस्त रांदेर परिवार को इस पावन अवसर की हार्दिक शुभकामनाएँ।'),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFFE2E8F0),
+                      fontSize: 14,
+                      height: 1.45,
+                    ),
                   ),
-                ),
                 const SizedBox(height: 20),
 
                 // Footer
@@ -414,7 +430,47 @@ class _WishPosterScreenState extends State<WishPosterScreen> {
     );
   }
 
-  Widget _buildDefaultSeal(bool isAnniversary) {
+  String _resolveGreetingTitle(String type, String? title) {
+    if (title != null && title.trim().isNotEmpty) {
+      return title.trim();
+    }
+    if (type == 'anniversary') return 'वैवाहिक वर्षगांठ की हार्दिक शुभकामनाएँ';
+    if (type == 'birthday') return 'जन्मदिन की हार्दिक शुभकामनाएँ';
+    if (type == 'festival') return 'पावन पर्व की हार्दिक शुभकामनाएँ';
+    return 'समाज सूचना';
+  }
+
+  String _resolveSealEmoji(String type, String title) {
+    if (type == 'anniversary') return '💍';
+    if (type == 'birthday') return '🎂';
+    if (type == 'festival') {
+      final t = title.toLowerCase();
+      if (t.contains('होली') || t.contains('holi') || t.contains('रंग')) return '🎨';
+      if (t.contains('दीपावली') || t.contains('दिवाली') || t.contains('diwali')) return '🪔';
+      if (t.contains('गणेश') || t.contains('ganesh')) return '🌺';
+      if (t.contains('शिव') || t.contains('shiv')) return '🔱';
+      if (t.contains('नवरात्रि') || t.contains('navratri')) return '🪔';
+      if (t.contains('स्वतंत्रता') || t.contains('गणतंत्र') || t.contains('republic') || t.contains('independence')) return '🇮🇳';
+      if (t.contains('वर्ष') || t.contains('साल') || t.contains('new year')) return '✨';
+      return '🪔';
+    }
+    return '📢';
+  }
+
+  List<Color> _resolveGradient(String type) {
+    if (type == 'anniversary') {
+      return [const Color(0xFF6B1139), const Color(0xFF9F1239), const Color(0xFF4C0519)];
+    }
+    if (type == 'birthday') {
+      return [const Color(0xFF1E3A8A), const Color(0xFF1E40AF), const Color(0xFF0F172A)];
+    }
+    if (type == 'festival') {
+      return [const Color(0xFF7C2D12), const Color(0xFFC2410C), const Color(0xFF9A3412)];
+    }
+    return [const Color(0xFF064E3B), const Color(0xFF047857), const Color(0xFF0F766E)];
+  }
+
+  Widget _buildDefaultSeal(String emoji) {
     return Container(
       width: 110,
       height: 110,
@@ -425,7 +481,7 @@ class _WishPosterScreenState extends State<WishPosterScreen> {
       ),
       child: Center(
         child: Text(
-          isAnniversary ? '💍' : '🎂',
+          emoji,
           style: const TextStyle(fontSize: 48),
         ),
       ),
