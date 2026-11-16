@@ -1,9 +1,9 @@
 import { Context } from 'hono';
 import { UserSession } from '../middleware/auth.js';
-import {
-  registerDeviceToken,
-  unregisterDeviceToken,
-  getUserDevices,
+import { 
+  registerDeviceToken, 
+  unregisterDeviceToken, 
+  getUserDevices, 
   getMultipleUserDevices,
   getAllDevices,
   sendPushNotification,
@@ -14,9 +14,9 @@ import {
   markAllNotificationsAsRead
 } from '../services/notifications.service.js';
 import { r2Service } from '../services/r2.service.js';
-import {
-  RegisterDeviceRequest,
-  UnregisterDeviceRequest,
+import { 
+  RegisterDeviceRequest, 
+  UnregisterDeviceRequest, 
   SendTestNotificationRequest,
   SendWishNotificationRequest
 } from '../types/notifications.types.js';
@@ -164,9 +164,9 @@ export async function handleSendWishNotification(c: Context) {
     return c.json({
       success: sent,
       message: sent
-        ? (isBroadcast
-          ? `Broadcast poster notification dispatched to ${tokens.length} devices.`
-          : `Notification dispatched to ${tokens.length} device(s).`)
+        ? (isBroadcast 
+            ? `Broadcast poster notification dispatched to ${tokens.length} devices.` 
+            : `Notification dispatched to ${tokens.length} device(s).`)
         : 'Saved to history, but FCM push delivery encountered an issue.',
       notification,
       recipientDeviceCount: tokens.length,
